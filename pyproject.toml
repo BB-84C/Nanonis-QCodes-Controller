@@ -29,6 +29,9 @@ nanonis = [
     "nanonis-spm>=1.0.3",
 ]
 
+[project.scripts]
+nqctl = "nanonis_qcodes_controller.cli:main"
+
 [tool.setuptools.packages.find]
 include = ["nanonis_qcodes_controller*"]
 

@@ -63,6 +63,69 @@ python -m pip install -e .[dev,nanonis]
 
 The project uses runtime configuration for host, candidate ports, timeout, and write policy.
 
+## Agent-oriented CLI (`nqctl`)
+
+This project now exposes an agent-friendly CLI contract.
+
+Show capabilities (observables, actions, policy):
+
+```powershell
+nqctl capabilities --json
+```
+
+List observables (built-in + optional extension file):
+
+```powershell
+nqctl observables list --extensions-file config/lockin_parameters.yaml --json
+```
+
+Simple read and guarded single-step write:
+
+```powershell
+nqctl get bias_v --json
+nqctl set bias_v 0.12 --confirmed --reason "test point" --json
+```
+
+Explicit ramp (start/end/step/interval):
+
+```powershell
+nqctl ramp bias_v 0.10 0.25 0.01 --interval-s 0.10 --confirmed --reason "bias sweep" --json
+```
+
+Enable non-blocking trajectory logging for one command:
+
+```powershell
+nqctl get current_a --trajectory-enable --trajectory-dir artifacts/trajectory --json
+```
+
+Extension-file workflow:
+
+```powershell
+nqctl extensions discover --match LockIn --json
+nqctl extensions scaffold --match LockIn --output config/lockin_parameters.yaml --json
+nqctl extensions validate --file config/lockin_parameters.yaml --json
+```
+
+Show effective write policy and how to enable live writes:
+
+```powershell
+nqctl policy show --json
+```
+
+Help shortcuts:
+
+```powershell
+nqctl -help
+nqctl -help observables
+nqctl -help extensions
+```
+
+Raw backend call (explicit unsafe acknowledgement required):
+
+```powershell
+nqctl backend call LockIn_ModOnOffGet --args-json '{"Modulator_number": 1}' --unsafe-raw-call --json
+```
+
 ## Probe script
 
 Run the connectivity probe against configured host/ports:
@@ -252,6 +315,7 @@ Detailed phased plan: `PLAN.md`
 - Safety model: `docs/safety_model.md`
 - Porting to real controller: `docs/porting_to_real_controller.md`
 - Architecture overview: `docs/architecture.md`
+- CLI contract: `docs/cli_contract.md`
 - Trajectory model: `docs/trajectory_model.md`
 - Test runbook: `docs/test_runbook.md`
 - Extension workflow: `docs/extension_workflow.md`

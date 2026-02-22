@@ -144,6 +144,76 @@ class WritePolicy:
             reason=reason,
         )
 
+    def plan_scalar_write_single_step(
+        self,
+        *,
+        channel: str,
+        current_value: float,
+        target_value: float,
+        confirmed: bool = False,
+        reason: str | None = None,
+        now_s: float | None = None,
+        interval_s: float | None = None,
+    ) -> WritePlan:
+        self.ensure_writes_enabled()
+        limit = self._require_channel_limit(channel)
+
+        current = float(current_value)
+        target = float(target_value)
+
+        if target < limit.min_value or target > limit.max_value:
+            raise PolicyViolation(
+                f"Channel '{channel}' target {target} is outside bounds "
+                f"[{limit.min_value}, {limit.max_value}]."
+            )
+
+        effective_now = time.monotonic() if now_s is None else now_s
+        self._enforce_cooldown(channel=channel, limit=limit, now_s=effective_now)
+        self._enforce_confirmation(
+            channel=channel,
+            current_value=current,
+            target_value=target,
+            reason=reason,
+            confirmed=confirmed,
+            require_confirmation=limit.require_confirmation,
+        )
+
+        delta = target - current
+        if abs(delta) > limit.max_step:
+            raise PolicyViolation(
+                f"Single-step write for channel '{channel}' exceeds max_step={limit.max_step}. "
+                f"Requested delta={abs(delta)}. Use a ramp operation for larger moves."
+            )
+
+        effective_interval_s = limit.ramp_interval_s if interval_s is None else float(interval_s)
+        if effective_interval_s < 0:
+            raise PolicyViolation("interval_s must be non-negative for single-step writes.")
+
+        if limit.max_slew_per_s is not None:
+            if effective_interval_s <= 0 and abs(delta) > 0:
+                raise PolicyViolation(
+                    "interval_s must be positive for non-zero writes when max_slew_per_s "
+                    "is configured."
+                )
+            if effective_interval_s > 0:
+                effective_slew = abs(delta) / effective_interval_s
+                if effective_slew > limit.max_slew_per_s:
+                    raise PolicyViolation(
+                        f"Single-step write for channel '{channel}' exceeds max_slew_per_s="
+                        f"{limit.max_slew_per_s}. Requested slew={effective_slew}."
+                    )
+
+        return WritePlan(
+            channel=channel,
+            current_value=current,
+            target_value=target,
+            bounded_target=target,
+            steps=(target,),
+            interval_s=effective_interval_s,
+            dry_run=self.dry_run,
+            reason=reason,
+        )
+
     def execute_plan(
         self,
         plan: WritePlan,

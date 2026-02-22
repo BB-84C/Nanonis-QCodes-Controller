@@ -157,7 +157,11 @@ class QcodesNanonisSTM(Instrument):  # type: ignore[misc,unused-ignore]
         if not callable(list_commands):
             raise NanonisProtocolError("Active client does not expose command discovery.")
 
-        command_names = sorted(list_commands())
+        raw_names_obj = cast(Any, list_commands)()
+        if not isinstance(raw_names_obj, (list, tuple, set)):
+            raise NanonisProtocolError("Backend command discovery must return a sequence.")
+
+        command_names = sorted(str(name) for name in raw_names_obj)
         if match is None:
             return tuple(command_names)
 
@@ -509,6 +513,43 @@ class QcodesNanonisSTM(Instrument):  # type: ignore[misc,unused-ignore]
             argument_name="Bias_value_V",
         )
 
+    def plan_bias_v_set_single_step(
+        self,
+        target_v: float,
+        *,
+        confirmed: bool = False,
+        reason: str | None = None,
+        interval_s: float | None = None,
+    ) -> WritePlan:
+        return self._write_policy.plan_scalar_write_single_step(
+            channel="bias_v",
+            current_value=self._get_bias_v(),
+            target_value=target_v,
+            confirmed=confirmed,
+            reason=reason,
+            interval_s=interval_s,
+        )
+
+    def set_bias_v_single_step_guarded(
+        self,
+        target_v: float,
+        *,
+        confirmed: bool = False,
+        reason: str | None = None,
+        interval_s: float | None = None,
+    ) -> WriteExecutionReport:
+        return self._run_guarded_scalar_write(
+            operation="bias_v_set_single_step",
+            planner=lambda: self.plan_bias_v_set_single_step(
+                target_v,
+                confirmed=confirmed,
+                reason=reason,
+                interval_s=interval_s,
+            ),
+            command="Bias_Set",
+            argument_name="Bias_value_V",
+        )
+
     def plan_zctrl_setpoint_a_set(
         self,
         target_a: float,
@@ -535,6 +576,43 @@ class QcodesNanonisSTM(Instrument):  # type: ignore[misc,unused-ignore]
             operation="setpoint_a_set",
             planner=lambda: self.plan_zctrl_setpoint_a_set(
                 target_a, confirmed=confirmed, reason=reason
+            ),
+            command="ZCtrl_SetpntSet",
+            argument_name="Z_Controller_setpoint",
+        )
+
+    def plan_zctrl_setpoint_a_set_single_step(
+        self,
+        target_a: float,
+        *,
+        confirmed: bool = False,
+        reason: str | None = None,
+        interval_s: float | None = None,
+    ) -> WritePlan:
+        return self._write_policy.plan_scalar_write_single_step(
+            channel="setpoint_a",
+            current_value=self._get_zctrl_setpoint_a(),
+            target_value=target_a,
+            confirmed=confirmed,
+            reason=reason,
+            interval_s=interval_s,
+        )
+
+    def set_zctrl_setpoint_a_single_step_guarded(
+        self,
+        target_a: float,
+        *,
+        confirmed: bool = False,
+        reason: str | None = None,
+        interval_s: float | None = None,
+    ) -> WriteExecutionReport:
+        return self._run_guarded_scalar_write(
+            operation="setpoint_a_set_single_step",
+            planner=lambda: self.plan_zctrl_setpoint_a_set_single_step(
+                target_a,
+                confirmed=confirmed,
+                reason=reason,
+                interval_s=interval_s,
             ),
             command="ZCtrl_SetpntSet",
             argument_name="Z_Controller_setpoint",
