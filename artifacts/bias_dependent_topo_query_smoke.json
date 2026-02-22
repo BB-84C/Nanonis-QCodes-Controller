@@ -1,0 +1,80 @@
+{
+  "started_at": 1771639542.1589437,
+  "endpoint": "127.0.0.1:6501",
+  "junction_resistance_ohm": 500000000.0,
+  "bias_points_mv": [
+    50.0
+  ],
+  "scan_direction": "down",
+  "scan_timeout_ms": 900000,
+  "steps": [
+    {
+      "index": 1,
+      "bias_mv": 50.0,
+      "bias_v": 0.05,
+      "setpoint_a": 1e-10,
+      "setpoint_pa": 100.0,
+      "bias_report": {
+        "channel": "bias_v",
+        "dry_run": false,
+        "attempted_steps": 39,
+        "applied_steps": 39,
+        "initial_value": 2.0,
+        "target_value": 0.05,
+        "final_value": 0.05
+      },
+      "setpoint_report": {
+        "channel": "setpoint_a",
+        "dry_run": false,
+        "attempted_steps": 10,
+        "applied_steps": 10,
+        "initial_value": 5.00000006675716e-11,
+        "target_value": 1e-10,
+        "final_value": 1e-10
+      },
+      "scan_timed_out": false,
+      "scan_file_path": "",
+      "elapsed_s": 41.84738449999713,
+      "readback_bias_v": 0.05000000074505806,
+      "readback_setpoint_a": 1.000000013351432e-10,
+      "readback_current_a": -1.026665419345818e-10
+    }
+  ],
+  "restored_initial": true,
+  "initial_bias_v": 2.0,
+  "initial_setpoint_a": 5.00000006675716e-11,
+  "status": "completed",
+  "finished_at": 1771639586.5596666,
+  "final_bias_v": 2.0,
+  "final_setpoint_a": 5.00000006675716e-11,
+  "audit_tail": [
+    {
+      "timestamp_s": 1771639542.623109,
+      "operation": "setpoint_a_set",
+      "status": "applied",
+      "dry_run": false,
+      "detail": "Scalar write completed."
+    },
+    {
+      "timestamp_s": 1771639544.5784338,
+      "operation": "bias_v_set",
+      "status": "applied",
+      "dry_run": false,
+      "detail": "Scalar write completed."
+    },
+    {
+      "timestamp_s": 1771639584.5652492,
+      "operation": "setpoint_a_set",
+      "status": "applied",
+      "dry_run": false,
+      "detail": "Scalar write completed."
+    },
+    {
+      "timestamp_s": 1771639586.5436652,
+      "operation": "bias_v_set",
+      "status": "applied",
+      "dry_run": false,
+      "detail": "Scalar write completed."
+    }
+  ]
+}

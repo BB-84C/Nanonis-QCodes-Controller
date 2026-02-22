@@ -1,0 +1,62 @@
+[build-system]
+requires = ["setuptools>=69.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "nanonis-qcodes-controller"
+version = "0.1.0"
+description = "Simulator-first bridge between Nanonis SPM and QCodes"
+readme = "README.md"
+requires-python = ">=3.10"
+license = { file = "LICENSE" }
+dependencies = [
+    "PyYAML>=6.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "black>=24.8.0",
+    "mypy>=1.11.0",
+    "pytest>=8.3.0",
+    "pytest-cov>=5.0.0",
+    "ruff>=0.6.0",
+    "types-PyYAML>=6.0.12.20241230",
+]
+qcodes = [
+    "qcodes>=0.46.0",
+]
+nanonis = [
+    "nanonis-spm>=1.0.3",
+]
+
+[tool.setuptools.packages.find]
+include = ["nanonis_qcodes_controller*"]
+
+[tool.black]
+line-length = 100
+target-version = ["py310"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP"]
+ignore = ["E501"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+markers = [
+    "simulator: requires Nanonis STM Simulator",
+    "simulator_writes: guarded write scenarios on simulator",
+]
+
+[tool.mypy]
+python_version = "3.10"
+strict = true
+packages = ["nanonis_qcodes_controller"]
+warn_unused_configs = true
+
+[[tool.mypy.overrides]]
+module = ["qcodes", "qcodes.*"]
+ignore_missing_imports = true

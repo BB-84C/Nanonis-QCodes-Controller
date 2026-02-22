@@ -1,0 +1,313 @@
+{
+  "started_at": 1771644919.432381,
+  "endpoint": "127.0.0.1:6501",
+  "junction_resistance_ohm": 500000000.0,
+  "bias_points_mv": [
+    50.0
+  ],
+  "scan_direction": "down",
+  "scan_timeout_ms": 900000,
+  "trajectory_enabled": true,
+  "steps": [
+    {
+      "index": 1,
+      "bias_mv": 50.0,
+      "bias_v": 0.05,
+      "setpoint_a": 1e-10,
+      "setpoint_pa": 100.0,
+      "bias_report": {
+        "channel": "bias_v",
+        "dry_run": false,
+        "attempted_steps": 39,
+        "applied_steps": 39,
+        "initial_value": 2.0,
+        "target_value": 0.05,
+        "final_value": 0.05
+      },
+      "setpoint_report": {
+        "channel": "setpoint_a",
+        "dry_run": false,
+        "attempted_steps": 10,
+        "applied_steps": 10,
+        "initial_value": 5.00000006675716e-11,
+        "target_value": 1e-10,
+        "final_value": 1e-10
+      },
+      "scan_timed_out": false,
+      "scan_file_path": "",
+      "elapsed_s": 41.87465539999539,
+      "readback_bias_v": 0.05000000074505806,
+      "readback_setpoint_a": 1.000000013351432e-10,
+      "readback_current_a": -1.0196889860258906e-10
+    }
+  ],
+  "restored_initial": true,
+  "initial_bias_v": 2.0,
+  "initial_setpoint_a": 5.00000006675716e-11,
+  "status": "completed",
+  "finished_at": 1771644963.7877138,
+  "final_bias_v": 2.0,
+  "final_setpoint_a": 5.00000006675716e-11,
+  "audit_tail": [
+    {
+      "timestamp_s": 1771644919.8972228,
+      "operation": "setpoint_a_set",
+      "status": "applied",
+      "dry_run": false,
+      "detail": "Scalar write completed."
+    },
+    {
+      "timestamp_s": 1771644921.8769703,
+      "operation": "bias_v_set",
+      "status": "applied",
+      "dry_run": false,
+      "detail": "Scalar write completed."
+    },
+    {
+      "timestamp_s": 1771644961.8278089,
+      "operation": "setpoint_a_set",
+      "status": "applied",
+      "dry_run": false,
+      "detail": "Scalar write completed."
+    },
+    {
+      "timestamp_s": 1771644963.7857137,
+      "operation": "bias_v_set",
+      "status": "applied",
+      "dry_run": false,
+      "detail": "Scalar write completed."
+    }
+  ],
+  "trajectory_directory": "artifacts\\trajectory_phase8",
+  "trajectory_stats": {
+    "submitted": 121,
+    "written": 121,
+    "dropped": 0,
+    "last_error": null,
+    "active_file": "artifacts\\trajectory_phase8\\trajectory-1771644919333-00001.jsonl",
+    "segment_index": 1
+  },
+  "trajectory_tail": [
+    {
+      "event_id": "feee693534fb4570b5e3adc818aac5f0",
+      "timestamp_s": 1771644963.0149462,
+      "event_type": "command_result",
+      "payload": {
+        "command": "Bias_Set",
+        "status": "ok",
+        "latency_ms": 1.4726999797858298,
+        "args_hash": "ce7d3ff443732c83"
+      }
+    },
+    {
+      "event_id": "b8657008f158448aa1a43ef6530160b9",
+      "timestamp_s": 1771644963.0664542,
+      "event_type": "command_result",
+      "payload": {
+        "command": "Bias_Set",
+        "status": "ok",
+        "latency_ms": 0.8546000171918422,
+        "args_hash": "d149607cefc5c628"
+      }
+    },
+    {
+      "event_id": "628b981d4adb44e3abb33a50d3a2c9df",
+      "timestamp_s": 1771644963.1189637,
+      "event_type": "command_result",
+      "payload": {
+        "command": "Bias_Set",
+        "status": "ok",
+        "latency_ms": 1.1085000005550683,
+        "args_hash": "1e3f5bc9e00c7f9d"
+      }
+    },
+    {
+      "event_id": "44d744a536e24ab5833e4ffd72fa087d",
+      "timestamp_s": 1771644963.1694696,
+      "event_type": "command_result",
+      "payload": {
+        "command": "Bias_Set",
+        "status": "ok",
+        "latency_ms": 0.8005000127013773,
+        "args_hash": "4afcd5957d4391d9"
+      }
+    },
+    {
+      "event_id": "d8085f75ec6e4d679c1a2863cdf2fcaa",
+      "timestamp_s": 1771644963.220978,
+      "event_type": "command_result",
+      "payload": {
+        "command": "Bias_Set",
+        "status": "ok",
+        "latency_ms": 0.9298000077251345,
+        "args_hash": "f942e4bad64125ab"
+      }
+    },
+    {
+      "event_id": "f6fe2bf6fc514fab96024b923bd38cff",
+      "timestamp_s": 1771644963.2724874,
+      "event_type": "command_result",
+      "payload": {
+        "command": "Bias_Set",
+        "status": "ok",
+        "latency_ms": 0.9018999990075827,
+        "args_hash": "548258e035199854"
+      }
+    },
+    {
+      "event_id": "9dc0a751146644e9ac31486f57ff4aa2",
+      "timestamp_s": 1771644963.3245153,
+      "event_type": "command_result",
+      "payload": {
+        "command": "Bias_Set",
+        "status": "ok",
+        "latency_ms": 1.3329999928828329,
+        "args_hash": "e024413dedb5b0f2"
+      }
+    },
+    {
+      "event_id": "2597a518bd9c4fa39ae45911f901e831",
+      "timestamp_s": 1771644963.3755887,
+      "event_type": "command_result",
+      "payload": {
+        "command": "Bias_Set",
+        "status": "ok",
+        "latency_ms": 0.7898000185377896,
+        "args_hash": "7529035a4c69ccd2"
+      }
+    },
+    {
+      "event_id": "f0f905dc1c98458789bf16528c4c076d",
+      "timestamp_s": 1771644963.4265964,
+      "event_type": "command_result",
+      "payload": {
+        "command": "Bias_Set",
+        "status": "ok",
+        "latency_ms": 0.7939000206533819,
+        "args_hash": "4caf9e7ab8b92cba"
+      }
+    },
+    {
+      "event_id": "d34ebe0c87064f81a9b3994b6a67e256",
+      "timestamp_s": 1771644963.4776232,
+      "event_type": "command_result",
+      "payload": {
+        "command": "Bias_Set",
+        "status": "ok",
+        "latency_ms": 0.7220999978017062,
+        "args_hash": "68fb2a8c7f1b9369"
+      }
+    },
+    {
+      "event_id": "e76b944054b44b299250639cf00fa23a",
+      "timestamp_s": 1771644963.529696,
+      "event_type": "command_result",
+      "payload": {
+        "command": "Bias_Set",
+        "status": "ok",
+        "latency_ms": 0.9052999957930297,
+        "args_hash": "357eb1eda97fdf25"
+      }
+    },
+    {
+      "event_id": "38a514d9fe0543afbd7f40fa73a9216f",
+      "timestamp_s": 1771644963.5806947,
+      "event_type": "command_result",
+      "payload": {
+        "command": "Bias_Set",
+        "status": "ok",
+        "latency_ms": 0.8681999752297997,
+        "args_hash": "b3826c8ceabadef5"
+      }
+    },
+    {
+      "event_id": "0145165e69654fb8a502470c91c664ac",
+      "timestamp_s": 1771644963.6316955,
+      "event_type": "command_result",
+      "payload": {
+        "command": "Bias_Set",
+        "status": "ok",
+        "latency_ms": 0.9221000073011965,
+        "args_hash": "758174b37350bbc7"
+      }
+    },
+    {
+      "event_id": "4fa3eecc3e0940f9befbee2e9e5f7261",
+      "timestamp_s": 1771644963.6827142,
+      "event_type": "command_result",
+      "payload": {
+        "command": "Bias_Set",
+        "status": "ok",
+        "latency_ms": 0.8662999898660928,
+        "args_hash": "725b163f1b76935f"
+      }
+    },
+    {
+      "event_id": "0affe320d0ea45f2ba107c1c703e9779",
+      "timestamp_s": 1771644963.7337136,
+      "event_type": "command_result",
+      "payload": {
+        "command": "Bias_Set",
+        "status": "ok",
+        "latency_ms": 0.846399983856827,
+        "args_hash": "cd9a84a04022cb1b"
+      }
+    },
+    {
+      "event_id": "944a665e256c48929650f93e3117fb95",
+      "timestamp_s": 1771644963.7857137,
+      "event_type": "command_result",
+      "payload": {
+        "command": "Bias_Set",
+        "status": "ok",
+        "latency_ms": 0.9732000180520117,
+        "args_hash": "9fe28c76a122c9f5"
+      }
+    },
+    {
+      "event_id": "9d3c0fc8fe9749588ae2803ec9822112",
+      "timestamp_s": 1771644963.7857137,
+      "event_type": "write_audit",
+      "payload": {
+        "operation": "bias_v_set",
+        "status": "applied",
+        "dry_run": false,
+        "detail": "Scalar write completed.",
+        "metadata": {
+          "attempted_steps": 39,
+          "applied_steps": 39,
+          "target_value": 2.0,
+          "final_value": 2.0
+        }
+      }
+    },
+    {
+      "event_id": "e379c0acd6644cbdbd5fc850764c6ee4",
+      "timestamp_s": 1771644963.786714,
+      "event_type": "command_result",
+      "payload": {
+        "command": "Bias_Get",
+        "status": "ok",
+        "latency_ms": 1.3347000058274716,
+        "args_hash": "44136fa355b3678a"
+      }
+    },
+    {
+      "event_id": "d0497516f4994ff7ac3049eb667b7bb5",
+      "timestamp_s": 1771644963.786714,
+      "event_type": "command_result",
+      "payload": {
+        "command": "ZCtrl_SetpntGet",
+        "status": "ok",
+        "latency_ms": 0.48919999971985817,
+        "args_hash": "44136fa355b3678a"
+      }
+    },
+    {
+      "event_id": "6d6c55edabb54a2c9da4aee332883c8c",
+      "timestamp_s": 1771644963.7877138,
+      "event_type": "journal_stopping",
+      "payload": {}
+    }
+  ]
+}
