@@ -9,7 +9,12 @@ from nanonis_qcodes_controller.config import NanonisConnectionSettings
 
 from .backend import BackendAdapter, BackendSession, build_backend_adapter
 from .base import NanonisHealth
-from .errors import NanonisClientError, NanonisConnectionError, NanonisTimeoutError
+from .errors import (
+    NanonisClientError,
+    NanonisCommandUnavailableError,
+    NanonisConnectionError,
+    NanonisTimeoutError,
+)
 
 
 class NanonisTransportClient:
@@ -132,6 +137,23 @@ class NanonisTransportClient:
 
     def version(self) -> str:
         return self._adapter.version_string()
+
+    def available_commands(self) -> tuple[str, ...]:
+        with self._lock:
+            if self._session is None:
+                self.connect()
+
+            assert self._session is not None
+            list_commands = getattr(self._session, "available_commands", None)
+            if not callable(list_commands):
+                raise NanonisCommandUnavailableError(
+                    "Backend session does not expose command discovery."
+                )
+
+            names = list_commands()
+            if not isinstance(names, tuple):
+                names = tuple(names)
+            return tuple(str(name) for name in names)
 
     def health(self) -> NanonisHealth:
         with self._lock:

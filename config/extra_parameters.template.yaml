@@ -1,0 +1,20 @@
+parameters:
+  - name: lockin_mod_enabled
+    command: LockIn_ModOnOffGet
+    type: bool
+    args:
+      Modulator_number: 1
+
+  - name: lockin_mod_amplitude_v
+    command: LockIn_ModAmpGet
+    type: float
+    unit: V
+    args:
+      Modulator_number: 1
+
+  - name: lockin_demod_phase_deg
+    command: LockIn_DemodPhasGet
+    type: float
+    unit: deg
+    args:
+      Demodulator_number: 1

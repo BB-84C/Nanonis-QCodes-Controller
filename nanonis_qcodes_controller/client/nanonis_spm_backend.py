@@ -73,6 +73,9 @@ class NanonisSpmSession:
     def close(self) -> None:
         self._connection.close()
 
+    def available_commands(self) -> tuple[str, ...]:
+        return tuple(sorted(self._method_index.values()))
+
     def call(self, command: str, *, args: Mapping[str, Any] | None = None) -> Mapping[str, Any]:
         command_text = command.strip()
         if not command_text:

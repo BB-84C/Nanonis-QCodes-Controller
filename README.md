@@ -187,6 +187,37 @@ Bridge doctor (port/protocol/trajectory checks):
 python scripts/bridge_doctor.py --command-probe
 ```
 
+## Extending command coverage without code edits
+
+When you need additional `nanonis_spm` functions (for example Lock-In channels), you can load extra read parameters from a YAML manifest.
+
+List matching backend commands:
+
+```powershell
+python scripts/scaffold_extension_manifest.py --mode list --match LockIn
+```
+
+Generate a manifest template:
+
+```powershell
+python scripts/scaffold_extension_manifest.py --mode manifest --match LockIn --output config/lockin_parameters.yaml
+```
+
+Load manifest into driver:
+
+```python
+from nanonis_qcodes_controller.qcodes_driver import QcodesNanonisSTM
+
+nanonis = QcodesNanonisSTM(
+    "nanonis",
+    auto_connect=True,
+    extra_parameters_manifest="config/lockin_parameters.yaml",
+)
+
+print(nanonis.available_backend_commands(match="LockIn"))
+print(nanonis.call_backend_command("LockIn_ModOnOffGet", args={"Modulator_number": 1}))
+```
+
 ## Phase 7 test matrix
 
 - `tests/test_simulator_integration.py` covers connect/disconnect cycles, read loops, and guarded write scenarios.
@@ -223,4 +254,5 @@ Detailed phased plan: `PLAN.md`
 - Architecture overview: `docs/architecture.md`
 - Trajectory model: `docs/trajectory_model.md`
 - Test runbook: `docs/test_runbook.md`
+- Extension workflow: `docs/extension_workflow.md`
 - Example notebook: `docs/notebooks/simulator_demo.ipynb`

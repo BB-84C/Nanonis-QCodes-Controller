@@ -18,6 +18,8 @@ from nanonis_qcodes_controller.config import load_settings
 from nanonis_qcodes_controller.safety import WriteExecutionReport, WritePlan, WritePolicy
 from nanonis_qcodes_controller.trajectory import TrajectoryJournal, TrajectoryStats
 
+from .extensions import ScalarParameterSpec, load_scalar_parameter_specs
+
 
 @dataclass(frozen=True)
 class ScanFrameState:
@@ -93,6 +95,7 @@ class QcodesNanonisSTM(Instrument):  # type: ignore[misc,unused-ignore]
         config_file: str | Path | None = None,
         write_policy: WritePolicy | None = None,
         trajectory_journal: TrajectoryJournal | None = None,
+        extra_parameters_manifest: str | Path | None = None,
         auto_connect: bool = True,
         **kwargs: Any,
     ) -> None:
@@ -102,6 +105,7 @@ class QcodesNanonisSTM(Instrument):  # type: ignore[misc,unused-ignore]
         self._owns_trajectory = False
         self._trajectory_journal: TrajectoryJournal | None = trajectory_journal
         self._last_state_values: dict[str, Any] = {}
+        self._dynamic_parameter_specs: dict[str, ScalarParameterSpec] = {}
 
         resolved_policy: WritePolicy
         settings = None
@@ -133,6 +137,8 @@ class QcodesNanonisSTM(Instrument):  # type: ignore[misc,unused-ignore]
             self._client.connect()
 
         self._register_parameters()
+        if extra_parameters_manifest is not None:
+            _ = self.load_scalar_parameter_manifest(extra_parameters_manifest)
 
     def close(self) -> None:
         try:
@@ -146,9 +152,77 @@ class QcodesNanonisSTM(Instrument):  # type: ignore[misc,unused-ignore]
     def client_health(self) -> NanonisHealth:
         return self._client.health()
 
+    def available_backend_commands(self, *, match: str | None = None) -> tuple[str, ...]:
+        list_commands = getattr(self._client, "available_commands", None)
+        if not callable(list_commands):
+            raise NanonisProtocolError("Active client does not expose command discovery.")
+
+        command_names = sorted(list_commands())
+        if match is None:
+            return tuple(command_names)
+
+        token = match.strip().lower()
+        if not token:
+            return tuple(command_names)
+        return tuple(command for command in command_names if token in command.lower())
+
+    def call_backend_command(
+        self,
+        command: str,
+        *,
+        args: Mapping[str, Any] | None = None,
+    ) -> Mapping[str, Any]:
+        return self._call(command, args=args)
+
     @property
     def write_policy(self) -> WritePolicy:
         return self._write_policy
+
+    def dynamic_parameter_specs(self) -> tuple[ScalarParameterSpec, ...]:
+        names = sorted(self._dynamic_parameter_specs)
+        return tuple(self._dynamic_parameter_specs[name] for name in names)
+
+    def load_scalar_parameter_manifest(self, manifest_file: str | Path) -> tuple[str, ...]:
+        specs = load_scalar_parameter_specs(manifest_file)
+        registered_names: list[str] = []
+        for spec in specs:
+            self.register_scalar_parameter(spec)
+            registered_names.append(spec.name)
+        return tuple(registered_names)
+
+    def register_scalar_parameter(self, spec: ScalarParameterSpec) -> None:
+        parameter_name = spec.name
+        if parameter_name in self.parameters or hasattr(self, parameter_name):
+            raise ValueError(f"Parameter '{parameter_name}' is already registered.")
+
+        call_args = dict(spec.args)
+
+        def get_value() -> Any:
+            response = self._call(
+                spec.command,
+                args=call_args if call_args else None,
+            )
+            raw_value = self._extract_payload_value(
+                response,
+                command=spec.command,
+                payload_index=spec.payload_index,
+            )
+            return _coerce_scalar_value(raw_value, value_type=spec.value_type)
+
+        parameter_kwargs: dict[str, Any] = {
+            "name": parameter_name,
+            "label": spec.label or parameter_name,
+            "unit": spec.unit,
+            "get_cmd": get_value,
+            "set_cmd": False,
+            "snapshot_value": spec.snapshot_value,
+        }
+        validator = _validator_for_value_type(spec.value_type)
+        if validator is not None:
+            parameter_kwargs["vals"] = validator
+
+        self.add_parameter(**parameter_kwargs)
+        self._dynamic_parameter_specs[parameter_name] = spec
 
     def guarded_write_audit_log(self) -> tuple[GuardedWriteAuditEntry, ...]:
         return tuple(self._write_audit_log)
@@ -762,15 +836,27 @@ class QcodesNanonisSTM(Instrument):  # type: ignore[misc,unused-ignore]
         )
 
     @staticmethod
-    def _extract_scalar_value(response: Mapping[str, Any], *, command: str) -> Any:
-        if "value" in response:
+    def _extract_payload_value(
+        response: Mapping[str, Any],
+        *,
+        command: str,
+        payload_index: int,
+    ) -> Any:
+        if payload_index == 0 and "value" in response:
             return response["value"]
 
         payload = response.get("payload")
-        if isinstance(payload, list) and payload:
-            return payload[0]
+        if not isinstance(payload, list):
+            raise NanonisProtocolError(f"Command '{command}' did not return a list payload.")
+        if payload_index >= len(payload):
+            raise NanonisProtocolError(
+                f"Command '{command}' payload index {payload_index} is out of range."
+            )
+        return payload[payload_index]
 
-        raise NanonisProtocolError(f"Command '{command}' did not return a scalar value.")
+    @staticmethod
+    def _extract_scalar_value(response: Mapping[str, Any], *, command: str) -> Any:
+        return QcodesNanonisSTM._extract_payload_value(response, command=command, payload_index=0)
 
 
 def _interpolate_scan_frame_steps(
@@ -821,3 +907,25 @@ def _json_safe(value: Any) -> Any:
     if isinstance(value, (list, tuple)):
         return [_json_safe(item) for item in value]
     return str(value)
+
+
+def _coerce_scalar_value(value: Any, *, value_type: str) -> Any:
+    if value_type == "float":
+        return float(value)
+    if value_type == "int":
+        return int(value)
+    if value_type == "bool":
+        return bool(value)
+    if value_type == "str":
+        return str(value)
+    raise ValueError(f"Unsupported scalar value type: {value_type}")
+
+
+def _validator_for_value_type(value_type: str) -> Any | None:
+    if value_type == "float":
+        return Numbers()
+    if value_type == "int":
+        return Ints()
+    if value_type == "bool":
+        return Bool()
+    return None
