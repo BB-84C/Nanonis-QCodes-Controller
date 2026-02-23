@@ -127,7 +127,7 @@ parameters:
     vals:
       kind: numbers
 
-  , scan_frame_width_m:
+  scan_frame_width_m:
     label: Scan Frame Width
     unit: m
     type: float

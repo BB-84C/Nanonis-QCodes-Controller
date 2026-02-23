@@ -14,3 +14,9 @@ tests/**
 !tests/probe_nanonis.py
 !tests/read_client_demo.py
 !tests/guarded_write_demo.py
+!tests/test_trajectory_monitor_config.py
+!tests/test_trajectory_sqlite_store.py
+!tests/test_trajectory_monitor_sampling.py
+!tests/test_trajectory_monitor_actions.py
+!tests/test_cli_trajectory_monitor.py
+!tests/test_cli_trajectory_actions.py

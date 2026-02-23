@@ -17,7 +17,7 @@ python -m mypy nanonis_qcodes_controller
 Use this on a machine with STM Simulator running.
 
 ```powershell
-set NANONIS_RUN_SIMULATOR_TESTS=1
+$env:NANONIS_RUN_SIMULATOR_TESTS = "1"
 python -m pytest -q -m simulator -k "not simulator_writes"
 ```
 
@@ -25,8 +25,8 @@ python -m pytest -q -m simulator -k "not simulator_writes"
 This performs bounded/ramped write operations and restores initial values.
 
 ```powershell
-set NANONIS_RUN_SIMULATOR_TESTS=1
-set NANONIS_RUN_SIMULATOR_WRITE_TESTS=1
+$env:NANONIS_RUN_SIMULATOR_TESTS = "1"
+$env:NANONIS_RUN_SIMULATOR_WRITE_TESTS = "1"
 python -m pytest -q -m simulator_writes
 ```
 
@@ -36,12 +36,20 @@ python -m pytest -q -m simulator_writes
 - Guarded write tests skip automatically unless `NANONIS_RUN_SIMULATOR_WRITE_TESTS=1` is set.
 - If a write test fails, verify instrument state manually and rerun with conservative limits.
 
-## Phase 8 trajectory smoke
-Generate operations and trajectory events without manual GUI interactions:
+## Trajectory monitor smoke (SQLite)
+Use this to validate monitor staging + run + action queries:
 
 ```powershell
-set NANONIS_RUN_SIMULATOR_TESTS=1
-set NANONIS_RUN_SIMULATOR_WRITE_TESTS=1
-python -m pytest -q tests/test_simulator_integration.py -k bias_dependent_topography_sequence -m simulator_writes
-python scripts/trajectory_reader.py --directory artifacts/trajectory --limit 20
+nqctl trajectory monitor config clear
+nqctl trajectory monitor config set --run-name smoke-run-001
+nqctl trajectory monitor run --iterations 25
+nqctl trajectory action list --db-path artifacts/trajectory/trajectory-monitor.sqlite3 --run-name smoke-run-001
+# Run show only when action list count > 0.
+nqctl trajectory action show --db-path artifacts/trajectory/trajectory-monitor.sqlite3 --run-name smoke-run-001 --action-idx 0 --with-signal-window
 ```
+
+Expected:
+- `trajectory monitor run` fails fast if `run_name` is empty.
+- `run_name` is cleared after run completion/interruption.
+- Action rows expose `detected_at_utc` (ISO UTC), `dt_s`, and configured action window (`2.5` seconds default).
+- Signal/spec dense catalogs rotate every `6000` entries unless overridden.

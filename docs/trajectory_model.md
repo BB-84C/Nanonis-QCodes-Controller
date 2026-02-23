@@ -1,40 +1,33 @@
 # Trajectory Model
 
 ## Objective
-Provide a non-blocking, append-only event journal that captures command outcomes and state transitions during long-running experiments.
+Capture monitor data in a queryable SQLite store for post-run analysis and action inspection.
 
-## Event schema
-Each event is a JSON object written as one line (`.jsonl`) with fields:
+## Storage model
+Each monitor run writes to one SQLite database (`artifacts/trajectory/trajectory-monitor.sqlite3` by default).
 
-- `event_id`: unique ID
-- `timestamp_utc`: ISO-8601 UTC timestamp string
-- `event_type`: event category (`command_result`, `state_transition`, `write_audit`, ...)
-- `payload`: event-specific data
+The run schema is organized as three trajectories:
+- `signal_samples`: dense sampled signal values.
+- `spec_samples`: dense sampled spec/state values.
+- `action_events`: sparse detected spec-change events.
 
-## Non-blocking behavior
-- Producers submit events with `put_nowait` semantics.
-- If queue is full, events are dropped and drop count increases.
-- Instrument command path is never blocked by trajectory writes.
+All three use the same run-relative timeline:
+- `dt_s`: seconds since run start, based on monitor monotonic scheduling.
+- `run_start_utc`: ISO-8601 UTC run start stamp stored in run metadata/catalog segment metadata.
 
-## File layout
-- Directory: configurable (`trajectory.directory`)
-- Segment files: `trajectory-<run_id>-<segment_index>.jsonl`
-- Rotation: configurable max events per file (`trajectory.max_events_per_file`)
+## Timing and segmentation
+- Sampling is scheduled at fixed `interval_s`.
+- Signal and spec trajectories rotate by segment using `rotate_entries`.
+- Default dense rotation is `6000` entries per segment for both signal and spec catalogs.
 
-## Reader modes
-- Batch/tail: read latest `N` events from files
-- Follow: poll for newly appended events
+## Action events
+- Action events are emitted on spec value changes (`action_kind=spec-change`).
+- `detected_at_utc` is stored as an ISO-8601 UTC timestamp.
+- Each event includes a signal window in run time:
+  - `signal_window_start_dt_s = dt_s - action_window_s`
+  - `signal_window_end_dt_s = dt_s + action_window_s`
+- `action_window_s` is configurable; default is `2.5` seconds.
 
-Implemented tools:
-- `scripts/trajectory_reader.py`
-- `nanonis_qcodes_controller.trajectory.read_events(...)`
-- `nanonis_qcodes_controller.trajectory.follow_events(...)`
-
-## Metrics
-`TrajectoryStats` tracks:
-- `submitted`
-- `written`
-- `dropped`
-- `last_error`
-- `active_file`
-- `segment_index`
+## Practical query paths
+- CLI action queries: `nqctl trajectory action list` and `nqctl trajectory action show`.
+- Include sampled context around an action with `--with-signal-window` on `action show`.

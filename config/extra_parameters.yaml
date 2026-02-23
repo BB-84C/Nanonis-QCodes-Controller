@@ -43,3 +43,15 @@ parameters:
     set_cmd: false
     vals:
       kind: numbers
+
+  zctrl_i_gain:
+    label: Z Controller I Gain
+    unit: ""
+    type: float
+    get_cmd:
+      command: ZCtrl_GainGet
+      payload_index: 2
+      args: {}
+    set_cmd: false
+    vals:
+      kind: numbers

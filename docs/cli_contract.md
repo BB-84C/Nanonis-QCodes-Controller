@@ -18,14 +18,28 @@ Expose a small, stable command surface that orchestration agents can call direct
 - `nqctl parameters validate --file config/extra_parameters.yaml`
 
 ## Trajectory commands
+Legacy JSONL readers are still available:
 - `nqctl trajectory tail --directory artifacts/trajectory --limit 20`
 - `nqctl trajectory follow --directory artifacts/trajectory --interval-s 0.5`
 
-Runtime toggle for non-blocking trajectory logging on `get`, `set`, and `ramp`:
-- `--trajectory-enable`
-- `--trajectory-dir`
-- `--trajectory-queue-size`
-- `--trajectory-max-events-per-file`
+SQLite action query commands:
+- `nqctl trajectory action list --db-path artifacts/trajectory/trajectory-monitor.sqlite3 [--run-name <name>]`
+- `nqctl trajectory action show --db-path artifacts/trajectory/trajectory-monitor.sqlite3 --action-idx <idx> [--run-name <name>]`
+- Add `--with-signal-window` to `action show` to include sampled signal rows in the stored action window.
+
+SQLite monitor workflow:
+- `nqctl trajectory monitor config show`
+- `nqctl trajectory monitor config set --run-name <name> [--signals <csv>] [--specs <csv>] [--interval-s <sec>] [--rotate-entries <n>] [--action-window-s <sec>] [--directory <dir>] [--db-name <file>]`
+- `nqctl trajectory monitor config clear`
+- `nqctl trajectory monitor list-signals`
+- `nqctl trajectory monitor list-specs`
+- `nqctl trajectory monitor run [--iterations <n>]`
+
+Monitor config requirements and defaults:
+- `run_name` must be set before `trajectory monitor run`.
+- `run_name` is cleared from staged config after each monitor run attempt.
+- Default action window is `2.5` seconds.
+- Default dense rotation is `6000` samples per segment.
 
 ## Backend discovery
 - `nqctl backend commands`
@@ -44,6 +58,7 @@ Runtime toggle for non-blocking trajectory logging on `get`, `set`, and `ramp`:
 - Use `parameters` commands to add observables without code edits.
 - `set` never auto-ramps; use `ramp` for stepped trajectories.
 - Keep sequencing logic in orchestration layer; `nqctl` exposes atomic operations.
+- For monitor runs, stage `run_name` first via `trajectory monitor config set`.
 
 ## Help usage
 - `nqctl -help`: top-level help

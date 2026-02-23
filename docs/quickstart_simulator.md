@@ -63,22 +63,34 @@ nanonis.close()
 python tests/guarded_write_demo.py --channel bias_v --target 1.8
 ```
 
-## 7) Automated operation demo (no manual GUI actions)
-Run bias-dependent sequence integration test, then inspect trajectory events:
+## 7) Trajectory monitor quick workflow
+Stage monitor config, inspect available labels, run monitor, then query actions:
 
 ```powershell
-set NANONIS_RUN_SIMULATOR_TESTS=1
-set NANONIS_RUN_SIMULATOR_WRITE_TESTS=1
-python -m pytest -q tests/test_simulator_integration.py -k bias_dependent_topography_sequence -m simulator_writes
-python scripts/trajectory_reader.py --directory artifacts/trajectory --limit 20
+nqctl trajectory monitor config clear
+nqctl trajectory monitor list-signals
+nqctl trajectory monitor list-specs
+nqctl trajectory monitor config set --run-name sim-demo-001
+nqctl trajectory monitor run --iterations 50
+nqctl trajectory action list --db-path artifacts/trajectory/trajectory-monitor.sqlite3 --run-name sim-demo-001
+# Run show only when action list count > 0.
+nqctl trajectory action show --db-path artifacts/trajectory/trajectory-monitor.sqlite3 --run-name sim-demo-001 --action-idx 0 --with-signal-window
 ```
+
+Notes:
+- `run_name` is required before `trajectory monitor run`.
+- `run_name` is automatically cleared from staged config when the run exits.
+- Action timestamps are ISO UTC, and action signal window default is `2.5` seconds.
+- Dense signal/spec rotation default is `6000` entries per segment.
 
 ## 8) Test matrix
 
 ```powershell
 python -m pytest -q -m "not simulator"
-NANONIS_RUN_SIMULATOR_TESTS=1 python -m pytest -q -m "simulator and not simulator_writes"
-NANONIS_RUN_SIMULATOR_TESTS=1 NANONIS_RUN_SIMULATOR_WRITE_TESTS=1 python -m pytest -q -m simulator_writes
+$env:NANONIS_RUN_SIMULATOR_TESTS = "1"
+python -m pytest -q -m "simulator and not simulator_writes"
+$env:NANONIS_RUN_SIMULATOR_WRITE_TESTS = "1"
+python -m pytest -q -m simulator_writes
 ```
 
 ## References
