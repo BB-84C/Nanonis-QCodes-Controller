@@ -26,4 +26,10 @@ tests/**
 !tests/test_safety_policy.py
 !tests/test_parameter_manifest_generator.py
 !tests/test_docs_parameters_manifest.py
+!tests/test_public_api_contract.py
+!tests/test_default_file_resolution.py
+!tests/test_release_docs.py
+!tests/test_release_checklist_contract.py
+!tests/test_ci_workflow_contract.py
+!tests/test_publish_workflow_contract.py
 artifacts/

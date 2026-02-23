@@ -7,6 +7,8 @@ from typing import Any, Literal, cast
 
 import yaml
 
+from nanonis_qcodes_controller.config.default_files import resolve_packaged_default
+
 DEFAULT_PARAMETERS_FILE = Path("config/parameters.yaml")
 
 ScalarValueType = Literal["float", "int", "bool", "str"]
@@ -76,7 +78,10 @@ class ParameterSpec:
 def load_parameter_specs(parameter_file: str | Path) -> tuple[ParameterSpec, ...]:
     manifest_path = Path(parameter_file).expanduser()
     if not manifest_path.exists():
-        raise ValueError(f"Parameter file does not exist: {manifest_path}")
+        if manifest_path == DEFAULT_PARAMETERS_FILE.expanduser():
+            manifest_path = resolve_packaged_default("parameters.yaml")
+        else:
+            raise ValueError(f"Parameter file does not exist: {manifest_path}")
 
     with manifest_path.open("r", encoding="utf-8") as handle:
         loaded = yaml.safe_load(handle)

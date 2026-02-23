@@ -35,6 +35,9 @@ nqctl = "nanonis_qcodes_controller.cli:main"
 [tool.setuptools.packages.find]
 include = ["nanonis_qcodes_controller*"]
 
+[tool.setuptools.package-data]
+"nanonis_qcodes_controller.resources" = ["config/*.yaml"]
+
 [tool.black]
 line-length = 100
 target-version = ["py310"]

@@ -36,3 +36,8 @@ flowchart LR
 - Write path is explicit and policy-gated; default config blocks writes.
 - Trajectory logging is append-only and non-blocking; dropped events are counted.
 - Config-first deployment: host/ports/policy/trajectory are environment or YAML driven.
+
+## v1 API support contract
+- Stable Python API symbols: `QcodesNanonisSTM`, `create_client`, `load_settings`.
+- Stable CLI contract: documented `nqctl` commands and outputs.
+- Other Python symbols are provisional/internal and may change across minor releases.

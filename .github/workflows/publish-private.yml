@@ -1,0 +1,244 @@
+name: Publish Private Index
+
+on:
+  workflow_dispatch:
+    inputs:
+      build_run_id:
+        description: "CI run id containing dist artifact"
+        required: true
+        type: string
+      package_version:
+        description: "Package version to smoke install"
+        required: true
+        type: string
+
+permissions:
+  actions: read
+  contents: read
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Validate source build run provenance
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPOSITORY: ${{ github.repository }}
+          BUILD_RUN_ID: ${{ inputs.build_run_id }}
+          EXPECTED_WORKFLOW_PATH: .github/workflows/ci.yml
+        run: |
+          python - <<'PY'
+          import json
+          import os
+          import sys
+          import urllib.error
+          import urllib.request
+
+          token = os.environ.get("GITHUB_TOKEN")
+          repository = os.environ.get("REPOSITORY")
+          run_id = os.environ.get("BUILD_RUN_ID")
+          expected_workflow_path = os.environ.get("EXPECTED_WORKFLOW_PATH")
+
+          if not token:
+              raise SystemExit("GITHUB_TOKEN is required")
+          if not repository:
+              raise SystemExit("github.repository is required")
+          if not run_id:
+              raise SystemExit("inputs.build_run_id is required")
+
+          url = f"https://api.github.com/repos/{repository}/actions/runs/{run_id}"
+          request = urllib.request.Request(
+              url,
+              headers={
+                  "Accept": "application/vnd.github+json",
+                  "Authorization": f"Bearer {token}",
+                  "X-GitHub-Api-Version": "2022-11-28",
+              },
+          )
+
+          try:
+              with urllib.request.urlopen(request) as response:
+                  payload = json.load(response)
+          except urllib.error.HTTPError as exc:
+              raise SystemExit(
+                  f"Failed to fetch run provenance for run {run_id}: {exc.code} {exc.reason}"
+              )
+
+          if str(payload.get("id")) != str(run_id):
+              raise SystemExit(
+                  f"Run provenance mismatch: expected id {run_id}, got {payload.get('id')}"
+              )
+
+          repo_name = ((payload.get("repository") or {}).get("full_name"))
+          if repo_name != repository:
+              raise SystemExit(
+                  f"Run {run_id} belongs to {repo_name!r}, expected {repository!r}"
+              )
+
+          if payload.get("status") != "completed":
+              raise SystemExit(
+                  f"Run {run_id} is not complete (status={payload.get('status')!r})"
+              )
+
+          if payload.get("conclusion") != "success":
+              raise SystemExit(
+                  f"Run {run_id} did not succeed (conclusion={payload.get('conclusion')!r})"
+              )
+
+          if payload.get("event") != "push":
+              raise SystemExit(
+                  f"Run {run_id} must come from a push event (event={payload.get('event')!r})"
+              )
+
+          if payload.get("head_branch") != "main":
+              raise SystemExit(
+                  "Run provenance branch mismatch: "
+                  f"expected head_branch 'main', got {payload.get('head_branch')!r}"
+              )
+
+          workflow_path = str(payload.get("path") or "")
+          if not workflow_path.startswith(expected_workflow_path):
+              raise SystemExit(
+                  "Run provenance workflow mismatch: "
+                  f"expected path starting with {expected_workflow_path!r}, got {workflow_path!r}"
+              )
+
+          print(
+              f"Validated run {run_id} provenance from {repository} ({workflow_path})."
+          )
+          PY
+
+      - name: Download dist artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist
+          run-id: ${{ inputs.build_run_id }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Verify artifact contents
+        run: |
+          shopt -s nullglob
+          wheels=(dist/*.whl)
+          sdists=(dist/*.tar.gz)
+          artifacts=(dist/*)
+
+          if (( ${#wheels[@]} == 0 )); then
+            echo "No wheel artifact found in dist/."
+            exit 1
+          fi
+
+          if (( ${#sdists[@]} == 0 )); then
+            echo "No sdist artifact found in dist/."
+            exit 1
+          fi
+
+          unexpected=0
+          for artifact in "${artifacts[@]}"; do
+            case "$artifact" in
+              dist/*.whl|dist/*.tar.gz) ;;
+              *)
+                echo "Unexpected artifact in dist/: $artifact"
+                unexpected=1
+                ;;
+            esac
+          done
+
+          if (( unexpected == 1 )); then
+            exit 1
+          fi
+
+      - name: Validate artifact version matches package_version
+        run: |
+          EXPECTED_PACKAGE_VERSION="${{ inputs.package_version }}" python - <<'PY'
+          import email
+          import glob
+          import io
+          import os
+          import tarfile
+          import zipfile
+
+          expected_version = os.environ["EXPECTED_PACKAGE_VERSION"]
+
+          def _metadata_version(message_text: str, artifact: str) -> str:
+              version = email.message_from_string(message_text).get("Version")
+              if not version:
+                  raise SystemExit(f"Missing Version metadata in {artifact}")
+              return str(version).strip()
+
+          versions = set()
+
+          wheel_paths = sorted(glob.glob("dist/*.whl"))
+          if not wheel_paths:
+              raise SystemExit("No wheel artifact found in dist/ for version validation")
+          for wheel_path in wheel_paths:
+              with zipfile.ZipFile(wheel_path) as wheel_archive:
+                  metadata_names = [
+                      name
+                      for name in wheel_archive.namelist()
+                      if name.endswith(".dist-info/METADATA")
+                  ]
+                  if len(metadata_names) != 1:
+                      raise SystemExit(
+                          f"Expected exactly one METADATA entry in {wheel_path}, found {len(metadata_names)}"
+                      )
+                  metadata_text = wheel_archive.read(metadata_names[0]).decode("utf-8")
+                  versions.add(_metadata_version(metadata_text, wheel_path))
+
+          sdist_paths = sorted(glob.glob("dist/*.tar.gz"))
+          if not sdist_paths:
+              raise SystemExit("No sdist artifact found in dist/ for version validation")
+          for sdist_path in sdist_paths:
+              with tarfile.open(sdist_path, "r:gz") as sdist_archive:
+                  pkg_info_members = [
+                      member
+                      for member in sdist_archive.getmembers()
+                      if member.name.endswith("PKG-INFO") and member.isfile()
+                  ]
+                  if len(pkg_info_members) != 1:
+                      raise SystemExit(
+                          f"Expected exactly one PKG-INFO entry in {sdist_path}, found {len(pkg_info_members)}"
+                      )
+                  pkg_info_data = sdist_archive.extractfile(pkg_info_members[0])
+                  if pkg_info_data is None:
+                      raise SystemExit(f"Unable to read PKG-INFO from {sdist_path}")
+                  metadata_text = io.TextIOWrapper(pkg_info_data, encoding="utf-8").read()
+                  versions.add(_metadata_version(metadata_text, sdist_path))
+
+          if versions != {expected_version}:
+              raise SystemExit(
+                  f"Artifact version mismatch: expected {expected_version!r}, got {sorted(versions)!r}"
+              )
+
+          print(f"Validated dist artifact version {expected_version}.")
+          PY
+
+      - name: Install twine
+        run: python -m pip install --upgrade twine
+
+      - name: Publish to private index
+        env:
+          TWINE_REPOSITORY_URL: ${{ secrets.PRIVATE_INDEX_REPOSITORY_URL }}
+          TWINE_USERNAME: ${{ secrets.PRIVATE_INDEX_USERNAME }}
+          TWINE_PASSWORD: ${{ secrets.PRIVATE_INDEX_PASSWORD }}
+        run: python -m twine upload dist/*.whl dist/*.tar.gz
+
+  smoke:
+    runs-on: ubuntu-latest
+    needs: publish
+    steps:
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install from private index
+        env:
+          PRIVATE_INDEX_URL: ${{ secrets.PRIVATE_INDEX_PIP_INDEX_URL }}
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install --index-url "$PRIVATE_INDEX_URL" nanonis-qcodes-controller==${{ inputs.package_version }}
+
+      - name: Minimal smoke checks
+        run: |
+          python -m pip show nanonis-qcodes-controller
+          nqctl capabilities

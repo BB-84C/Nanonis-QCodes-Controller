@@ -1,0 +1,22 @@
+version: 1
+
+defaults:
+  interval_s: 0.1
+  rotate_entries: 6000
+  action_window_s: 2.5
+  db_directory: artifacts/trajectory
+  db_name: trajectory-monitor.sqlite3
+  signal_labels:
+    - Z Position
+    - Tunnel Current
+  spec_labels:
+    - Bias
+    - Z Setpoint
+    - Z Controller Enabled
+    - Z Controller I Gain
+    - Scan Status Code
+    - Scan Frame Center X
+    - Scan Frame Center Y
+    - Scan Frame Width
+    - Scan Frame Height
+    - Scan Frame Angle
