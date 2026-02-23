@@ -8,6 +8,7 @@ dist/
 *.egg-info/
 .coverage
 .env
+.worktrees/
 tests/
 !tests/
 tests/**
