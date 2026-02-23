@@ -3,12 +3,14 @@ from __future__ import annotations
 import json
 import sqlite3
 from contextlib import contextmanager
+from dataclasses import replace
 from pathlib import Path
 from types import SimpleNamespace
 
 from nanonis_qcodes_controller import cli
 from nanonis_qcodes_controller.trajectory.monitor_config import (
     MonitorConfig,
+    default_monitor_config,
     load_staged_monitor_config,
     save_staged_monitor_config,
 )
@@ -22,7 +24,7 @@ def _payload_from_stdout(capsys) -> dict[str, object]:
 
 def test_monitor_run_fails_when_staged_run_name_missing(monkeypatch, capsys) -> None:
     monkeypatch.setattr(
-        cli, "load_staged_monitor_config", lambda path=None: MonitorConfig(run_name="")
+        cli, "load_staged_monitor_config", lambda path=None: default_monitor_config(run_name="")
     )
 
     exit_code = cli.main(["trajectory", "monitor", "run", "--iterations", "1"])
@@ -214,8 +216,8 @@ def test_monitor_run_failed_startup_does_not_create_run_row(
     staged_path = tmp_path / "monitor-config.json"
     db_path = tmp_path / "trajectory.sqlite3"
     save_staged_monitor_config(
-        MonitorConfig(
-            run_name="run-startup-fail",
+        replace(
+            default_monitor_config(run_name="run-startup-fail"),
             db_directory=str(tmp_path),
             db_name=db_path.name,
             signal_labels=("Missing Signal",),
@@ -254,8 +256,8 @@ def test_monitor_run_keyboard_interrupt_reports_completed_iterations(
 ) -> None:
     staged_path = tmp_path / "monitor-config.json"
     save_staged_monitor_config(
-        MonitorConfig(
-            run_name="run-interrupted",
+        replace(
+            default_monitor_config(run_name="run-interrupted"),
             db_directory=str(tmp_path),
             db_name="trajectory.sqlite3",
             signal_labels=("Signal A",),
@@ -311,3 +313,69 @@ def test_monitor_run_keyboard_interrupt_reports_completed_iterations(
     payload = _payload_from_stdout(capsys)
     assert payload["interrupted"] is True
     assert payload["iterations"] == 2
+
+
+def test_monitor_run_without_iterations_emits_start_hint(
+    tmp_path: Path, monkeypatch, capsys
+) -> None:
+    staged_path = tmp_path / "monitor-config.json"
+    save_staged_monitor_config(
+        replace(
+            default_monitor_config(run_name="run-live"),
+            db_directory=str(tmp_path),
+            db_name="trajectory.sqlite3",
+            signal_labels=("Signal A",),
+            spec_labels=("Spec A",),
+        ),
+        path=staged_path,
+    )
+    monkeypatch.setattr(cli, "default_staged_config_path", lambda: staged_path)
+
+    class FakeStore:
+        def __init__(self, db_path: Path | str) -> None:
+            self.db_path = Path(db_path)
+
+        def initialize_schema(self) -> None:
+            return None
+
+        def create_run(self, *, run_name: str, started_at_utc: str) -> int:
+            return 11
+
+        def close(self) -> None:
+            return None
+
+    class FakeRunner:
+        def __init__(self, **_kwargs) -> None:
+            self.sample_idx = 0
+
+        def run_iterations(self, count: int) -> int:
+            assert count == 1
+            self.sample_idx = 1
+            raise KeyboardInterrupt
+
+    class FakeInstrument:
+        def parameter_specs(self) -> tuple[SimpleNamespace, ...]:
+            return (
+                SimpleNamespace(name="signal_a", label="Signal A", readable=True, vals=None),
+                SimpleNamespace(name="spec_a", label="Spec A", readable=True, vals=None),
+            )
+
+        def get_parameter_value(self, _name: str) -> float:
+            return 1.0
+
+    @contextmanager
+    def fake_instrument_context(*_args, **_kwargs):
+        yield FakeInstrument(), None
+
+    monkeypatch.setattr(cli, "TrajectorySQLiteStore", FakeStore)
+    monkeypatch.setattr(cli, "TrajectoryMonitorRunner", FakeRunner)
+    monkeypatch.setattr(cli, "_instrument_context", fake_instrument_context)
+
+    exit_code = cli.main(["trajectory", "monitor", "run"])
+
+    assert exit_code == cli.EXIT_OK
+    captured = capsys.readouterr()
+    payload = json.loads(captured.out)
+    assert payload["interrupted"] is True
+    assert payload["iterations"] == 1
+    assert "Press Ctrl+C to stop" in captured.err

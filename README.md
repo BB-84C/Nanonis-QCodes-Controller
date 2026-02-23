@@ -32,6 +32,7 @@ python -m pip install ".[nanonis]"
 2. Set runtime values in `config/default_runtime.yaml`.
 3. Built-in parameter specs are in `config/default_parameters.yaml`.
 4. Optional lab-specific parameter specs can be added in `config/extra_parameters.yaml`.
+5. Trajectory monitor defaults are in `config/default_trajectory_monitor.yaml`.
 
 Runtime config controls host, candidate ports, timeout, backend, write policy, and trajectory settings.
 
@@ -66,6 +67,40 @@ Inspect effective policy:
 ```powershell
 nqctl policy show
 ```
+
+## Trajectory monitor quickstart (`nqctl`)
+
+Inspect monitor defaults and available labels:
+
+```powershell
+nqctl trajectory monitor config show
+nqctl trajectory monitor list-signals
+nqctl trajectory monitor list-specs
+```
+
+Stage a run configuration (required before each run):
+
+```powershell
+nqctl trajectory monitor config set --run-name gui-play-001 --interval-s 0.1 --rotate-entries 6000 --action-window-s 2.5
+```
+
+Start monitoring (foreground; stop with `Ctrl+C`):
+
+```powershell
+nqctl trajectory monitor run
+```
+
+Inspect action trajectory from SQLite:
+
+```powershell
+nqctl trajectory action list --db-path artifacts/trajectory/trajectory-monitor.sqlite3 --run-name gui-play-001
+nqctl trajectory action show --db-path artifacts/trajectory/trajectory-monitor.sqlite3 --run-name gui-play-001 --action-idx 0 --with-signal-window
+```
+
+Notes:
+- `run_name` is cleared after each monitor run, so set it again before the next run.
+- Action entries use ISO UTC timestamps and include `delta_value` for numeric spec changes.
+- Legacy JSONL readers remain available via `nqctl trajectory tail` and `nqctl trajectory follow`.
 
 JSON is the default output format. Use `--text` for human-readable key/value output.
 

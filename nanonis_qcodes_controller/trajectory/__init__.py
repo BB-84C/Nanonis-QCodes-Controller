@@ -2,7 +2,10 @@ from .journal import TrajectoryJournal, TrajectoryStats
 from .monitor_config import (
     MonitorConfig,
     clear_staged_run_name,
+    default_monitor_config,
+    default_monitor_defaults_path,
     default_staged_config_path,
+    load_monitor_defaults,
     load_staged_monitor_config,
     save_staged_monitor_config,
 )
@@ -12,6 +15,9 @@ __all__ = [
     "TrajectoryJournal",
     "TrajectoryStats",
     "MonitorConfig",
+    "default_monitor_defaults_path",
+    "load_monitor_defaults",
+    "default_monitor_config",
     "default_staged_config_path",
     "load_staged_monitor_config",
     "save_staged_monitor_config",

@@ -1,19 +1,22 @@
 from __future__ import annotations
 
 import json
+from dataclasses import replace
 
 import pytest
 
 from nanonis_qcodes_controller.trajectory.monitor_config import (
     MonitorConfig,
     clear_staged_run_name,
+    default_monitor_config,
+    load_monitor_defaults,
     load_staged_monitor_config,
     save_staged_monitor_config,
 )
 
 
 def test_require_runnable_enforces_run_name() -> None:
-    config = MonitorConfig(run_name="")
+    config = default_monitor_config(run_name="")
 
     with pytest.raises(ValueError, match="run_name"):
         config.require_runnable()
@@ -29,7 +32,7 @@ def test_require_runnable_enforces_run_name() -> None:
     ],
 )
 def test_validate_rejects_invalid_values(kwargs: dict[str, float | int], message: str) -> None:
-    config = MonitorConfig(run_name="run-1", **kwargs)
+    config = replace(default_monitor_config(run_name="run-1"), **kwargs)
 
     with pytest.raises(ValueError, match=message):
         config.validate()
@@ -40,7 +43,7 @@ def test_load_staged_monitor_config_returns_defaults_when_missing(tmp_path) -> N
 
     loaded = load_staged_monitor_config(path=path)
 
-    assert loaded == MonitorConfig(run_name="")
+    assert loaded == default_monitor_config(run_name="")
     assert "Tunnel Current" in loaded.signal_labels
     assert "Z Position" in loaded.signal_labels
     assert "Z Position" not in loaded.spec_labels
@@ -66,6 +69,38 @@ def test_save_and_load_staged_monitor_config_round_trip(tmp_path) -> None:
 
     assert saved_path == path
     assert loaded == config
+
+
+def test_load_monitor_defaults_from_yaml(tmp_path) -> None:
+    path = tmp_path / "trajectory-defaults.yaml"
+    path.write_text(
+        """
+version: 1
+defaults:
+  interval_s: 0.25
+  rotate_entries: 42
+  action_window_s: 7.5
+  db_directory: artifacts/custom-trajectory
+  db_name: custom.sqlite3
+  signal_labels:
+    - Signal A
+  spec_labels:
+    - Spec A
+    - Spec B
+""".strip()
+        + "\n",
+        encoding="utf-8",
+    )
+
+    defaults = load_monitor_defaults(path=path)
+
+    assert defaults.interval_s == 0.25
+    assert defaults.rotate_entries == 42
+    assert defaults.action_window_s == 7.5
+    assert defaults.db_directory == "artifacts/custom-trajectory"
+    assert defaults.db_name == "custom.sqlite3"
+    assert defaults.signal_labels == ("Signal A",)
+    assert defaults.spec_labels == ("Spec A", "Spec B")
 
 
 def test_clear_staged_run_name_preserves_other_fields(tmp_path) -> None:

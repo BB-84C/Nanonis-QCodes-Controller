@@ -36,9 +36,9 @@ from nanonis_qcodes_controller.qcodes_driver.extensions import (
 )
 from nanonis_qcodes_controller.safety import PolicyViolation
 from nanonis_qcodes_controller.trajectory import (
-    MonitorConfig,
     TrajectoryJournal,
     clear_staged_run_name,
+    default_monitor_config,
     default_staged_config_path,
     follow_events,
     load_staged_monitor_config,
@@ -980,7 +980,7 @@ def _cmd_trajectory_monitor_config_set(args: argparse.Namespace) -> int:
 
 def _cmd_trajectory_monitor_config_clear(args: argparse.Namespace) -> int:
     staged_path = default_staged_config_path()
-    config = MonitorConfig(run_name="")
+    config = default_monitor_config(run_name="")
     save_staged_monitor_config(config, path=staged_path)
     payload = {"config_path": str(staged_path), "config": asdict(config)}
     _print_payload(payload, as_json=args.json)
@@ -1083,6 +1083,15 @@ def _cmd_trajectory_monitor_run(args: argparse.Namespace) -> int:
                 if args.iterations is not None:
                     completed_iterations = runner.run_iterations(int(args.iterations))
                 else:
+                    print(
+                        (
+                            "Trajectory monitor running "
+                            f"(run_name={config.run_name}, db_path={db_path}). "
+                            "Press Ctrl+C to stop."
+                        ),
+                        file=sys.stderr,
+                        flush=True,
+                    )
                     while True:
                         completed_iterations += runner.run_iterations(1)
             except KeyboardInterrupt:
