@@ -7,6 +7,8 @@ from typing import Any
 
 import yaml
 
+from nanonis_qcodes_controller.config.default_files import resolve_packaged_default
+
 DEFAULT_MONITOR_DEFAULTS_FILE = Path("config/default_trajectory_monitor.yaml")
 
 
@@ -54,7 +56,12 @@ def default_staged_config_path() -> Path:
 
 
 def load_monitor_defaults(path: Path | None = None) -> MonitorDefaults:
-    defaults_path = default_monitor_defaults_path() if path is None else Path(path)
+    if path is None:
+        defaults_path = default_monitor_defaults_path()
+        if not defaults_path.exists():
+            defaults_path = resolve_packaged_default("default_trajectory_monitor.yaml")
+    else:
+        defaults_path = Path(path)
     if not defaults_path.exists():
         raise ValueError(f"Trajectory monitor defaults file does not exist: {defaults_path}")
 

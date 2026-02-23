@@ -8,6 +8,8 @@ from typing import Any
 
 import yaml
 
+from .default_files import resolve_packaged_default
+
 DEFAULT_RUNTIME_CONFIG_FILE = Path("config/default_runtime.yaml")
 DEFAULT_PORTS = (3364, 6501, 6502, 6503, 6504)
 DEFAULT_RAMP_INTERVAL_S = 0.05
@@ -52,8 +54,8 @@ def load_settings(
     env: Mapping[str, str] | None = None,
 ) -> RuntimeSettings:
     env_values = os.environ if env is None else env
-    config_path = _resolve_config_path(config_file=config_file, env=env_values)
-    file_values = _load_config_mapping(config_path)
+    config_path, require_exists = _resolve_config_path(config_file=config_file, env=env_values)
+    file_values = _load_config_mapping(config_path, require_exists=require_exists)
 
     defaults_connection = NanonisConnectionSettings()
     defaults_safety = SafetySettings()
@@ -187,22 +189,28 @@ def load_settings(
     )
 
 
-def _resolve_config_path(config_file: str | Path | None, env: Mapping[str, str]) -> Path | None:
+def _resolve_config_path(
+    config_file: str | Path | None, env: Mapping[str, str]
+) -> tuple[Path | None, bool]:
     if config_file is not None:
-        return Path(config_file).expanduser()
+        return Path(config_file).expanduser(), True
 
     env_path = env.get("NANONIS_CONFIG_FILE")
     if env_path:
-        return Path(env_path).expanduser()
+        return Path(env_path).expanduser(), True
 
     if DEFAULT_RUNTIME_CONFIG_FILE.exists():
-        return DEFAULT_RUNTIME_CONFIG_FILE
+        return DEFAULT_RUNTIME_CONFIG_FILE, False
 
-    return None
+    return resolve_packaged_default("default_runtime.yaml"), False
 
 
-def _load_config_mapping(config_path: Path | None) -> dict[str, Any]:
-    if config_path is None or not config_path.exists():
+def _load_config_mapping(config_path: Path | None, *, require_exists: bool) -> dict[str, Any]:
+    if config_path is None:
+        return {}
+    if not config_path.exists():
+        if require_exists:
+            raise ValueError(f"Runtime config file does not exist: {config_path}")
         return {}
 
     with config_path.open("r", encoding="utf-8") as handle:

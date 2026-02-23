@@ -11,6 +11,12 @@ Simulator-first Python bridge between Nanonis SPM controller interfaces and QCod
   - `ramp` is always an explicit multi-step trajectory.
 - Safety-first defaults (`allow_writes=false`, `dry_run=true`).
 
+## v1 API support contract
+
+- Stable Python API symbols: `QcodesNanonisSTM`, `create_client`, `load_settings`.
+- Stable CLI contract: documented `nqctl` commands and outputs.
+- Other Python symbols are provisional/internal and may change across minor releases.
+
 ## Install
 
 Install from source:
@@ -156,5 +162,6 @@ nanonis.close()
 - Simulator quickstart: `docs/quickstart_simulator.md`
 - Trajectory model: `docs/trajectory_model.md`
 - Porting to real controller: `docs/porting_to_real_controller.md`
+- Private-index release runbook: `docs/release_private_index.md`
 
 Project planning and internal development workflow details: `PLAN.md`
