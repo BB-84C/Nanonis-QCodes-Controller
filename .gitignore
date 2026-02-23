@@ -26,3 +26,4 @@ tests/**
 !tests/test_safety_policy.py
 !tests/test_parameter_manifest_generator.py
 !tests/test_docs_parameters_manifest.py
+artifacts/
