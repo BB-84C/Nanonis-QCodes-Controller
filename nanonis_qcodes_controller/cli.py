@@ -517,10 +517,12 @@ def _cmd_capabilities(args: argparse.Namespace) -> int:
     with _instrument_context(args, auto_connect=False) as instrument_ctx:
         instrument, _ = instrument_ctx
         observables = _collect_observables(instrument)
+        parameters = _collect_parameter_capabilities(instrument)
 
     payload: dict[str, Any] = {
         "cli": {"name": "nqctl", "version": __version__},
         "observables": observables,
+        "parameters": {"count": len(parameters), "items": parameters},
         "actions": [asdict(descriptor) for descriptor in _ACTION_DESCRIPTORS],
         "policy": {
             "allow_writes": settings.safety.allow_writes,
@@ -1168,6 +1170,68 @@ def _collect_observables(instrument: Any) -> list[dict[str, Any]]:
             }
         )
     return observables
+
+
+def _collect_parameter_capabilities(instrument: Any) -> list[dict[str, Any]]:
+    capabilities: list[dict[str, Any]] = []
+    for spec in instrument.parameter_specs():
+        get_cmd = None
+        if spec.get_cmd is not None:
+            get_cmd = {
+                "command": spec.get_cmd.command,
+                "payload_index": int(spec.get_cmd.payload_index),
+                "args": dict(spec.get_cmd.args),
+                "description": spec.get_cmd.description,
+            }
+
+        set_cmd = None
+        if spec.set_cmd is not None:
+            set_cmd = {
+                "command": spec.set_cmd.command,
+                "value_arg": spec.set_cmd.value_arg,
+                "args": dict(spec.set_cmd.args),
+                "description": spec.set_cmd.description,
+            }
+
+        vals = None
+        if spec.vals is not None:
+            vals = {
+                "kind": spec.vals.kind,
+                "min_value": spec.vals.min_value,
+                "max_value": spec.vals.max_value,
+                "choices": list(spec.vals.choices),
+            }
+
+        safety = None
+        if spec.safety is not None:
+            safety = {
+                "min_value": spec.safety.min_value,
+                "max_value": spec.safety.max_value,
+                "max_step": spec.safety.max_step,
+                "max_slew_per_s": spec.safety.max_slew_per_s,
+                "cooldown_s": spec.safety.cooldown_s,
+                "ramp_enabled": spec.safety.ramp_enabled,
+                "ramp_interval_s": spec.safety.ramp_interval_s,
+            }
+
+        capabilities.append(
+            {
+                "name": spec.name,
+                "label": spec.label,
+                "description": spec.description,
+                "unit": spec.unit,
+                "value_type": spec.value_type,
+                "snapshot_value": spec.snapshot_value,
+                "readable": bool(spec.readable),
+                "writable": bool(spec.writable),
+                "has_ramp": bool(spec.safety is not None and spec.safety.ramp_enabled),
+                "get_cmd": get_cmd,
+                "set_cmd": set_cmd,
+                "vals": vals,
+                "safety": safety,
+            }
+        )
+    return capabilities
 
 
 def _parse_label_csv(raw_labels: str) -> tuple[str, ...]:

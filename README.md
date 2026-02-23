@@ -19,6 +19,27 @@ Simulator-first Python bridge between Nanonis SPM controller interfaces and QCod
 
 ## Install
 
+Install from a GitHub release (recommended for test users):
+
+1. Open the releases page and download the wheel asset (`*.whl`), not the auto-generated source zip/tarball.
+2. Create a virtual environment.
+3. Install the wheel, then install optional runtime integrations.
+
+```powershell
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
+python -m pip install --upgrade pip
+python -m pip install .\nanonis_qcodes_controller-<version>-py3-none-any.whl
+python -m pip install "qcodes>=0.46.0" "nanonis-spm>=1.0.3"
+nqctl capabilities
+```
+
+You can also install directly from a release URL:
+
+```powershell
+python -m pip install "https://github.com/BB-84C/Nanonis-QCodes-Controller/releases/download/v<version>/nanonis_qcodes_controller-<version>-py3-none-any.whl"
+```
+
 Install from source:
 
 ```powershell
