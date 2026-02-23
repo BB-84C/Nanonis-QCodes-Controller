@@ -6,6 +6,7 @@ import math
 import time
 from collections.abc import Callable, Iterable, Mapping, Sequence
 from dataclasses import asdict, dataclass, field, is_dataclass
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
@@ -29,7 +30,7 @@ from .extensions import ParameterSpec, SafetySpec, ValidatorSpec, load_parameter
 
 @dataclass(frozen=True)
 class GuardedWriteAuditEntry:
-    timestamp_s: float
+    timestamp_utc: str
     operation: str
     status: str
     dry_run: bool
@@ -555,7 +556,7 @@ class QcodesNanonisSTM(Instrument):  # type: ignore[misc,unused-ignore]
         metadata: Mapping[str, Any] | None = None,
     ) -> None:
         entry = GuardedWriteAuditEntry(
-            timestamp_s=time.time(),
+            timestamp_utc=_now_utc_iso(),
             operation=operation,
             status=status,
             dry_run=dry_run,
@@ -663,6 +664,10 @@ def _build_channel_limits(
             default_ramp_interval_s=default_ramp_interval_s,
         )
     return limits
+
+
+def _now_utc_iso() -> str:
+    return datetime.now(timezone.utc).isoformat(timespec="microseconds").replace("+00:00", "Z")
 
 
 def _channel_limit_from_safety(

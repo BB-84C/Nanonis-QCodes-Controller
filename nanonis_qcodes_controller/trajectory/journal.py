@@ -6,6 +6,7 @@ import threading
 import time
 import uuid
 from dataclasses import dataclass
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
@@ -96,11 +97,11 @@ class TrajectoryJournal:
         event_type: str,
         payload: dict[str, Any],
         *,
-        timestamp_s: float | None = None,
+        timestamp_utc: str | None = None,
     ) -> bool:
         event = {
             "event_id": uuid.uuid4().hex,
-            "timestamp_s": time.time() if timestamp_s is None else float(timestamp_s),
+            "timestamp_utc": _now_utc_iso() if timestamp_utc is None else str(timestamp_utc),
             "event_type": event_type,
             "payload": payload,
         }
@@ -174,3 +175,7 @@ class TrajectoryJournal:
         if self._active_file_handle is not None:
             self._active_file_handle.close()
             self._active_file_handle = None
+
+
+def _now_utc_iso() -> str:
+    return datetime.now(timezone.utc).isoformat(timespec="microseconds").replace("+00:00", "Z")

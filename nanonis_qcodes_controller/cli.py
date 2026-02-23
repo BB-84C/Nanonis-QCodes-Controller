@@ -12,6 +12,7 @@ import time
 from collections.abc import Iterator, Mapping, Sequence
 from contextlib import contextmanager
 from dataclasses import asdict, dataclass, is_dataclass
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
@@ -470,7 +471,7 @@ def _cmd_get(args: argparse.Namespace) -> int:
             "parameter": parameter_name,
             "value": _json_safe(value),
             "unit": spec.unit,
-            "timestamp_s": time.time(),
+            "timestamp_utc": _now_utc_iso(),
         }
         if journal is not None:
             payload["trajectory"] = asdict(journal.stats())
@@ -518,7 +519,7 @@ def _cmd_set(args: argparse.Namespace) -> int:
             "plan": _json_safe(plan),
             "applied": report is not None and not report.dry_run,
             "report": None if report is None else _json_safe(report),
-            "timestamp_s": time.time(),
+            "timestamp_utc": _now_utc_iso(),
         }
         if journal is not None:
             payload["trajectory"] = asdict(journal.stats())
@@ -571,7 +572,7 @@ def _cmd_ramp(args: argparse.Namespace) -> int:
             "plan": _json_safe(plan),
             "applied": report is not None and not report.dry_run,
             "report": None if report is None else _json_safe(report),
-            "timestamp_s": time.time(),
+            "timestamp_utc": _now_utc_iso(),
         }
         if journal is not None:
             payload["trajectory"] = asdict(journal.stats())
@@ -1066,6 +1067,10 @@ def _json_safe(value: Any) -> Any:
             return str(value)
 
     return str(value)
+
+
+def _now_utc_iso() -> str:
+    return datetime.now(timezone.utc).isoformat(timespec="microseconds").replace("+00:00", "Z")
 
 
 if __name__ == "__main__":

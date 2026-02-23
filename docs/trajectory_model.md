@@ -7,7 +7,7 @@ Provide a non-blocking, append-only event journal that captures command outcomes
 Each event is a JSON object written as one line (`.jsonl`) with fields:
 
 - `event_id`: unique ID
-- `timestamp_s`: unix timestamp (float seconds)
+- `timestamp_utc`: ISO-8601 UTC timestamp string
 - `event_type`: event category (`command_result`, `state_transition`, `write_audit`, ...)
 - `payload`: event-specific data
 
