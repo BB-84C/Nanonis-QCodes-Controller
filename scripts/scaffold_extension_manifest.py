@@ -4,7 +4,6 @@ import argparse
 import importlib.metadata
 import inspect
 import re
-from collections.abc import Sequence
 from pathlib import Path
 from typing import Any
 
@@ -13,36 +12,28 @@ import yaml
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        description="List nanonis_spm commands and scaffold dynamic QCodes parameter manifests.",
+        description="Discover nanonis_spm commands and scaffold parameter-file YAML.",
     )
-    parser.add_argument(
-        "--match",
-        type=str,
-        default="",
-        help="Case-insensitive regex filter for command names (example: LockIn).",
-    )
+    parser.add_argument("--match", type=str, default="", help="Regex filter (example: LockIn).")
     parser.add_argument(
         "--mode",
-        choices=("list", "manifest"),
+        choices=("list", "parameters"),
         default="list",
-        help="Operation mode: list matching commands or write a manifest template.",
+        help="Operation mode.",
     )
     parser.add_argument(
         "--output",
         type=Path,
-        default=Path("config/extra_parameters.generated.yaml"),
-        help="Output path for --mode manifest.",
+        default=Path("config/extra_parameters.yaml"),
+        help="Output path for --mode parameters.",
     )
     parser.add_argument(
         "--include-non-get",
         action="store_true",
-        help="In manifest mode, include commands that do not end with '_Get'.",
+        help="Include commands that do not end with Get.",
     )
     parser.add_argument(
-        "--limit",
-        type=int,
-        default=0,
-        help="Maximum number of commands to include (0 means all).",
+        "--limit", type=int, default=0, help="Maximum number of commands (0 means all)."
     )
     return parser.parse_args()
 
@@ -59,27 +50,48 @@ def main() -> int:
         print(f"\nTotal commands: {len(command_specs)}")
         return 0
 
-    manifest_specs = command_specs
+    selected_specs = command_specs
     if not args.include_non_get:
-        manifest_specs = [spec for spec in manifest_specs if spec["command"].endswith("Get")]
+        selected_specs = [spec for spec in selected_specs if spec["command"].endswith("Get")]
 
-    manifest = {
+    parameters: dict[str, Any] = {}
+    for spec in selected_specs:
+        command = str(spec["command"])
+        parameter_name = to_parameter_name(command)
+        parameters[parameter_name] = {
+            "label": parameter_name,
+            "unit": "",
+            "type": guess_value_type(command),
+            "get_cmd": {
+                "command": command,
+                "payload_index": 0,
+                "args": {str(arg): None for arg in spec["arguments"]},
+            },
+            "set_cmd": False,
+        }
+
+    parameter_file = {
+        "version": 1,
+        "defaults": {
+            "snapshot_value": True,
+            "ramp_default_interval_s": 0.05,
+        },
         "meta": {
             "generated_by": "scripts/scaffold_extension_manifest.py",
             "source_package": f"nanonis-spm/{installed_nanonis_spm_version()}",
             "match": args.match,
             "include_non_get": bool(args.include_non_get),
         },
-        "parameters": [build_parameter_entry(spec) for spec in manifest_specs],
+        "parameters": parameters,
     }
 
     output_path = args.output.expanduser()
     output_path.parent.mkdir(parents=True, exist_ok=True)
     with output_path.open("w", encoding="utf-8") as handle:
-        yaml.safe_dump(manifest, handle, sort_keys=False)
+        yaml.safe_dump(parameter_file, handle, sort_keys=False)
 
-    print(f"Wrote manifest template: {output_path}")
-    print(f"Parameter entries: {len(manifest['parameters'])}")
+    print(f"Wrote parameter file template: {output_path}")
+    print(f"Parameter entries: {len(parameters)}")
     return 0
 
 
@@ -108,33 +120,10 @@ def discover_command_specs(*, match_pattern: str) -> list[dict[str, Any]]:
             and parameter.kind
             in {inspect.Parameter.POSITIONAL_OR_KEYWORD, inspect.Parameter.KEYWORD_ONLY}
         ]
-        command_specs.append(
-            {
-                "command": name,
-                "arguments": arguments,
-            }
-        )
+        command_specs.append({"command": name, "arguments": arguments})
 
     command_specs.sort(key=lambda item: item["command"])
     return command_specs
-
-
-def build_parameter_entry(spec: dict[str, Any]) -> dict[str, Any]:
-    command = str(spec["command"])
-    argument_names = tuple(str(name) for name in cast_sequence(spec.get("arguments")))
-
-    parameter_name = to_parameter_name(command)
-    value_type = guess_value_type(command)
-    args = {name: None for name in argument_names}
-
-    entry: dict[str, Any] = {
-        "name": parameter_name,
-        "command": command,
-        "type": value_type,
-    }
-    if args:
-        entry["args"] = args
-    return entry
 
 
 def to_parameter_name(command: str) -> str:
@@ -162,12 +151,6 @@ def installed_nanonis_spm_version() -> str:
         return importlib.metadata.version("nanonis-spm")
     except importlib.metadata.PackageNotFoundError:
         return "unknown"
-
-
-def cast_sequence(value: Any) -> Sequence[Any]:
-    if isinstance(value, Sequence) and not isinstance(value, (str, bytes, bytearray)):
-        return value
-    return ()
 
 
 if __name__ == "__main__":

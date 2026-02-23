@@ -40,6 +40,8 @@ python -m pytest -q -m simulator_writes
 Generate operations and trajectory events without manual GUI interactions:
 
 ```powershell
-python scripts/bias_dependent_topo_query.py --start-bias-mv 50 --stop-bias-mv 50 --step-bias-mv 25 --start-current-pa 100 --trajectory-enable --trajectory-dir artifacts/trajectory_phase8
-python scripts/trajectory_reader.py --directory artifacts/trajectory_phase8 --limit 20
+set NANONIS_RUN_SIMULATOR_TESTS=1
+set NANONIS_RUN_SIMULATOR_WRITE_TESTS=1
+python -m pytest -q tests/test_simulator_integration.py -k bias_dependent_topography_sequence -m simulator_writes
+python scripts/trajectory_reader.py --directory artifacts/trajectory --limit 20
 ```

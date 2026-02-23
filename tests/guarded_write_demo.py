@@ -12,7 +12,7 @@ def main() -> int:
     )
     parser.add_argument(
         "--channel",
-        choices=("bias_v", "setpoint_a"),
+        choices=("bias_v", "zctrl_setpoint_a"),
         required=True,
         help="Target write channel.",
     )
@@ -20,11 +20,6 @@ def main() -> int:
     parser.add_argument(
         "--config-file",
         help="Optional YAML config path (defaults to env/config defaults).",
-    )
-    parser.add_argument(
-        "--confirmed",
-        action="store_true",
-        help="Mark this request as confirmed for channels requiring confirmation.",
     )
     parser.add_argument(
         "--apply",
@@ -39,20 +34,17 @@ def main() -> int:
 
     try:
         try:
-            if args.channel == "bias_v":
-                plan = instrument.plan_bias_v_set(args.target, confirmed=args.confirmed)
-                print(plan)
-                if args.apply:
-                    report = instrument.set_bias_v_guarded(args.target, confirmed=args.confirmed)
-                    print(report)
-            else:
-                plan = instrument.plan_zctrl_setpoint_a_set(args.target, confirmed=args.confirmed)
-                print(plan)
-                if args.apply:
-                    report = instrument.set_zctrl_setpoint_a_guarded(
-                        args.target, confirmed=args.confirmed
-                    )
-                    print(report)
+            plan = instrument.plan_parameter_single_step(
+                args.channel,
+                args.target,
+            )
+            print(plan)
+            if args.apply:
+                report = instrument.set_parameter_single_step(
+                    args.channel,
+                    args.target,
+                )
+                print(report)
         except PolicyViolation as exc:
             print(f"Policy blocked write: {exc}")
             return 1

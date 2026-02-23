@@ -26,12 +26,31 @@ It also includes a non-blocking trajectory journal so agents can read operation 
 - Image-model closed-loop control
 - High-rate feedback replacement
 
+## Developer Workflow (Internal)
+- Local setup:
+  - `python -m venv .venv`
+  - `.\.venv\Scripts\Activate.ps1`
+  - `python -m pip install --upgrade pip`
+  - `python -m pip install -e .[dev,qcodes,nanonis]`
+- Quality checks:
+  - `python -m pytest -q`
+  - `ruff check .`
+  - `black --check .`
+  - `mypy nanonis_qcodes_controller`
+- Simulator-gated integration:
+  - `set NANONIS_RUN_SIMULATOR_TESTS=1`
+  - `python -m pytest -q -m simulator`
+- Manual probe/demo utilities now live under `tests/`:
+  - `tests/probe_nanonis.py`
+  - `tests/read_client_demo.py`
+  - `tests/guarded_write_demo.py`
+
 ## Architecture (Target)
 1. `client/`: transport and backend adapters (`NanonisClient` contract)
 2. `qcodes_driver/`: QCodes instrument and parameter mapping
 3. `safety/`: write policy, bounds, ramps/slew limits, dry-run gating
 4. `config/`: YAML and env-based runtime config
-5. `scripts/`: probe and operational tooling (`probe_nanonis.py`, doctor CLI)
+5. `scripts/`: diagnostics and authoring helpers (`bridge_doctor.py`, `trajectory_reader.py`, `scaffold_extension_manifest.py`)
 6. `tests/`: unit and simulator integration suites
 7. `trajectory/`: append-only event journal, transition detection, follow/replay API
 
@@ -51,7 +70,7 @@ Exit criteria:
 
 ### 2) Connectivity & Capability Probe (Day 1-2)
 Deliver:
-- `scripts/probe_nanonis.py` to scan `127.0.0.1` ports `3364,6501-6504`
+- `tests/probe_nanonis.py` to scan `127.0.0.1` ports `3364,6501-6504`
 - TCP connect latency report
 - Candidate API port detection and deterministic diagnostic output
 - Optional minimal command probe via selected backend library
@@ -84,7 +103,7 @@ Deliver:
 - Write gate (`allow_writes=false` default)
 - Bounds by channel (bias/setpoint/frame)
 - Max step + max slew/ramp helper
-- Cooldown and confirmation hooks for risky operations
+- Cooldown control for risky operations
 - Dry-run mode (log-only)
 
 Exit criteria:

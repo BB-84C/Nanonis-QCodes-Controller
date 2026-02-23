@@ -8,7 +8,7 @@ from typing import Any
 
 import yaml
 
-DEFAULT_CONFIG_FILE = Path("config/default.yaml")
+DEFAULT_RUNTIME_CONFIG_FILE = Path("config/default_runtime.yaml")
 DEFAULT_PORTS = (3364, 6501, 6502, 6503, 6504)
 DEFAULT_RAMP_INTERVAL_S = 0.05
 TRUE_VALUES = frozenset({"1", "true", "yes", "on"})
@@ -25,24 +25,10 @@ class NanonisConnectionSettings:
 
 
 @dataclass(frozen=True)
-class ScalarLimitSettings:
-    min: float
-    max: float
-    max_step: float
-    max_slew_per_s: float | None = None
-    cooldown_s: float = 0.0
-    require_confirmation: bool = False
-    ramp_interval_s: float = DEFAULT_RAMP_INTERVAL_S
-
-
-@dataclass(frozen=True)
 class SafetySettings:
     allow_writes: bool = False
     dry_run: bool = True
     default_ramp_interval_s: float = DEFAULT_RAMP_INTERVAL_S
-    limits: Mapping[str, ScalarLimitSettings] = field(
-        default_factory=lambda: _default_scalar_limits()
-    )
 
 
 @dataclass(frozen=True)
@@ -54,7 +40,7 @@ class TrajectorySettings:
 
 
 @dataclass(frozen=True)
-class BridgeSettings:
+class RuntimeSettings:
     nanonis: NanonisConnectionSettings = field(default_factory=NanonisConnectionSettings)
     safety: SafetySettings = field(default_factory=SafetySettings)
     trajectory: TrajectorySettings = field(default_factory=TrajectorySettings)
@@ -64,7 +50,7 @@ def load_settings(
     config_file: str | Path | None = None,
     *,
     env: Mapping[str, str] | None = None,
-) -> BridgeSettings:
+) -> RuntimeSettings:
     env_values = os.environ if env is None else env
     config_path = _resolve_config_path(config_file=config_file, env=env_values)
     file_values = _load_config_mapping(config_path)
@@ -140,12 +126,6 @@ def load_settings(
         field_name="NANONIS_DEFAULT_RAMP_INTERVAL_S",
     )
 
-    limits = _parse_scalar_limits(
-        safety_file.get("limits"),
-        defaults=defaults_safety.limits,
-        default_ramp_interval_s=default_ramp_interval_s,
-    )
-
     trajectory_enabled_value = _first_set(
         env_values.get("NANONIS_TRAJECTORY_ENABLED"),
         trajectory_file.get("enabled"),
@@ -185,7 +165,7 @@ def load_settings(
         field_name="NANONIS_TRAJECTORY_MAX_EVENTS_PER_FILE",
     )
 
-    return BridgeSettings(
+    return RuntimeSettings(
         nanonis=NanonisConnectionSettings(
             host=host,
             ports=ports,
@@ -197,7 +177,6 @@ def load_settings(
             allow_writes=allow_writes,
             dry_run=dry_run,
             default_ramp_interval_s=default_ramp_interval_s,
-            limits=limits,
         ),
         trajectory=TrajectorySettings(
             enabled=trajectory_enabled,
@@ -208,138 +187,6 @@ def load_settings(
     )
 
 
-def _default_scalar_limits() -> dict[str, ScalarLimitSettings]:
-    return {
-        "bias_v": ScalarLimitSettings(
-            min=-5.0,
-            max=5.0,
-            max_step=0.05,
-            ramp_interval_s=DEFAULT_RAMP_INTERVAL_S,
-        ),
-        "setpoint_a": ScalarLimitSettings(
-            min=0.0,
-            max=1.0e-6,
-            max_step=5.0e-12,
-            ramp_interval_s=DEFAULT_RAMP_INTERVAL_S,
-        ),
-        "scan_frame_center_x_m": ScalarLimitSettings(
-            min=-1.0e-3,
-            max=1.0e-3,
-            max_step=1.0e-9,
-            ramp_interval_s=DEFAULT_RAMP_INTERVAL_S,
-        ),
-        "scan_frame_center_y_m": ScalarLimitSettings(
-            min=-1.0e-3,
-            max=1.0e-3,
-            max_step=1.0e-9,
-            ramp_interval_s=DEFAULT_RAMP_INTERVAL_S,
-        ),
-        "scan_frame_width_m": ScalarLimitSettings(
-            min=1.0e-12,
-            max=1.0e-3,
-            max_step=1.0e-9,
-            ramp_interval_s=DEFAULT_RAMP_INTERVAL_S,
-        ),
-        "scan_frame_height_m": ScalarLimitSettings(
-            min=1.0e-12,
-            max=1.0e-3,
-            max_step=1.0e-9,
-            ramp_interval_s=DEFAULT_RAMP_INTERVAL_S,
-        ),
-        "scan_frame_angle_deg": ScalarLimitSettings(
-            min=-180.0,
-            max=180.0,
-            max_step=1.0,
-            ramp_interval_s=DEFAULT_RAMP_INTERVAL_S,
-        ),
-    }
-
-
-def _parse_scalar_limits(
-    value: object,
-    *,
-    defaults: Mapping[str, ScalarLimitSettings],
-    default_ramp_interval_s: float,
-) -> dict[str, ScalarLimitSettings]:
-    if value is None:
-        configured: Mapping[str, Any] = {}
-    else:
-        configured = _as_mapping(value)
-
-    channels = sorted(set(defaults) | set(configured))
-    parsed_limits: dict[str, ScalarLimitSettings] = {}
-
-    for channel in channels:
-        channel_config = _as_mapping(configured.get(channel))
-        default_limit = defaults.get(channel)
-
-        min_value = _parse_float(
-            _first_set(channel_config.get("min"), default_limit.min if default_limit else None),
-            field_name=f"safety.limits.{channel}.min",
-        )
-        max_value = _parse_float(
-            _first_set(channel_config.get("max"), default_limit.max if default_limit else None),
-            field_name=f"safety.limits.{channel}.max",
-        )
-        if max_value <= min_value:
-            raise ValueError(
-                f"safety.limits.{channel}: max ({max_value}) must be greater than min ({min_value})."
-            )
-
-        max_step = _parse_positive_float(
-            _first_set(
-                channel_config.get("max_step"),
-                default_limit.max_step if default_limit else None,
-            ),
-            field_name=f"safety.limits.{channel}.max_step",
-        )
-
-        max_slew_raw = channel_config.get(
-            "max_slew_per_s",
-            default_limit.max_slew_per_s if default_limit else None,
-        )
-        if max_slew_raw is None:
-            max_slew_per_s: float | None = None
-        else:
-            max_slew_per_s = _parse_positive_float(
-                max_slew_raw,
-                field_name=f"safety.limits.{channel}.max_slew_per_s",
-            )
-
-        cooldown_s = _parse_non_negative_float(
-            channel_config.get("cooldown_s", default_limit.cooldown_s if default_limit else 0.0),
-            field_name=f"safety.limits.{channel}.cooldown_s",
-        )
-
-        require_confirmation = _parse_bool(
-            channel_config.get(
-                "require_confirmation",
-                default_limit.require_confirmation if default_limit else False,
-            ),
-            field_name=f"safety.limits.{channel}.require_confirmation",
-        )
-
-        ramp_interval_s = _parse_positive_float(
-            channel_config.get(
-                "ramp_interval_s",
-                default_limit.ramp_interval_s if default_limit else default_ramp_interval_s,
-            ),
-            field_name=f"safety.limits.{channel}.ramp_interval_s",
-        )
-
-        parsed_limits[channel] = ScalarLimitSettings(
-            min=min_value,
-            max=max_value,
-            max_step=max_step,
-            max_slew_per_s=max_slew_per_s,
-            cooldown_s=cooldown_s,
-            require_confirmation=require_confirmation,
-            ramp_interval_s=ramp_interval_s,
-        )
-
-    return parsed_limits
-
-
 def _resolve_config_path(config_file: str | Path | None, env: Mapping[str, str]) -> Path | None:
     if config_file is not None:
         return Path(config_file).expanduser()
@@ -348,8 +195,8 @@ def _resolve_config_path(config_file: str | Path | None, env: Mapping[str, str])
     if env_path:
         return Path(env_path).expanduser()
 
-    if DEFAULT_CONFIG_FILE.exists():
-        return DEFAULT_CONFIG_FILE
+    if DEFAULT_RUNTIME_CONFIG_FILE.exists():
+        return DEFAULT_RUNTIME_CONFIG_FILE
 
     return None
 
@@ -365,7 +212,7 @@ def _load_config_mapping(config_path: Path | None) -> dict[str, Any]:
         return {}
 
     if not isinstance(loaded, dict):
-        raise ValueError("Config file must contain a top-level mapping.")
+        raise ValueError("Runtime config file must contain a top-level mapping.")
 
     return dict(loaded)
 
@@ -373,10 +220,8 @@ def _load_config_mapping(config_path: Path | None) -> dict[str, Any]:
 def _as_mapping(value: Any) -> Mapping[str, Any]:
     if value is None:
         return {}
-
     if not isinstance(value, dict):
         raise ValueError("Config section must be a mapping.")
-
     return value
 
 
@@ -422,7 +267,6 @@ def _validate_port(port: int) -> int:
 def _parse_bool(value: object, *, field_name: str) -> bool:
     if isinstance(value, bool):
         return value
-
     if isinstance(value, int):
         return value != 0
 
@@ -446,13 +290,6 @@ def _parse_positive_float(value: object, *, field_name: str) -> float:
     parsed = _parse_float(value, field_name=field_name)
     if parsed <= 0:
         raise ValueError(f"{field_name} must be positive.")
-    return parsed
-
-
-def _parse_non_negative_float(value: object, *, field_name: str) -> float:
-    parsed = _parse_float(value, field_name=field_name)
-    if parsed < 0:
-        raise ValueError(f"{field_name} must be non-negative.")
     return parsed
 
 

@@ -4,24 +4,22 @@
 Expose a small, stable command surface that orchestration agents can call directly.
 
 ## Core commands
-- `nqctl capabilities --json`: returns observables/actions/policy summary.
-- `nqctl observables list --json`: returns readable channels.
-- `nqctl actions list --json`: returns supported action descriptors.
-- `nqctl get <observable> --json`: reads one observable.
-- `nqctl set <channel> <value> --confirmed --json`: guarded strict single-step write (`bias_v`, `setpoint_a`).
-- `nqctl ramp <channel> <start> <end> <step> --interval-s <sec> --confirmed --json`: guarded explicit multi-step ramp.
-- `nqctl policy show --json`: returns effective write policy and enablement guidance.
+- `nqctl capabilities`: returns parameters/actions/policy summary.
+- `nqctl observables list`: returns readable and writable parameter metadata.
+- `nqctl actions list`: returns supported action descriptors.
+- `nqctl get <parameter>`: reads one parameter value.
+- `nqctl set <parameter> <value>`: guarded strict single-step write.
+- `nqctl ramp <parameter> <start> <end> <step> --interval-s <sec>`: guarded explicit ramp.
+- `nqctl policy show`: returns effective write policy and enablement guidance.
 
-## Extension-file commands
-- `nqctl extensions discover --match LockIn --json`
-- `nqctl extensions scaffold --match LockIn --output config/lockin_parameters.yaml --json`
-- `nqctl extensions validate --file config/lockin_parameters.yaml --json`
-
-Backward-compatible alias: `manifest` (for example `nqctl manifest discover ...`).
+## Parameter-file commands
+- `nqctl parameters discover --match LockIn`
+- `nqctl parameters scaffold --match LockIn --output config/extra_parameters.yaml`
+- `nqctl parameters validate --file config/extra_parameters.yaml`
 
 ## Trajectory commands
-- `nqctl trajectory tail --directory artifacts/trajectory --limit 20 --json`
-- `nqctl trajectory follow --directory artifacts/trajectory --interval-s 0.5 --json`
+- `nqctl trajectory tail --directory artifacts/trajectory --limit 20`
+- `nqctl trajectory follow --directory artifacts/trajectory --interval-s 0.5`
 
 Runtime toggle for non-blocking trajectory logging on `get`, `set`, and `ramp`:
 - `--trajectory-enable`
@@ -29,28 +27,25 @@ Runtime toggle for non-blocking trajectory logging on `get`, `set`, and `ramp`:
 - `--trajectory-queue-size`
 - `--trajectory-max-events-per-file`
 
-## Backend passthrough
-- `nqctl backend commands --json`
-- `nqctl backend call <Command> --args-json '{...}' --unsafe-raw-call --json`
-
-`backend call` is intentionally gated for explicit unsafe acknowledgement.
+## Backend discovery
+- `nqctl backend commands`
 
 ## Exit codes
 - `0`: success
 - `1`: generic failure
 - `2`: policy blocked (safety)
-- `3`: invalid input / extension-file / protocol-shape issue
+- `3`: invalid input / parameter-file / protocol-shape issue
 - `4`: unavailable command/backend capability
 - `5`: connection/timeout failure
 
 ## Notes for orchestration agents
-- Prefer `--json` for all calls.
-- Use `capabilities` once at task start to learn action/observable surface.
-- Use `extensions` commands to extend observables without code changes.
-- `set` never auto-ramps; use `ramp` when move requires intermediate points.
-- Keep sequencing logic in orchestration layer; `nqctl` intentionally exposes atomic operations.
+- JSON output is the default format; use `--text` when needed.
+- Use `capabilities` once at task start to learn available parameters and actions.
+- Use `parameters` commands to add observables without code edits.
+- `set` never auto-ramps; use `ramp` for stepped trajectories.
+- Keep sequencing logic in orchestration layer; `nqctl` exposes atomic operations.
 
 ## Help usage
 - `nqctl -help`: top-level help
 - `nqctl -help observables`: command-group help
-- `nqctl -help extensions`: extension-file workflow help
+- `nqctl -help parameters`: parameter-file workflow help

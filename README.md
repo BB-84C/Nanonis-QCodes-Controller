@@ -2,174 +2,101 @@
 
 Simulator-first Python bridge between Nanonis SPM controller interfaces and QCodes.
 
-## Current stage
+## What this project provides
 
-Stages 1-9 foundation and handoff docs are now in place:
-- project packaging and quality tooling
-- environment and YAML configuration scaffolding
-- transport client with backend adapter and retry/lock policy
-- connectivity probe script with candidate ranking
-- QCodes read-only instrument parameters wired to transport client
-- safety policy layer for guarded writes (bounds/ramp/cooldown/dry-run)
-- first guarded writes enabled (bias, setpoint, optional scan frame)
-- non-blocking trajectory journal + reader utilities
+- `nqctl`: an agent-friendly CLI for atomic read/write/ramp operations.
+- `QcodesNanonisSTM`: a QCodes instrument wrapper with spec-driven parameters.
+- Strict write semantics:
+  - `set` is always a guarded single-step write.
+  - `ramp` is always an explicit multi-step trajectory.
+- Safety-first defaults (`allow_writes=false`, `dry_run=true`).
 
-Phase 7 test matrix is now available with simulator-marked integration tests.
+## Install
 
-## Design goals
-
-- Avoid machine-specific assumptions. No hardcoded install path is required.
-- Keep host/ports/write policy configurable for any lab machine.
-- Ship read-only monitoring first, then enable guarded writes.
-- Keep architecture ready for backend and MCP expansion.
-
-## Quickstart (development)
+Install from source:
 
 ```powershell
-python -m venv .venv
-.\.venv\Scripts\Activate.ps1
-python -m pip install --upgrade pip
-python -m pip install -e .[dev]
-
-pytest -q
-ruff check .
-black --check .
-mypy nanonis_qcodes_controller
+python -m pip install .
 ```
 
-Fast local tests (excluding simulator-marked integration):
+Optional extras:
 
 ```powershell
-python -m pytest -q -m "not simulator"
+python -m pip install ".[qcodes]"
+python -m pip install ".[nanonis]"
 ```
 
-For QCodes driver development, install the optional extra:
+## Configure
+
+1. Optionally copy `.env.example` to `.env`.
+2. Set runtime values in `config/default_runtime.yaml`.
+3. Built-in parameter specs are in `config/default_parameters.yaml`.
+4. Optional lab-specific parameter specs can be added in `config/extra_parameters.yaml`.
+
+Runtime config controls host, candidate ports, timeout, backend, write policy, and trajectory settings.
+
+## CLI quickstart (`nqctl`)
+
+Show capability contract:
 
 ```powershell
-python -m pip install -e .[dev,qcodes]
+nqctl capabilities
 ```
 
-For the optional backend command probe:
+Read one parameter:
 
 ```powershell
-python -m pip install -e .[dev,nanonis]
+nqctl get bias_v
 ```
 
-## Configuration
-
-1) Copy `.env.example` to `.env` (optional, environment overrides).
-2) Edit values as needed for your machine.
-3) Defaults are in `config/default.yaml`.
-
-The project uses runtime configuration for host, candidate ports, timeout, and write policy.
-
-## Agent-oriented CLI (`nqctl`)
-
-This project now exposes an agent-friendly CLI contract.
-
-Show capabilities (observables, actions, policy):
+Guarded single-step set:
 
 ```powershell
-nqctl capabilities --json
+nqctl set bias_v 0.12
 ```
 
-List observables (built-in + optional extension file):
+Explicit guarded ramp:
 
 ```powershell
-nqctl observables list --extensions-file config/lockin_parameters.yaml --json
+nqctl ramp bias_v 0.10 0.25 0.01 --interval-s 0.10
 ```
 
-Simple read and guarded single-step write:
+Inspect effective policy:
 
 ```powershell
-nqctl get bias_v --json
-nqctl set bias_v 0.12 --confirmed --reason "test point" --json
+nqctl policy show
 ```
 
-Explicit ramp (start/end/step/interval):
-
-```powershell
-nqctl ramp bias_v 0.10 0.25 0.01 --interval-s 0.10 --confirmed --reason "bias sweep" --json
-```
-
-Enable non-blocking trajectory logging for one command:
-
-```powershell
-nqctl get current_a --trajectory-enable --trajectory-dir artifacts/trajectory --json
-```
-
-Extension-file workflow:
-
-```powershell
-nqctl extensions discover --match LockIn --json
-nqctl extensions scaffold --match LockIn --output config/lockin_parameters.yaml --json
-nqctl extensions validate --file config/lockin_parameters.yaml --json
-```
-
-Show effective write policy and how to enable live writes:
-
-```powershell
-nqctl policy show --json
-```
+JSON is the default output format. Use `--text` for human-readable key/value output.
 
 Help shortcuts:
 
 ```powershell
 nqctl -help
-nqctl -help observables
-nqctl -help extensions
+nqctl -help parameters
 ```
 
-Raw backend call (explicit unsafe acknowledgement required):
+## Parameter extension workflow
+
+Discover candidate backend commands:
 
 ```powershell
-nqctl backend call LockIn_ModOnOffGet --args-json '{"Modulator_number": 1}' --unsafe-raw-call --json
+nqctl parameters discover --match LockIn
 ```
 
-## Probe script
-
-Run the connectivity probe against configured host/ports:
+Scaffold an extra parameter file:
 
 ```powershell
-python scripts/probe_nanonis.py
+nqctl parameters scaffold --match LockIn --output config/extra_parameters.yaml
 ```
 
-Override at runtime when needed:
+Validate parameter YAML:
 
 ```powershell
-python scripts/probe_nanonis.py --host 127.0.0.1 --ports 3364,6501-6504 --attempts 5
+nqctl parameters validate --file config/extra_parameters.yaml
 ```
 
-Optional backend-level minimal command probe (read-only) using `nanonis_spm`:
-
-```powershell
-python -m pip install nanonis-spm
-python scripts/probe_nanonis.py --backend nanonis_spm --command-probe
-```
-
-When command probe succeeds, candidate ports are restricted to backend-validated ports.
-
-JSON output for automation:
-
-```powershell
-python scripts/probe_nanonis.py --json
-```
-
-## Transport client demo
-
-Run repeated read commands through the Phase 3 transport layer:
-
-```powershell
-python scripts/read_client_demo.py --iterations 5 --interval-s 0.2
-```
-
-Example with explicit commands:
-
-```powershell
-python scripts/read_client_demo.py --commands Bias_Get,Current_Get,ZCtrl_ZPosGet,Scan_StatusGet
-```
-
-## QCodes driver demo
+## QCodes usage
 
 ```python
 from qcodes.station import Station
@@ -181,142 +108,18 @@ station.add_component(nanonis)
 
 print(nanonis.bias_v())
 print(nanonis.current_a())
-print(nanonis.zctrl_setpoint_a())
-print(nanonis.snapshot(update=True))
 
 nanonis.close()
 ```
-
-### Guarded write demo (Phase 5)
-
-Writes are policy-gated. With default config (`allow_writes=false`), guarded write methods raise a policy error.
-
-CLI preview/apply example:
-
-```powershell
-python scripts/guarded_write_demo.py --channel bias_v --target 1.8
-```
-
-```python
-from nanonis_qcodes_controller.qcodes_driver import QcodesNanonisSTM
-
-nanonis = QcodesNanonisSTM("nanonis", auto_connect=True)
-
-# Dry-run or blocked depending on policy settings
-plan = nanonis.plan_bias_v_set(1.8)
-report = nanonis.set_bias_v_guarded(1.8)
-
-print(plan)
-print(report)
-
-nanonis.close()
-```
-
-### First enabled guarded writes (Phase 6)
-
-- `set_bias_v_guarded(...)`: bounded + ramped bias set.
-- `set_zctrl_setpoint_a_guarded(...)`: bounded + ramped setpoint set.
-- `set_scan_frame_guarded(...)`: optional bounded/ramped frame update.
-
-Guarded write attempts are available through `nanonis.guarded_write_audit_log()`.
-
-Bias-dependent topo query example:
-
-```powershell
-python scripts/bias_dependent_topo_query.py --start-bias-mv 50 --stop-bias-mv 150 --step-bias-mv 25 --start-current-pa 100
-```
-
-Bias-dependent topo query with trajectory journal enabled:
-
-```powershell
-python scripts/bias_dependent_topo_query.py --start-bias-mv 50 --stop-bias-mv 150 --step-bias-mv 25 --start-current-pa 100 --trajectory-enable
-```
-
-Read trajectory tail:
-
-```powershell
-python scripts/trajectory_reader.py --directory artifacts/trajectory --limit 20
-```
-
-Follow trajectory stream:
-
-```powershell
-python scripts/trajectory_reader.py --directory artifacts/trajectory --follow --interval-s 0.5
-```
-
-Bridge doctor (port/protocol/trajectory checks):
-
-```powershell
-python scripts/bridge_doctor.py --command-probe
-```
-
-## Extending command coverage without code edits
-
-When you need additional `nanonis_spm` functions (for example Lock-In channels), you can load extra read parameters from a YAML manifest.
-
-List matching backend commands:
-
-```powershell
-python scripts/scaffold_extension_manifest.py --mode list --match LockIn
-```
-
-Generate a manifest template:
-
-```powershell
-python scripts/scaffold_extension_manifest.py --mode manifest --match LockIn --output config/lockin_parameters.yaml
-```
-
-Load manifest into driver:
-
-```python
-from nanonis_qcodes_controller.qcodes_driver import QcodesNanonisSTM
-
-nanonis = QcodesNanonisSTM(
-    "nanonis",
-    auto_connect=True,
-    extra_parameters_manifest="config/lockin_parameters.yaml",
-)
-
-print(nanonis.available_backend_commands(match="LockIn"))
-print(nanonis.call_backend_command("LockIn_ModOnOffGet", args={"Modulator_number": 1}))
-```
-
-## Phase 7 test matrix
-
-- `tests/test_simulator_integration.py` covers connect/disconnect cycles, read loops, and guarded write scenarios.
-- Simulator tests are gated by env var to avoid accidental runs on non-simulator setups.
-
-Run simulator integration (read path):
-
-```powershell
-set NANONIS_RUN_SIMULATOR_TESTS=1
-python -m pytest -q -m simulator -k "not simulator_writes"
-```
-
-Run simulator guarded write integration:
-
-```powershell
-set NANONIS_RUN_SIMULATOR_TESTS=1
-set NANONIS_RUN_SIMULATOR_WRITE_TESTS=1
-python -m pytest -q -m simulator_writes
-```
-
-Detailed test runbook: `docs/test_runbook.md`
-
-Trajectory model: `docs/trajectory_model.md`
-
-## Project plan
-
-Detailed phased plan: `PLAN.md`
 
 ## Documentation index
 
-- Simulator quickstart: `docs/quickstart_simulator.md`
-- Safety model: `docs/safety_model.md`
-- Porting to real controller: `docs/porting_to_real_controller.md`
-- Architecture overview: `docs/architecture.md`
 - CLI contract: `docs/cli_contract.md`
-- Trajectory model: `docs/trajectory_model.md`
-- Test runbook: `docs/test_runbook.md`
 - Extension workflow: `docs/extension_workflow.md`
-- Example notebook: `docs/notebooks/simulator_demo.ipynb`
+- Safety model: `docs/safety_model.md`
+- Architecture overview: `docs/architecture.md`
+- Simulator quickstart: `docs/quickstart_simulator.md`
+- Trajectory model: `docs/trajectory_model.md`
+- Porting to real controller: `docs/porting_to_real_controller.md`
+
+Project planning and internal development workflow details: `PLAN.md`

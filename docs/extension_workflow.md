@@ -1,34 +1,34 @@
-# Extension Workflow
+# Parameter Extension Workflow
 
 ## Why this exists
 You do not need to re-open `NanonisClass.py` every time a new function is needed.
-The bridge now supports loading additional read parameters from a YAML manifest at runtime.
+The bridge supports loading extra parameter specs from `config/extra_parameters.yaml`.
 
 ## Fast path
 1. Discover relevant backend commands.
-2. Generate or edit a parameter manifest.
-3. Load manifest into `QcodesNanonisSTM`.
-4. Use new parameters like built-in QCodes parameters.
+2. Scaffold or edit `config/extra_parameters.yaml`.
+3. Validate parameter file.
+4. Use new parameters in CLI/QCodes without changing core code.
 
 ## 1) Discover command names
-List matching commands from installed `nanonis_spm`:
 
 ```powershell
-python scripts/scaffold_extension_manifest.py --mode list --match LockIn
+nqctl parameters discover --match LockIn
 ```
 
-## 2) Scaffold manifest template
-Generate a YAML file with `_Get` commands only:
+## 2) Scaffold extra parameter file
 
 ```powershell
-python scripts/scaffold_extension_manifest.py --mode manifest --match LockIn --output config/lockin_parameters.yaml
+nqctl parameters scaffold --match LockIn --output config/extra_parameters.yaml
 ```
 
-Then edit generated entries and fill `args` values where needed.
+## 3) Validate parameter file
 
-You can also start from `config/extra_parameters.template.yaml`.
+```powershell
+nqctl parameters validate --file config/extra_parameters.yaml
+```
 
-## 3) Load manifest in QCodes driver
+## 4) Load files in QCodes driver
 
 ```python
 from nanonis_qcodes_controller.qcodes_driver import QcodesNanonisSTM
@@ -36,30 +36,15 @@ from nanonis_qcodes_controller.qcodes_driver import QcodesNanonisSTM
 nanonis = QcodesNanonisSTM(
     "nanonis",
     auto_connect=True,
-    extra_parameters_manifest="config/lockin_parameters.yaml",
+    parameters_file="config/default_parameters.yaml",
+    extra_parameters_file="config/extra_parameters.yaml",
 )
 
-print(nanonis.lockin_mod_enabled())
-print(nanonis.lockin_mod_amplitude_v())
-
+print(nanonis.get_parameter_value("lockin_mod_enabled"))
 nanonis.close()
 ```
 
-## 4) Call any backend command directly
-For commands that should not be exposed as a QCodes parameter:
-
-```python
-response = nanonis.call_backend_command(
-    "LockIn_ModOnOffSet",
-    args={"Modulator_number": 1, "On_Off": 1},
-)
-```
-
 ## Notes
-- Dynamic manifest entries are read-only QCodes parameters (`set_cmd=False`).
-- For write commands, use guarded write methods when available, or explicit `call_backend_command(...)` only with lab safety procedures.
-- Available command list from active backend:
-
-```python
-print(nanonis.available_backend_commands(match="LockIn"))
-```
+- Core behavior is generic and spec-driven.
+- `set` and `ramp` operate on any writable parameter with safety settings.
+- Extra parameter file is add-only by design; colliding names are rejected.

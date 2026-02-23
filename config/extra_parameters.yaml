@@ -1,0 +1,45 @@
+version: 1
+
+defaults:
+  snapshot_value: true
+  ramp_default_interval_s: 0.05
+
+parameters:
+  lockin_mod_enabled:
+    label: Lock-In Mod Enabled
+    unit: ""
+    type: bool
+    get_cmd:
+      command: LockIn_ModOnOffGet
+      payload_index: 0
+      args:
+        Modulator_number: 1
+    set_cmd: false
+    vals:
+      kind: bool
+
+  lockin_mod_amplitude_v:
+    label: Lock-In Mod Amplitude
+    unit: V
+    type: float
+    get_cmd:
+      command: LockIn_ModAmpGet
+      payload_index: 0
+      args:
+        Modulator_number: 1
+    set_cmd: false
+    vals:
+      kind: numbers
+
+  lockin_demod_phase_deg:
+    label: Lock-In Demod Phase
+    unit: deg
+    type: float
+    get_cmd:
+      command: LockIn_DemodPhasGet
+      payload_index: 0
+      args:
+        Demodulator_number: 1
+    set_cmd: false
+    vals:
+      kind: numbers

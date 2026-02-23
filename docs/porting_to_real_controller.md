@@ -16,7 +16,7 @@ Before connecting to real hardware, verify all items:
 If any item is uncertain, do not enable live writes.
 
 ## Recommended rollout path
-1. Probe only: run `scripts/bridge_doctor.py` and `scripts/probe_nanonis.py`.
+1. Probe only: run `scripts/bridge_doctor.py` and `tests/probe_nanonis.py`.
 2. Read-only mode: keep `allow_writes=false` and run repeated read loops.
 3. Dry-run writes: set `allow_writes=true`, `dry_run=true`, inspect plans/audits.
 4. Live guarded writes: enable `dry_run=false` with conservative limits.

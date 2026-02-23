@@ -1,17 +1,15 @@
 from .settings import (
-    BridgeSettings,
     NanonisConnectionSettings,
+    RuntimeSettings,
     SafetySettings,
-    ScalarLimitSettings,
     TrajectorySettings,
     load_settings,
 )
 
 __all__ = [
-    "BridgeSettings",
     "NanonisConnectionSettings",
-    "ScalarLimitSettings",
     "SafetySettings",
     "TrajectorySettings",
+    "RuntimeSettings",
     "load_settings",
 ]

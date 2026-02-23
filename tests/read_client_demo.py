@@ -21,7 +21,7 @@ def main() -> int:
     )
     parser.add_argument(
         "--config-file",
-        help="Path to YAML config file. Defaults to NANONIS_CONFIG_FILE or config/default.yaml.",
+        help="Path to runtime YAML config file. Defaults to NANONIS_CONFIG_FILE or config/default_runtime.yaml.",
     )
     parser.add_argument(
         "--iterations",

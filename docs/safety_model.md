@@ -13,15 +13,13 @@
 3. Max step (`max_step`): split large moves into ramp steps.
 4. Optional max slew (`max_slew_per_s`): constrain change rate.
 5. Cooldown (`cooldown_s`): block writes too soon after prior write on channel.
-6. Confirmation (`require_confirmation`): require explicit confirmation or hook approval.
-7. Dry-run (`dry_run`): generate plan and audit event without sending commands.
+6. Dry-run (`dry_run`): generate plan and audit event without sending commands.
 
 ## Current guarded operations
-- `set_bias_v_guarded(...)`
-- `set_zctrl_setpoint_a_guarded(...)`
-- `set_scan_frame_guarded(...)`
+- `set_parameter_single_step(...)`
+- `ramp_parameter(...)`
 
-Each operation supports plan-preview methods (`plan_*`) and emits guarded write audit entries.
+Both operations are generic and parameter-spec driven.
 
 ## Execution model
 - Validate policy constraints.
@@ -30,7 +28,7 @@ Each operation supports plan-preview methods (`plan_*`) and emits guarded write 
 - Record success/failure in guarded write audit log.
 
 ## Failure behavior
-- Policy violations raise clear exceptions (`PolicyViolation`, `ConfirmationRequired`).
+- Policy violations raise clear exceptions (`PolicyViolation`).
 - Execution failures keep full exception context and are audit-logged with `status=failed`.
 - Dry-run never sends instrument set commands.
 

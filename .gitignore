@@ -9,3 +9,8 @@ dist/
 .coverage
 .env
 tests/
+!tests/
+tests/**
+!tests/probe_nanonis.py
+!tests/read_client_demo.py
+!tests/guarded_write_demo.py

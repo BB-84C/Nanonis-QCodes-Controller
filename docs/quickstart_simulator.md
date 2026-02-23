@@ -20,13 +20,13 @@ python -m pip install -e .[dev,qcodes,nanonis]
 ## 2) Configure
 - Copy `.env.example` to `.env`.
 - Keep defaults for simulator-first testing unless your host/ports differ.
-- Optional: tune write limits in `config/default.yaml`.
+- Optional: tune runtime policy in `config/default_runtime.yaml` and parameter safety in `config/default_parameters.yaml`.
 
 ## 3) Connectivity checks
 
 ```powershell
 python scripts/bridge_doctor.py --json
-python scripts/probe_nanonis.py --backend nanonis_spm --command-probe
+python tests/probe_nanonis.py --backend nanonis_spm --command-probe
 ```
 
 Expected: one or more candidate ports and at least one recommended port.
@@ -34,7 +34,7 @@ Expected: one or more candidate ports and at least one recommended port.
 ## 4) Read-path smoke
 
 ```powershell
-python scripts/read_client_demo.py --iterations 5 --interval-s 0.2
+python tests/read_client_demo.py --iterations 5 --interval-s 0.2
 ```
 
 ## 5) QCodes smoke
@@ -56,19 +56,21 @@ nanonis.close()
 ```
 
 ## 6) Guarded-write smoke
-- Default config blocks writes (`allow_writes=false`).
-- Use the demo script to verify policy behavior.
+- Runtime policy is controlled in `config/default_runtime.yaml`.
+- Use the demo script to verify single-step guarded writes.
 
 ```powershell
-python scripts/guarded_write_demo.py --channel bias_v --target 1.8
+python tests/guarded_write_demo.py --channel bias_v --target 1.8
 ```
 
 ## 7) Automated operation demo (no manual GUI actions)
-Run one-step bias-dependent topo query with trajectory enabled:
+Run bias-dependent sequence integration test, then inspect trajectory events:
 
 ```powershell
-python scripts/bias_dependent_topo_query.py --start-bias-mv 50 --stop-bias-mv 50 --step-bias-mv 25 --start-current-pa 100 --trajectory-enable --trajectory-dir artifacts/trajectory_quickstart
-python scripts/trajectory_reader.py --directory artifacts/trajectory_quickstart --limit 20
+set NANONIS_RUN_SIMULATOR_TESTS=1
+set NANONIS_RUN_SIMULATOR_WRITE_TESTS=1
+python -m pytest -q tests/test_simulator_integration.py -k bias_dependent_topography_sequence -m simulator_writes
+python scripts/trajectory_reader.py --directory artifacts/trajectory --limit 20
 ```
 
 ## 8) Test matrix

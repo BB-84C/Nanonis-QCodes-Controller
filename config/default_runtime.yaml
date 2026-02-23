@@ -1,0 +1,22 @@
+nanonis:
+  host: "127.0.0.1"
+  ports:
+    - 3364
+    - 6501
+    - 6502
+    - 6503
+    - 6504
+  timeout_s: 2.0
+  retry_count: 1
+  backend: "adapter"
+
+safety:
+  allow_writes: true
+  dry_run: false
+  default_ramp_interval_s: 0.05
+
+trajectory:
+  enabled: false
+  directory: "artifacts/trajectory"
+  queue_size: 2048
+  max_events_per_file: 5000

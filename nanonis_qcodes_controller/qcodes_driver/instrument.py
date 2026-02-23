@@ -2,78 +2,29 @@ from __future__ import annotations
 
 import hashlib
 import json
+import math
 import time
-from collections.abc import Callable, Mapping
+from collections.abc import Callable, Iterable, Mapping, Sequence
 from dataclasses import asdict, dataclass, field, is_dataclass
 from pathlib import Path
-from typing import Any, cast
+from typing import Any
 
 from qcodes.instrument import Instrument
-from qcodes.validators import Bool, Ints, Numbers
+from qcodes.validators import Bool, Enum, Ints, Numbers
 
 from nanonis_qcodes_controller.client import NanonisClient, build_client_from_settings
 from nanonis_qcodes_controller.client.base import NanonisHealth
 from nanonis_qcodes_controller.client.errors import NanonisProtocolError
 from nanonis_qcodes_controller.config import load_settings
-from nanonis_qcodes_controller.safety import WriteExecutionReport, WritePlan, WritePolicy
+from nanonis_qcodes_controller.safety import (
+    ChannelLimit,
+    WriteExecutionReport,
+    WritePlan,
+    WritePolicy,
+)
 from nanonis_qcodes_controller.trajectory import TrajectoryJournal, TrajectoryStats
 
-from .extensions import ScalarParameterSpec, load_scalar_parameter_specs
-
-
-@dataclass(frozen=True)
-class ScanFrameState:
-    center_x_m: float
-    center_y_m: float
-    width_m: float
-    height_m: float
-    angle_deg: float
-
-    @classmethod
-    def from_payload(cls, payload: list[Any]) -> ScanFrameState:
-        if len(payload) < 5:
-            raise NanonisProtocolError("Scan frame payload must have five values.")
-        return cls(
-            center_x_m=float(payload[0]),
-            center_y_m=float(payload[1]),
-            width_m=float(payload[2]),
-            height_m=float(payload[3]),
-            angle_deg=float(payload[4]),
-        )
-
-    def as_command_args(self) -> dict[str, float]:
-        return {
-            "Center_X_m": float(self.center_x_m),
-            "Center_Y_m": float(self.center_y_m),
-            "Width_m": float(self.width_m),
-            "Height_m": float(self.height_m),
-            "Angle_deg": float(self.angle_deg),
-        }
-
-
-@dataclass(frozen=True)
-class ScanFrameWritePlan:
-    current_frame: ScanFrameState
-    target_frame: ScanFrameState
-    steps: tuple[ScanFrameState, ...]
-    interval_s: float
-    dry_run: bool
-    component_plans: Mapping[str, WritePlan]
-    reason: str | None = None
-
-    @property
-    def step_count(self) -> int:
-        return len(self.steps)
-
-
-@dataclass(frozen=True)
-class ScanFrameWriteReport:
-    dry_run: bool
-    attempted_steps: int
-    applied_steps: int
-    initial_frame: ScanFrameState
-    target_frame: ScanFrameState
-    final_frame: ScanFrameState
+from .extensions import ParameterSpec, SafetySpec, ValidatorSpec, load_parameter_spec_bundle
 
 
 @dataclass(frozen=True)
@@ -86,6 +37,37 @@ class GuardedWriteAuditEntry:
     metadata: Mapping[str, Any] = field(default_factory=dict)
 
 
+@dataclass(frozen=True)
+class RampPlan:
+    parameter: str
+    start_value: float
+    end_value: float
+    step_value: float
+    interval_s: float
+    targets: tuple[float, ...]
+    plans: tuple[WritePlan, ...]
+
+    @property
+    def step_count(self) -> int:
+        return len(self.plans)
+
+    @property
+    def dry_run(self) -> bool:
+        return any(plan.dry_run for plan in self.plans)
+
+
+@dataclass(frozen=True)
+class RampExecutionReport:
+    parameter: str
+    dry_run: bool
+    attempted_steps: int
+    applied_steps: int
+    initial_value: float
+    target_value: float
+    final_value: float
+    reports: tuple[WriteExecutionReport, ...]
+
+
 class QcodesNanonisSTM(Instrument):  # type: ignore[misc,unused-ignore]
     def __init__(
         self,
@@ -93,38 +75,46 @@ class QcodesNanonisSTM(Instrument):  # type: ignore[misc,unused-ignore]
         *,
         client: NanonisClient | None = None,
         config_file: str | Path | None = None,
+        parameters_file: str | Path | None = None,
+        extra_parameters_file: str | Path | None = None,
+        include_parameters: Sequence[str] | None = None,
         write_policy: WritePolicy | None = None,
         trajectory_journal: TrajectoryJournal | None = None,
-        extra_parameters_manifest: str | Path | None = None,
         auto_connect: bool = True,
         **kwargs: Any,
     ) -> None:
         super().__init__(name=name, **kwargs)
+
         self._owns_client = client is None
         self._client: NanonisClient
         self._owns_trajectory = False
         self._trajectory_journal: TrajectoryJournal | None = trajectory_journal
         self._last_state_values: dict[str, Any] = {}
-        self._dynamic_parameter_specs: dict[str, ScalarParameterSpec] = {}
-
-        resolved_policy: WritePolicy
-        settings = None
-        if client is None:
-            settings = load_settings(config_file=config_file)
-            self._client = build_client_from_settings(settings.nanonis)
-            resolved_policy = WritePolicy.from_settings(settings.safety)
-        else:
-            self._client = client
-            resolved_policy = WritePolicy()
-
-        self._write_policy = write_policy if write_policy is not None else resolved_policy
         self._write_audit_log: list[GuardedWriteAuditEntry] = []
 
-        if (
-            self._trajectory_journal is None
-            and settings is not None
-            and settings.trajectory.enabled
-        ):
+        settings = load_settings(config_file=config_file)
+
+        if client is None:
+            self._client = build_client_from_settings(settings.nanonis)
+        else:
+            self._client = client
+
+        all_specs = load_parameter_spec_bundle(
+            default_parameters_file=parameters_file,
+            extra_parameters_file=extra_parameters_file,
+        )
+        self._parameter_specs = self._filter_specs(all_specs, include_parameters)
+
+        if write_policy is None:
+            limits = _build_channel_limits(
+                self._parameter_specs.values(),
+                default_ramp_interval_s=settings.safety.default_ramp_interval_s,
+            )
+            self._write_policy = WritePolicy.from_settings(settings.safety, limits=limits)
+        else:
+            self._write_policy = write_policy
+
+        if self._trajectory_journal is None and settings.trajectory.enabled:
             self._trajectory_journal = TrajectoryJournal(
                 directory=settings.trajectory.directory,
                 queue_size=settings.trajectory.queue_size,
@@ -137,8 +127,6 @@ class QcodesNanonisSTM(Instrument):  # type: ignore[misc,unused-ignore]
             self._client.connect()
 
         self._register_parameters()
-        if extra_parameters_manifest is not None:
-            _ = self.load_scalar_parameter_manifest(extra_parameters_manifest)
 
     def close(self) -> None:
         try:
@@ -157,11 +145,10 @@ class QcodesNanonisSTM(Instrument):  # type: ignore[misc,unused-ignore]
         if not callable(list_commands):
             raise NanonisProtocolError("Active client does not expose command discovery.")
 
-        raw_names_obj = cast(Any, list_commands)()
-        if not isinstance(raw_names_obj, (list, tuple, set)):
-            raise NanonisProtocolError("Backend command discovery must return a sequence.")
-
-        command_names = sorted(str(name) for name in raw_names_obj)
+        raw_names = list_commands()
+        if not isinstance(raw_names, Iterable):
+            raise NanonisProtocolError("Backend command discovery must return an iterable.")
+        command_names = sorted(str(name) for name in raw_names)
         if match is None:
             return tuple(command_names)
 
@@ -170,63 +157,30 @@ class QcodesNanonisSTM(Instrument):  # type: ignore[misc,unused-ignore]
             return tuple(command_names)
         return tuple(command for command in command_names if token in command.lower())
 
-    def call_backend_command(
-        self,
-        command: str,
-        *,
-        args: Mapping[str, Any] | None = None,
-    ) -> Mapping[str, Any]:
-        return self._call(command, args=args)
-
     @property
     def write_policy(self) -> WritePolicy:
         return self._write_policy
 
-    def dynamic_parameter_specs(self) -> tuple[ScalarParameterSpec, ...]:
-        names = sorted(self._dynamic_parameter_specs)
-        return tuple(self._dynamic_parameter_specs[name] for name in names)
+    def parameter_specs(self) -> tuple[ParameterSpec, ...]:
+        names = sorted(self._parameter_specs)
+        return tuple(self._parameter_specs[name] for name in names)
 
-    def load_scalar_parameter_manifest(self, manifest_file: str | Path) -> tuple[str, ...]:
-        specs = load_scalar_parameter_specs(manifest_file)
-        registered_names: list[str] = []
-        for spec in specs:
-            self.register_scalar_parameter(spec)
-            registered_names.append(spec.name)
-        return tuple(registered_names)
+    def parameter_spec(self, name: str) -> ParameterSpec:
+        normalized = name.strip()
+        if not normalized:
+            raise ValueError("Parameter name cannot be empty.")
+        spec = self._parameter_specs.get(normalized)
+        if spec is None:
+            raise ValueError(f"Unknown parameter: {name}")
+        return spec
 
-    def register_scalar_parameter(self, spec: ScalarParameterSpec) -> None:
-        parameter_name = spec.name
-        if parameter_name in self.parameters or hasattr(self, parameter_name):
-            raise ValueError(f"Parameter '{parameter_name}' is already registered.")
+    def writable_parameter_names(self) -> tuple[str, ...]:
+        names = [spec.name for spec in self.parameter_specs() if spec.writable]
+        return tuple(names)
 
-        call_args = dict(spec.args)
-
-        def get_value() -> Any:
-            response = self._call(
-                spec.command,
-                args=call_args if call_args else None,
-            )
-            raw_value = self._extract_payload_value(
-                response,
-                command=spec.command,
-                payload_index=spec.payload_index,
-            )
-            return _coerce_scalar_value(raw_value, value_type=spec.value_type)
-
-        parameter_kwargs: dict[str, Any] = {
-            "name": parameter_name,
-            "label": spec.label or parameter_name,
-            "unit": spec.unit,
-            "get_cmd": get_value,
-            "set_cmd": False,
-            "snapshot_value": spec.snapshot_value,
-        }
-        validator = _validator_for_value_type(spec.value_type)
-        if validator is not None:
-            parameter_kwargs["vals"] = validator
-
-        self.add_parameter(**parameter_kwargs)
-        self._dynamic_parameter_specs[parameter_name] = spec
+    def readable_parameter_names(self) -> tuple[str, ...]:
+        names = [spec.name for spec in self.parameter_specs() if spec.readable]
+        return tuple(names)
 
     def guarded_write_audit_log(self) -> tuple[GuardedWriteAuditEntry, ...]:
         return tuple(self._write_audit_log)
@@ -240,188 +194,204 @@ class QcodesNanonisSTM(Instrument):  # type: ignore[misc,unused-ignore]
         health = self.client_health()
         return {
             "vendor": "Nanonis",
-            "model": "STM Simulator Bridge",
+            "model": "STM Generic Bridge",
             "serial": health.endpoint,
             "firmware": self._client.version(),
         }
 
-    def _register_parameters(self) -> None:
-        self.add_parameter(
-            "bias_v",
-            label="Bias",
-            unit="V",
-            get_cmd=self._get_bias_v,
-            set_cmd=False,
-            vals=Numbers(),
+    def get_parameter_value(self, parameter_name: str) -> Any:
+        spec = self.parameter_spec(parameter_name)
+        if spec.get_cmd is None:
+            raise ValueError(f"Parameter '{spec.name}' is not readable.")
+
+        response = self._call(spec.get_cmd.command, args=spec.get_cmd.args)
+        raw_value = self._extract_payload_value(
+            response,
+            command=spec.get_cmd.command,
+            payload_index=spec.get_cmd.payload_index,
         )
-        self.add_parameter(
-            "current_a",
-            label="Tunnel Current",
-            unit="A",
-            get_cmd=self._get_current_a,
-            set_cmd=False,
-            vals=Numbers(),
-        )
-        self.add_parameter(
-            "zctrl_z_m",
-            label="Z Position",
-            unit="m",
-            get_cmd=self._get_zctrl_z_m,
-            set_cmd=False,
-            vals=Numbers(),
-        )
-        self.add_parameter(
-            "zctrl_setpoint_a",
-            label="Z Setpoint",
-            unit="A",
-            get_cmd=self._get_zctrl_setpoint_a,
-            set_cmd=False,
-            vals=Numbers(),
-        )
-        self.add_parameter(
-            "zctrl_on",
-            label="Z Controller Enabled",
-            get_cmd=self._get_zctrl_on,
-            set_cmd=False,
-            vals=Bool(),
-        )
-        self.add_parameter(
-            "scan_status_code",
-            label="Scan Status Code",
-            get_cmd=self._get_scan_status_code,
-            set_cmd=False,
-            vals=Ints(),
-        )
-        self.add_parameter(
-            "scan_frame_center_x_m",
-            label="Scan Frame Center X",
-            unit="m",
-            get_cmd=self._get_scan_frame_center_x_m,
-            set_cmd=False,
-            vals=Numbers(),
-        )
-        self.add_parameter(
-            "scan_frame_center_y_m",
-            label="Scan Frame Center Y",
-            unit="m",
-            get_cmd=self._get_scan_frame_center_y_m,
-            set_cmd=False,
-            vals=Numbers(),
-        )
-        self.add_parameter(
-            "scan_frame_width_m",
-            label="Scan Frame Width",
-            unit="m",
-            get_cmd=self._get_scan_frame_width_m,
-            set_cmd=False,
-            vals=Numbers(),
-        )
-        self.add_parameter(
-            "scan_frame_height_m",
-            label="Scan Frame Height",
-            unit="m",
-            get_cmd=self._get_scan_frame_height_m,
-            set_cmd=False,
-            vals=Numbers(),
-        )
-        self.add_parameter(
-            "scan_frame_angle_deg",
-            label="Scan Frame Angle",
-            unit="deg",
-            get_cmd=self._get_scan_frame_angle_deg,
-            set_cmd=False,
-            vals=Numbers(),
-        )
-        self.add_parameter(
-            "signals_table_size_bytes",
-            label="Signals Table Size",
-            unit="B",
-            get_cmd=self._get_signals_table_size_bytes,
-            set_cmd=False,
-            vals=Ints(),
-        )
-        self.add_parameter(
-            "signals_count",
-            label="Signals Count",
-            get_cmd=self._get_signals_count,
-            set_cmd=False,
-            vals=Ints(),
-        )
-        self.add_parameter(
-            "signals_names",
-            label="Signals Names",
-            get_cmd=self._get_signals_names,
-            set_cmd=False,
-            snapshot_value=False,
+        value = _coerce_scalar_value(raw_value, value_type=spec.value_type)
+        self._record_state_transition(state_key=spec.name, value=_state_value(value))
+        return value
+
+    def plan_parameter_single_step(
+        self,
+        parameter_name: str,
+        target_value: float,
+        *,
+        reason: str | None = None,
+        interval_s: float | None = None,
+    ) -> WritePlan:
+        spec = self._require_writable_spec(parameter_name)
+        current_value = self._require_current_numeric_value(spec)
+
+        return self._write_policy.plan_scalar_write_single_step(
+            channel=spec.name,
+            current_value=current_value,
+            target_value=float(target_value),
+            reason=reason,
+            interval_s=interval_s,
         )
 
-    def _call(self, command: str, *, args: Mapping[str, Any] | None = None) -> Mapping[str, Any]:
-        call_start = time.perf_counter()
-        args_digest = _args_hash(args)
+    def set_parameter_single_step(
+        self,
+        parameter_name: str,
+        target_value: float,
+        *,
+        reason: str | None = None,
+        interval_s: float | None = None,
+    ) -> WriteExecutionReport:
+        spec = self._require_writable_spec(parameter_name)
+        operation = f"set_single_step:{spec.name}"
+
+        return self._run_guarded_scalar_write(
+            operation=operation,
+            planner=lambda: self.plan_parameter_single_step(
+                spec.name,
+                target_value,
+                reason=reason,
+                interval_s=interval_s,
+            ),
+            sender=lambda value: self._send_parameter_value(spec, value),
+        )
+
+    def plan_parameter_ramp(
+        self,
+        parameter_name: str,
+        *,
+        start_value: float,
+        end_value: float,
+        step_value: float,
+        interval_s: float,
+        reason: str | None = None,
+    ) -> RampPlan:
+        spec = self._require_writable_spec(parameter_name)
+        if spec.safety is not None and not spec.safety.ramp_enabled:
+            raise ValueError(f"Ramp is disabled for parameter '{spec.name}'.")
+
+        if interval_s < 0:
+            raise ValueError("interval_s must be non-negative.")
+
+        current_value = self._require_current_numeric_value(spec)
+        plans: list[WritePlan] = []
+        targets = _build_ramp_targets(start=start_value, end=end_value, step=step_value)
+
+        target_queue = list(targets)
+        if not math.isclose(current_value, float(start_value), rel_tol=0.0, abs_tol=1e-15) and (
+            not target_queue
+            or not math.isclose(target_queue[0], float(start_value), rel_tol=0.0, abs_tol=1e-15)
+        ):
+            target_queue.insert(0, float(start_value))
+
+        latest_value = current_value
+        for target in target_queue:
+            plan = self._write_policy.plan_scalar_write_single_step(
+                channel=spec.name,
+                current_value=latest_value,
+                target_value=float(target),
+                reason=reason,
+                interval_s=interval_s,
+            )
+            plans.append(plan)
+            latest_value = float(target)
+
+        return RampPlan(
+            parameter=spec.name,
+            start_value=float(start_value),
+            end_value=float(end_value),
+            step_value=float(step_value),
+            interval_s=float(interval_s),
+            targets=tuple(target_queue),
+            plans=tuple(plans),
+        )
+
+    def ramp_parameter(
+        self,
+        parameter_name: str,
+        *,
+        start_value: float,
+        end_value: float,
+        step_value: float,
+        interval_s: float,
+        reason: str | None = None,
+    ) -> RampExecutionReport:
+        spec = self._require_writable_spec(parameter_name)
+        operation = f"ramp:{spec.name}"
+
         try:
-            response = self._client.call(command, args=args)
+            ramp_plan = self.plan_parameter_ramp(
+                spec.name,
+                start_value=start_value,
+                end_value=end_value,
+                step_value=step_value,
+                interval_s=interval_s,
+                reason=reason,
+            )
         except Exception as exc:
-            self._emit_trajectory_event(
-                "command_result",
-                {
-                    "command": command,
-                    "status": "error",
-                    "latency_ms": (time.perf_counter() - call_start) * 1000.0,
-                    "args_hash": args_digest,
-                    "error": f"{type(exc).__name__}: {exc}",
+            self._append_write_audit(
+                operation=operation,
+                status="blocked",
+                dry_run=self._write_policy.dry_run,
+                detail=f"{type(exc).__name__}: {exc}",
+            )
+            raise
+
+        reports: list[WriteExecutionReport] = []
+        applied_steps = 0
+
+        def send_step(value: float) -> None:
+            self._send_parameter_value(spec, value)
+
+        try:
+            for index, plan in enumerate(ramp_plan.plans):
+                report = self._write_policy.execute_plan(plan, send_step=send_step)
+                reports.append(report)
+                applied_steps += report.applied_steps
+
+                if index < len(ramp_plan.plans) - 1 and interval_s > 0 and not report.dry_run:
+                    time.sleep(interval_s)
+        except Exception as exc:
+            self._append_write_audit(
+                operation=operation,
+                status="failed",
+                dry_run=False,
+                detail=f"{type(exc).__name__}: {exc}",
+                metadata={
+                    "attempted_steps": len(ramp_plan.plans),
+                    "applied_steps": applied_steps,
                 },
             )
             raise
 
-        self._emit_trajectory_event(
-            "command_result",
-            {
-                "command": command,
-                "status": "ok",
-                "latency_ms": (time.perf_counter() - call_start) * 1000.0,
-                "args_hash": args_digest,
+        final_value = (
+            reports[-1].final_value if reports else self._require_current_numeric_value(spec)
+        )
+        ramp_report = RampExecutionReport(
+            parameter=spec.name,
+            dry_run=(
+                all(item.dry_run for item in reports) if reports else self._write_policy.dry_run
+            ),
+            attempted_steps=len(ramp_plan.plans),
+            applied_steps=applied_steps,
+            initial_value=ramp_plan.plans[0].current_value if ramp_plan.plans else final_value,
+            target_value=ramp_plan.end_value,
+            final_value=final_value,
+            reports=tuple(reports),
+        )
+
+        self._append_write_audit(
+            operation=operation,
+            status="dry_run" if ramp_report.dry_run else "applied",
+            dry_run=ramp_report.dry_run,
+            detail="Ramp write completed.",
+            metadata={
+                "attempted_steps": ramp_report.attempted_steps,
+                "applied_steps": ramp_report.applied_steps,
+                "target_value": ramp_report.target_value,
+                "final_value": ramp_report.final_value,
             },
         )
-        return response
-
-    def _get_scalar_float(self, command: str) -> float:
-        value = self._extract_scalar_value(self._call(command), command=command)
-        return float(value)
-
-    def _get_scalar_int(self, command: str) -> int:
-        value = self._extract_scalar_value(self._call(command), command=command)
-        return int(value)
-
-    def _get_bias_v(self) -> float:
-        bias_v = self._get_scalar_float("Bias_Get")
-        self._record_state_transition(state_key="bias_v", value=round(bias_v, 12))
-        return bias_v
-
-    def _get_current_a(self) -> float:
-        current_a = self._get_scalar_float("Current_Get")
-        self._record_state_transition(state_key="current_a", value=round(current_a, 15))
-        return current_a
-
-    def _get_zctrl_z_m(self) -> float:
-        return self._get_scalar_float("ZCtrl_ZPosGet")
-
-    def _get_zctrl_setpoint_a(self) -> float:
-        setpoint_a = self._get_scalar_float("ZCtrl_SetpntGet")
-        self._record_state_transition(state_key="zctrl_setpoint_a", value=round(setpoint_a, 15))
-        return setpoint_a
-
-    def _get_zctrl_on(self) -> bool:
-        zctrl_on = bool(self._get_scalar_int("ZCtrl_OnOffGet"))
-        self._record_state_transition(state_key="zctrl_on", value=zctrl_on)
-        return zctrl_on
-
-    def _get_scan_status_code(self) -> int:
-        status_code = self._get_scalar_int("Scan_StatusGet")
-        self._record_state_transition(
-            state_key="scan_status_code",
-            value=status_code,
-        )
-        return status_code
+        return ramp_report
 
     def start_scan(self, *, direction_up: bool = False) -> None:
         _ = self._call(
@@ -454,376 +424,86 @@ class QcodesNanonisSTM(Instrument):  # type: ignore[misc,unused-ignore]
         file_path = "" if path_value is None else str(path_value)
         return timed_out, file_path
 
-    def _get_scan_frame_center_x_m(self) -> float:
-        return self._get_scan_frame().center_x_m
+    def _register_parameters(self) -> None:
+        for spec in self.parameter_specs():
+            parameter_kwargs: dict[str, Any] = {
+                "name": spec.name,
+                "label": spec.label,
+                "unit": spec.unit,
+                "get_cmd": (
+                    (lambda name=spec.name: self.get_parameter_value(name))
+                    if spec.readable
+                    else False
+                ),
+                "set_cmd": (
+                    (
+                        lambda value, name=spec.name: self.set_parameter_single_step(
+                            name, float(value)
+                        )
+                    )
+                    if spec.writable
+                    else False
+                ),
+                "snapshot_value": spec.snapshot_value,
+            }
+            validator = _validator_for_spec(spec.vals, value_type=spec.value_type)
+            if validator is not None:
+                parameter_kwargs["vals"] = validator
 
-    def _get_scan_frame_center_y_m(self) -> float:
-        return self._get_scan_frame().center_y_m
+            self.add_parameter(**parameter_kwargs)
 
-    def _get_scan_frame_width_m(self) -> float:
-        return self._get_scan_frame().width_m
-
-    def _get_scan_frame_height_m(self) -> float:
-        return self._get_scan_frame().height_m
-
-    def _get_scan_frame_angle_deg(self) -> float:
-        return self._get_scan_frame().angle_deg
-
-    def _get_signals_table_size_bytes(self) -> int:
-        payload = self._get_signals_payload()
-        return int(payload[0])
-
-    def _get_signals_count(self) -> int:
-        payload = self._get_signals_payload()
-        return int(payload[1])
-
-    def _get_signals_names(self) -> tuple[str, ...]:
-        payload = self._get_signals_payload()
-        names = payload[2]
-        if not isinstance(names, list):
-            raise NanonisProtocolError("Signals_NamesGet payload index 2 must be a list of names.")
-        return tuple(str(item) for item in names)
-
-    def plan_bias_v_set(
-        self,
-        target_v: float,
-        *,
-        confirmed: bool = False,
-        reason: str | None = None,
-    ) -> WritePlan:
-        return self._write_policy.plan_scalar_write(
-            channel="bias_v",
-            current_value=self._get_bias_v(),
-            target_value=target_v,
-            confirmed=confirmed,
-            reason=reason,
-        )
-
-    def set_bias_v_guarded(
-        self,
-        target_v: float,
-        *,
-        confirmed: bool = False,
-        reason: str | None = None,
-    ) -> WriteExecutionReport:
-        return self._run_guarded_scalar_write(
-            operation="bias_v_set",
-            planner=lambda: self.plan_bias_v_set(target_v, confirmed=confirmed, reason=reason),
-            command="Bias_Set",
-            argument_name="Bias_value_V",
-        )
-
-    def plan_bias_v_set_single_step(
-        self,
-        target_v: float,
-        *,
-        confirmed: bool = False,
-        reason: str | None = None,
-        interval_s: float | None = None,
-    ) -> WritePlan:
-        return self._write_policy.plan_scalar_write_single_step(
-            channel="bias_v",
-            current_value=self._get_bias_v(),
-            target_value=target_v,
-            confirmed=confirmed,
-            reason=reason,
-            interval_s=interval_s,
-        )
-
-    def set_bias_v_single_step_guarded(
-        self,
-        target_v: float,
-        *,
-        confirmed: bool = False,
-        reason: str | None = None,
-        interval_s: float | None = None,
-    ) -> WriteExecutionReport:
-        return self._run_guarded_scalar_write(
-            operation="bias_v_set_single_step",
-            planner=lambda: self.plan_bias_v_set_single_step(
-                target_v,
-                confirmed=confirmed,
-                reason=reason,
-                interval_s=interval_s,
-            ),
-            command="Bias_Set",
-            argument_name="Bias_value_V",
-        )
-
-    def plan_zctrl_setpoint_a_set(
-        self,
-        target_a: float,
-        *,
-        confirmed: bool = False,
-        reason: str | None = None,
-    ) -> WritePlan:
-        return self._write_policy.plan_scalar_write(
-            channel="setpoint_a",
-            current_value=self._get_zctrl_setpoint_a(),
-            target_value=target_a,
-            confirmed=confirmed,
-            reason=reason,
-        )
-
-    def set_zctrl_setpoint_a_guarded(
-        self,
-        target_a: float,
-        *,
-        confirmed: bool = False,
-        reason: str | None = None,
-    ) -> WriteExecutionReport:
-        return self._run_guarded_scalar_write(
-            operation="setpoint_a_set",
-            planner=lambda: self.plan_zctrl_setpoint_a_set(
-                target_a, confirmed=confirmed, reason=reason
-            ),
-            command="ZCtrl_SetpntSet",
-            argument_name="Z_Controller_setpoint",
-        )
-
-    def plan_zctrl_setpoint_a_set_single_step(
-        self,
-        target_a: float,
-        *,
-        confirmed: bool = False,
-        reason: str | None = None,
-        interval_s: float | None = None,
-    ) -> WritePlan:
-        return self._write_policy.plan_scalar_write_single_step(
-            channel="setpoint_a",
-            current_value=self._get_zctrl_setpoint_a(),
-            target_value=target_a,
-            confirmed=confirmed,
-            reason=reason,
-            interval_s=interval_s,
-        )
-
-    def set_zctrl_setpoint_a_single_step_guarded(
-        self,
-        target_a: float,
-        *,
-        confirmed: bool = False,
-        reason: str | None = None,
-        interval_s: float | None = None,
-    ) -> WriteExecutionReport:
-        return self._run_guarded_scalar_write(
-            operation="setpoint_a_set_single_step",
-            planner=lambda: self.plan_zctrl_setpoint_a_set_single_step(
-                target_a,
-                confirmed=confirmed,
-                reason=reason,
-                interval_s=interval_s,
-            ),
-            command="ZCtrl_SetpntSet",
-            argument_name="Z_Controller_setpoint",
-        )
-
-    def plan_scan_frame_set(
-        self,
-        *,
-        center_x_m: float,
-        center_y_m: float,
-        width_m: float,
-        height_m: float,
-        angle_deg: float,
-        confirmed: bool = False,
-        reason: str | None = None,
-    ) -> ScanFrameWritePlan:
-        current = self._get_scan_frame()
-        target = ScanFrameState(
-            center_x_m=float(center_x_m),
-            center_y_m=float(center_y_m),
-            width_m=float(width_m),
-            height_m=float(height_m),
-            angle_deg=float(angle_deg),
-        )
-
-        component_plans = {
-            "scan_frame_center_x_m": self._write_policy.plan_scalar_write(
-                channel="scan_frame_center_x_m",
-                current_value=current.center_x_m,
-                target_value=target.center_x_m,
-                confirmed=confirmed,
-                reason=reason,
-            ),
-            "scan_frame_center_y_m": self._write_policy.plan_scalar_write(
-                channel="scan_frame_center_y_m",
-                current_value=current.center_y_m,
-                target_value=target.center_y_m,
-                confirmed=confirmed,
-                reason=reason,
-            ),
-            "scan_frame_width_m": self._write_policy.plan_scalar_write(
-                channel="scan_frame_width_m",
-                current_value=current.width_m,
-                target_value=target.width_m,
-                confirmed=confirmed,
-                reason=reason,
-            ),
-            "scan_frame_height_m": self._write_policy.plan_scalar_write(
-                channel="scan_frame_height_m",
-                current_value=current.height_m,
-                target_value=target.height_m,
-                confirmed=confirmed,
-                reason=reason,
-            ),
-            "scan_frame_angle_deg": self._write_policy.plan_scalar_write(
-                channel="scan_frame_angle_deg",
-                current_value=current.angle_deg,
-                target_value=target.angle_deg,
-                confirmed=confirmed,
-                reason=reason,
-            ),
-        }
-
-        max_steps = max(plan.step_count for plan in component_plans.values())
-        interval_s = max(plan.interval_s for plan in component_plans.values())
-        steps = _interpolate_scan_frame_steps(current=current, target=target, step_count=max_steps)
-
-        return ScanFrameWritePlan(
-            current_frame=current,
-            target_frame=target,
-            steps=steps,
-            interval_s=interval_s,
-            dry_run=any(plan.dry_run for plan in component_plans.values()),
-            component_plans=component_plans,
-            reason=reason,
-        )
-
-    def set_scan_frame_guarded(
-        self,
-        *,
-        center_x_m: float,
-        center_y_m: float,
-        width_m: float,
-        height_m: float,
-        angle_deg: float,
-        confirmed: bool = False,
-        reason: str | None = None,
-    ) -> ScanFrameWriteReport:
-        operation = "scan_frame_set"
+    def _call(self, command: str, *, args: Mapping[str, Any] | None = None) -> Mapping[str, Any]:
+        call_start = time.perf_counter()
+        args_digest = _args_hash(args)
         try:
-            plan = self.plan_scan_frame_set(
-                center_x_m=center_x_m,
-                center_y_m=center_y_m,
-                width_m=width_m,
-                height_m=height_m,
-                angle_deg=angle_deg,
-                confirmed=confirmed,
-                reason=reason,
-            )
+            response = self._client.call(command, args=args)
         except Exception as exc:
-            self._append_write_audit(
-                operation=operation,
-                status="blocked",
-                dry_run=self._write_policy.dry_run,
-                detail=f"{type(exc).__name__}: {exc}",
-            )
-            raise
-
-        attempted_steps = plan.step_count
-        if plan.dry_run:
-            report = ScanFrameWriteReport(
-                dry_run=True,
-                attempted_steps=attempted_steps,
-                applied_steps=0,
-                initial_frame=plan.current_frame,
-                target_frame=plan.target_frame,
-                final_frame=plan.steps[-1],
-            )
-            self._append_write_audit(
-                operation=operation,
-                status="dry_run",
-                dry_run=True,
-                detail="Scan frame write was planned but not applied.",
-                metadata={
-                    "attempted_steps": attempted_steps,
-                    "applied_steps": 0,
-                    "target_frame": plan.target_frame,
-                },
-            )
-            return report
-
-        applied_steps = 0
-        try:
-            for step_index, step in enumerate(plan.steps):
-                _ = self._call("Scan_FrameSet", args=step.as_command_args())
-                applied_steps += 1
-                if step_index < attempted_steps - 1 and plan.interval_s > 0:
-                    time.sleep(plan.interval_s)
-        except Exception as exc:
-            self._append_write_audit(
-                operation=operation,
-                status="failed",
-                dry_run=False,
-                detail=f"{type(exc).__name__}: {exc}",
-                metadata={
-                    "attempted_steps": attempted_steps,
-                    "applied_steps": applied_steps,
+            self._emit_trajectory_event(
+                "command_result",
+                {
+                    "command": command,
+                    "status": "error",
+                    "latency_ms": (time.perf_counter() - call_start) * 1000.0,
+                    "args_hash": args_digest,
+                    "error": f"{type(exc).__name__}: {exc}",
                 },
             )
             raise
 
-        write_timestamp = time.monotonic()
-        for channel_name in plan.component_plans:
-            self._write_policy.record_write(channel=channel_name, at_time_s=write_timestamp)
-
-        final_frame = self._get_scan_frame()
-        report = ScanFrameWriteReport(
-            dry_run=False,
-            attempted_steps=attempted_steps,
-            applied_steps=applied_steps,
-            initial_frame=plan.current_frame,
-            target_frame=plan.target_frame,
-            final_frame=final_frame,
-        )
-        self._append_write_audit(
-            operation=operation,
-            status="applied",
-            dry_run=False,
-            detail="Scan frame write applied.",
-            metadata={
-                "attempted_steps": attempted_steps,
-                "applied_steps": applied_steps,
-                "target_frame": plan.target_frame,
-                "final_frame": final_frame,
+        self._emit_trajectory_event(
+            "command_result",
+            {
+                "command": command,
+                "status": "ok",
+                "latency_ms": (time.perf_counter() - call_start) * 1000.0,
+                "args_hash": args_digest,
             },
         )
-        return report
+        return response
 
-    def _get_scan_frame(self) -> ScanFrameState:
-        response = self._call("Scan_FrameGet")
-        payload = response.get("payload")
-        if not isinstance(payload, list):
-            raise NanonisProtocolError("Scan_FrameGet must return a list payload.")
-        return ScanFrameState.from_payload(payload)
+    def _send_parameter_value(self, spec: ParameterSpec, value: float) -> None:
+        if spec.set_cmd is None:
+            raise ValueError(f"Parameter '{spec.name}' is not writable.")
 
-    def _get_signals_payload(self) -> list[Any]:
-        response = self._call("Signals_NamesGet")
-        payload = response.get("payload")
-        if not isinstance(payload, list) or len(payload) < 3:
-            raise NanonisProtocolError("Signals_NamesGet must return [size_bytes, count, names].")
-        return payload
+        typed_value = _coerce_scalar_value(value, value_type=spec.value_type)
+        command_args = dict(spec.set_cmd.args)
+        if spec.value_type == "bool":
+            command_args[spec.set_cmd.value_arg] = int(bool(typed_value))
+        elif spec.value_type == "int":
+            command_args[spec.set_cmd.value_arg] = int(typed_value)
+        elif spec.value_type == "float":
+            command_args[spec.set_cmd.value_arg] = float(typed_value)
+        else:
+            command_args[spec.set_cmd.value_arg] = str(typed_value)
 
-    def _execute_scalar_write(
-        self,
-        plan: WritePlan,
-        *,
-        command: str,
-        argument_name: str,
-    ) -> WriteExecutionReport:
-        def send_step(value: float) -> None:
-            _ = self._call(command, args={argument_name: float(value)})
-
-        return self._write_policy.execute_plan(plan, send_step=send_step)
+        _ = self._call(spec.set_cmd.command, args=command_args)
 
     def _run_guarded_scalar_write(
         self,
         *,
         operation: str,
         planner: Callable[[], WritePlan],
-        command: str,
-        argument_name: str,
+        sender: Callable[[float], None],
     ) -> WriteExecutionReport:
         try:
             plan = planner()
@@ -837,7 +517,7 @@ class QcodesNanonisSTM(Instrument):  # type: ignore[misc,unused-ignore]
             raise
 
         try:
-            report = self._execute_scalar_write(plan, command=command, argument_name=argument_name)
+            report = self._write_policy.execute_plan(plan, send_step=sender)
         except Exception as exc:
             self._append_write_audit(
                 operation=operation,
@@ -933,36 +613,115 @@ class QcodesNanonisSTM(Instrument):  # type: ignore[misc,unused-ignore]
         return payload[payload_index]
 
     @staticmethod
-    def _extract_scalar_value(response: Mapping[str, Any], *, command: str) -> Any:
-        return QcodesNanonisSTM._extract_payload_value(response, command=command, payload_index=0)
+    def _filter_specs(
+        all_specs: Mapping[str, ParameterSpec],
+        include_parameters: Sequence[str] | None,
+    ) -> dict[str, ParameterSpec]:
+        if include_parameters is None:
+            return dict(all_specs)
 
+        names = tuple(name.strip() for name in include_parameters if name.strip())
+        if not names:
+            raise ValueError("include_parameters must contain at least one non-empty name.")
 
-def _interpolate_scan_frame_steps(
-    *,
-    current: ScanFrameState,
-    target: ScanFrameState,
-    step_count: int,
-) -> tuple[ScanFrameState, ...]:
-    if step_count <= 0:
-        return (target,)
+        missing = [name for name in names if name not in all_specs]
+        if missing:
+            formatted = ", ".join(sorted(missing))
+            raise ValueError(f"Unknown parameters requested in include_parameters: {formatted}")
 
-    steps: list[ScanFrameState] = []
-    for step_index in range(1, step_count + 1):
-        fraction = step_index / step_count
-        steps.append(
-            ScanFrameState(
-                center_x_m=current.center_x_m + (target.center_x_m - current.center_x_m) * fraction,
-                center_y_m=current.center_y_m + (target.center_y_m - current.center_y_m) * fraction,
-                width_m=current.width_m + (target.width_m - current.width_m) * fraction,
-                height_m=current.height_m + (target.height_m - current.height_m) * fraction,
-                angle_deg=current.angle_deg + (target.angle_deg - current.angle_deg) * fraction,
+        return {name: all_specs[name] for name in names}
+
+    def _require_writable_spec(self, parameter_name: str) -> ParameterSpec:
+        spec = self.parameter_spec(parameter_name)
+        if spec.set_cmd is None:
+            raise ValueError(f"Parameter '{spec.name}' is not writable.")
+        if spec.safety is None:
+            raise ValueError(f"Parameter '{spec.name}' is missing safety settings.")
+        return spec
+
+    def _require_current_numeric_value(self, spec: ParameterSpec) -> float:
+        if spec.get_cmd is None:
+            raise ValueError(
+                f"Writable parameter '{spec.name}' must include get_cmd for guarded planning."
             )
+        return float(self.get_parameter_value(spec.name))
+
+
+def _build_channel_limits(
+    specs: Iterable[ParameterSpec],
+    *,
+    default_ramp_interval_s: float,
+) -> dict[str, ChannelLimit]:
+    limits: dict[str, ChannelLimit] = {}
+    for spec in specs:
+        if not spec.writable:
+            continue
+        if spec.safety is None:
+            raise ValueError(f"Writable parameter '{spec.name}' is missing safety configuration.")
+        limits[spec.name] = _channel_limit_from_safety(
+            spec.safety,
+            default_ramp_interval_s=default_ramp_interval_s,
         )
+    return limits
 
-    if steps[-1] != target:
-        steps[-1] = target
 
-    return tuple(steps)
+def _channel_limit_from_safety(
+    safety: SafetySpec,
+    *,
+    default_ramp_interval_s: float,
+) -> ChannelLimit:
+    return ChannelLimit(
+        min_value=float(safety.min_value),
+        max_value=float(safety.max_value),
+        max_step=float(safety.max_step),
+        max_slew_per_s=None if safety.max_slew_per_s is None else float(safety.max_slew_per_s),
+        cooldown_s=float(safety.cooldown_s),
+        ramp_interval_s=(
+            default_ramp_interval_s
+            if safety.ramp_interval_s is None
+            else float(safety.ramp_interval_s)
+        ),
+    )
+
+
+def _build_ramp_targets(*, start: float, end: float, step: float) -> tuple[float, ...]:
+    start_value = float(start)
+    end_value = float(end)
+    step_value = float(step)
+    if step_value <= 0:
+        raise ValueError("Ramp step must be positive.")
+
+    if math.isclose(start_value, end_value, rel_tol=0.0, abs_tol=1e-15):
+        return (end_value,)
+
+    direction = 1.0 if end_value > start_value else -1.0
+    signed_step = step_value * direction
+
+    targets: list[float] = []
+    current = start_value
+    for _ in range(1_000_000):
+        if (direction > 0 and current >= end_value) or (direction < 0 and current <= end_value):
+            targets.append(end_value)
+            break
+
+        targets.append(current)
+        current = current + signed_step
+    else:
+        raise ValueError("Ramp target generation exceeded safe iteration limit.")
+
+    deduped_targets: list[float] = []
+    for value in targets:
+        if not deduped_targets or not math.isclose(
+            value,
+            deduped_targets[-1],
+            rel_tol=0.0,
+            abs_tol=1.0e-15,
+        ):
+            deduped_targets.append(value)
+    if not math.isclose(deduped_targets[-1], end_value, rel_tol=0.0, abs_tol=1e-15):
+        deduped_targets.append(end_value)
+
+    return tuple(deduped_targets)
 
 
 def _args_hash(args: Mapping[str, Any] | None) -> str:
@@ -973,13 +732,19 @@ def _args_hash(args: Mapping[str, Any] | None) -> str:
     return hashlib.sha256(text.encode("utf-8")).hexdigest()[:16]
 
 
+def _state_value(value: Any) -> Any:
+    if isinstance(value, float):
+        return round(value, 15)
+    return value
+
+
 def _json_safe(value: Any) -> Any:
     if value is None:
         return None
     if isinstance(value, (str, int, float, bool)):
         return value
     if is_dataclass(value) and not isinstance(value, type):
-        return _json_safe(asdict(cast(Any, value)))
+        return _json_safe(asdict(value))
     if isinstance(value, Mapping):
         return {str(key): _json_safe(item) for key, item in value.items()}
     if isinstance(value, (list, tuple)):
@@ -999,11 +764,39 @@ def _coerce_scalar_value(value: Any, *, value_type: str) -> Any:
     raise ValueError(f"Unsupported scalar value type: {value_type}")
 
 
-def _validator_for_value_type(value_type: str) -> Any | None:
-    if value_type == "float":
-        return Numbers()
-    if value_type == "int":
-        return Ints()
-    if value_type == "bool":
+def _validator_for_spec(vals: ValidatorSpec | None, *, value_type: str) -> Any | None:
+    if vals is None:
+        if value_type == "float":
+            return Numbers()
+        if value_type == "int":
+            return Ints()
+        if value_type == "bool":
+            return Bool()
+        return None
+
+    if vals.kind == "numbers":
+        if vals.min_value is None and vals.max_value is None:
+            return Numbers()
+        if vals.min_value is None:
+            assert vals.max_value is not None
+            max_value = float(vals.max_value)
+            return Numbers(max_value=max_value)
+        if vals.max_value is None:
+            return Numbers(min_value=float(vals.min_value))
+        return Numbers(min_value=float(vals.min_value), max_value=float(vals.max_value))
+    if vals.kind == "ints":
+        min_int = None if vals.min_value is None else int(vals.min_value)
+        max_int = None if vals.max_value is None else int(vals.max_value)
+        if min_int is None and max_int is None:
+            return Ints()
+        if min_int is None:
+            assert max_int is not None
+            return Ints(max_value=max_int)
+        if max_int is None:
+            return Ints(min_value=min_int)
+        return Ints(min_value=min_int, max_value=max_int)
+    if vals.kind == "bool":
         return Bool()
+    if vals.kind == "enum":
+        return Enum(*vals.choices)
     return None

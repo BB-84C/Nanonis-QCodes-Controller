@@ -5,14 +5,10 @@ import time
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass, field
 
-from nanonis_qcodes_controller.config import SafetySettings, ScalarLimitSettings
+from nanonis_qcodes_controller.config import SafetySettings
 
 
 class PolicyViolation(ValueError):
-    pass
-
-
-class ConfirmationRequired(PolicyViolation):
     pass
 
 
@@ -23,20 +19,7 @@ class ChannelLimit:
     max_step: float
     max_slew_per_s: float | None = None
     cooldown_s: float = 0.0
-    require_confirmation: bool = False
     ramp_interval_s: float = 0.05
-
-    @classmethod
-    def from_settings(cls, settings: ScalarLimitSettings) -> ChannelLimit:
-        return cls(
-            min_value=settings.min,
-            max_value=settings.max,
-            max_step=settings.max_step,
-            max_slew_per_s=settings.max_slew_per_s,
-            cooldown_s=settings.cooldown_s,
-            require_confirmation=settings.require_confirmation,
-            ramp_interval_s=settings.ramp_interval_s,
-        )
 
 
 @dataclass(frozen=True)
@@ -66,15 +49,11 @@ class WriteExecutionReport:
     final_value: float
 
 
-ConfirmationHook = Callable[[str, float, float, str | None], bool]
-
-
 @dataclass
 class WritePolicy:
     allow_writes: bool = False
     dry_run: bool = True
     limits: Mapping[str, ChannelLimit] = field(default_factory=dict)
-    confirmation_hook: ConfirmationHook | None = None
     _last_write_at: dict[str, float] = field(default_factory=dict, init=False, repr=False)
 
     @classmethod
@@ -82,17 +61,12 @@ class WritePolicy:
         cls,
         settings: SafetySettings,
         *,
-        confirmation_hook: ConfirmationHook | None = None,
+        limits: Mapping[str, ChannelLimit] | None = None,
     ) -> WritePolicy:
-        limits = {
-            channel: ChannelLimit.from_settings(limit)
-            for channel, limit in sorted(settings.limits.items())
-        }
         return cls(
             allow_writes=settings.allow_writes,
             dry_run=settings.dry_run,
-            limits=limits,
-            confirmation_hook=confirmation_hook,
+            limits={} if limits is None else dict(limits),
         )
 
     def ensure_writes_enabled(self) -> None:
@@ -105,7 +79,6 @@ class WritePolicy:
         channel: str,
         current_value: float,
         target_value: float,
-        confirmed: bool = False,
         reason: str | None = None,
         now_s: float | None = None,
     ) -> WritePlan:
@@ -123,14 +96,6 @@ class WritePolicy:
 
         effective_now = time.monotonic() if now_s is None else now_s
         self._enforce_cooldown(channel=channel, limit=limit, now_s=effective_now)
-        self._enforce_confirmation(
-            channel=channel,
-            current_value=current,
-            target_value=target,
-            reason=reason,
-            confirmed=confirmed,
-            require_confirmation=limit.require_confirmation,
-        )
 
         steps = _build_steps(current=current, target=target, limit=limit)
         return WritePlan(
@@ -150,7 +115,6 @@ class WritePolicy:
         channel: str,
         current_value: float,
         target_value: float,
-        confirmed: bool = False,
         reason: str | None = None,
         now_s: float | None = None,
         interval_s: float | None = None,
@@ -169,14 +133,6 @@ class WritePolicy:
 
         effective_now = time.monotonic() if now_s is None else now_s
         self._enforce_cooldown(channel=channel, limit=limit, now_s=effective_now)
-        self._enforce_confirmation(
-            channel=channel,
-            current_value=current,
-            target_value=target,
-            reason=reason,
-            confirmed=confirmed,
-            require_confirmation=limit.require_confirmation,
-        )
 
         delta = target - current
         if abs(delta) > limit.max_step:
@@ -278,30 +234,6 @@ class WritePolicy:
             raise PolicyViolation(
                 f"Channel '{channel}' is in cooldown for another {remaining:.3f} s."
             )
-
-    def _enforce_confirmation(
-        self,
-        *,
-        channel: str,
-        current_value: float,
-        target_value: float,
-        reason: str | None,
-        confirmed: bool,
-        require_confirmation: bool,
-    ) -> None:
-        if not require_confirmation:
-            return
-        if confirmed:
-            return
-
-        if self.confirmation_hook is not None:
-            approved = self.confirmation_hook(channel, current_value, target_value, reason)
-            if approved:
-                return
-
-        raise ConfirmationRequired(
-            f"Channel '{channel}' requires confirmation before applying this write."
-        )
 
 
 def _build_steps(*, current: float, target: float, limit: ChannelLimit) -> tuple[float, ...]:

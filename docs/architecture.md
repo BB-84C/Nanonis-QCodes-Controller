@@ -24,11 +24,12 @@ flowchart LR
 
 ## Components
 - `nanonis_qcodes_controller/client`: transport client, backend registry, probe tools, normalized error mapping.
-- `nanonis_qcodes_controller/qcodes_driver`: QCodes instrument interface, guarded writes, and dynamic manifest-based read parameter extension.
-- `nanonis_qcodes_controller/cli.py`: agent-facing CLI contract (`nqctl`) for capabilities/read/write/manifest/trajectory workflows.
-- `nanonis_qcodes_controller/safety`: write policy engine (gate, bounds, ramp/slew, cooldown, confirmation).
+- `nanonis_qcodes_controller/qcodes_driver`: QCodes instrument interface with generic spec-driven parameter registration and guarded writes.
+- `nanonis_qcodes_controller/cli.py`: agent-facing CLI contract (`nqctl`) for capabilities/read/write/ramp/parameter-file/trajectory workflows.
+- `nanonis_qcodes_controller/safety`: write policy engine (gate, bounds, ramp/slew, cooldown).
 - `nanonis_qcodes_controller/trajectory`: non-blocking event journal and readers.
-- `scripts/`: operator and diagnostics tools (`probe_nanonis.py`, `bridge_doctor.py`, sweep demos).
+- `scripts/`: diagnostics and parameter-authoring helpers (`bridge_doctor.py`, `trajectory_reader.py`, `scaffold_extension_manifest.py`).
+- `tests/`: automated tests plus manual probe/demo helpers (`probe_nanonis.py`, `read_client_demo.py`, `guarded_write_demo.py`).
 
 ## Design properties
 - Single in-flight command path in transport client to avoid protocol contention.
