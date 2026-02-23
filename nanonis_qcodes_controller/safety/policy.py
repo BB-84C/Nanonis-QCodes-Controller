@@ -14,12 +14,12 @@ class PolicyViolation(ValueError):
 
 @dataclass(frozen=True)
 class ChannelLimit:
-    min_value: float
-    max_value: float
-    max_step: float
+    min_value: float | None
+    max_value: float | None
+    max_step: float | None
     max_slew_per_s: float | None = None
-    cooldown_s: float = 0.0
-    ramp_interval_s: float = 0.05
+    cooldown_s: float | None = 0.0
+    ramp_interval_s: float | None = 0.05
 
 
 @dataclass(frozen=True)
@@ -88,7 +88,12 @@ class WritePolicy:
         current = float(current_value)
         target = float(target_value)
 
-        if target < limit.min_value or target > limit.max_value:
+        if limit.min_value is not None and target < limit.min_value:
+            raise PolicyViolation(
+                f"Channel '{channel}' target {target} is outside bounds "
+                f"[{limit.min_value}, {limit.max_value}]."
+            )
+        if limit.max_value is not None and target > limit.max_value:
             raise PolicyViolation(
                 f"Channel '{channel}' target {target} is outside bounds "
                 f"[{limit.min_value}, {limit.max_value}]."
@@ -98,13 +103,14 @@ class WritePolicy:
         self._enforce_cooldown(channel=channel, limit=limit, now_s=effective_now)
 
         steps = _build_steps(current=current, target=target, limit=limit)
+        ramp_interval_s = 0.0 if limit.ramp_interval_s is None else float(limit.ramp_interval_s)
         return WritePlan(
             channel=channel,
             current_value=current,
             target_value=target,
             bounded_target=target,
             steps=steps,
-            interval_s=limit.ramp_interval_s,
+            interval_s=ramp_interval_s,
             dry_run=self.dry_run,
             reason=reason,
         )
@@ -125,7 +131,12 @@ class WritePolicy:
         current = float(current_value)
         target = float(target_value)
 
-        if target < limit.min_value or target > limit.max_value:
+        if limit.min_value is not None and target < limit.min_value:
+            raise PolicyViolation(
+                f"Channel '{channel}' target {target} is outside bounds "
+                f"[{limit.min_value}, {limit.max_value}]."
+            )
+        if limit.max_value is not None and target > limit.max_value:
             raise PolicyViolation(
                 f"Channel '{channel}' target {target} is outside bounds "
                 f"[{limit.min_value}, {limit.max_value}]."
@@ -135,13 +146,14 @@ class WritePolicy:
         self._enforce_cooldown(channel=channel, limit=limit, now_s=effective_now)
 
         delta = target - current
-        if abs(delta) > limit.max_step:
+        if limit.max_step is not None and abs(delta) > limit.max_step:
             raise PolicyViolation(
                 f"Single-step write for channel '{channel}' exceeds max_step={limit.max_step}. "
                 f"Requested delta={abs(delta)}. Use a ramp operation for larger moves."
             )
 
-        effective_interval_s = limit.ramp_interval_s if interval_s is None else float(interval_s)
+        default_interval_s = 0.0 if limit.ramp_interval_s is None else float(limit.ramp_interval_s)
+        effective_interval_s = default_interval_s if interval_s is None else float(interval_s)
         if effective_interval_s < 0:
             raise PolicyViolation("interval_s must be non-negative for single-step writes.")
 
@@ -222,7 +234,7 @@ class WritePolicy:
         return limit
 
     def _enforce_cooldown(self, *, channel: str, limit: ChannelLimit, now_s: float) -> None:
-        if limit.cooldown_s <= 0:
+        if limit.cooldown_s is None or limit.cooldown_s <= 0:
             return
         last_time = self._last_write_at.get(channel)
         if last_time is None:
@@ -241,14 +253,18 @@ def _build_steps(*, current: float, target: float, limit: ChannelLimit) -> tuple
     if delta == 0:
         return (target,)
 
-    step_count = max(1, math.ceil(abs(delta) / limit.max_step))
+    if limit.max_step is None:
+        step_count = 1
+    else:
+        step_count = max(1, math.ceil(abs(delta) / limit.max_step))
 
     if limit.max_slew_per_s is not None:
-        if limit.ramp_interval_s <= 0:
+        ramp_interval_s = 0.0 if limit.ramp_interval_s is None else float(limit.ramp_interval_s)
+        if ramp_interval_s <= 0:
             raise PolicyViolation(
                 "ramp_interval_s must be positive when max_slew_per_s is configured."
             )
-        slew_step_size = limit.max_slew_per_s * limit.ramp_interval_s
+        slew_step_size = limit.max_slew_per_s * ramp_interval_s
         step_count = max(step_count, math.ceil(abs(delta) / slew_step_size))
 
     increment = delta / step_count

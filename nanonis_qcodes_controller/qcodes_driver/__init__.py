@@ -1,7 +1,6 @@
 from .extensions import (
     ParameterSpec,
     ScalarParameterSpec,
-    load_parameter_spec_bundle,
     load_parameter_specs,
     load_scalar_parameter_specs,
 )
@@ -12,6 +11,5 @@ __all__ = [
     "ParameterSpec",
     "ScalarParameterSpec",
     "load_parameter_specs",
-    "load_parameter_spec_bundle",
     "load_scalar_parameter_specs",
 ]

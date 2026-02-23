@@ -17,8 +17,6 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-import yaml
-
 from nanonis_qcodes_controller.client import create_client, probe_host_ports, report_to_dict
 from nanonis_qcodes_controller.client.errors import (
     NanonisCommandUnavailableError,
@@ -29,9 +27,7 @@ from nanonis_qcodes_controller.client.errors import (
 )
 from nanonis_qcodes_controller.config import load_settings
 from nanonis_qcodes_controller.qcodes_driver.extensions import (
-    DEFAULT_EXTRA_PARAMETERS_FILE,
     DEFAULT_PARAMETERS_FILE,
-    load_parameter_spec_bundle,
     load_parameter_specs,
 )
 from nanonis_qcodes_controller.safety import PolicyViolation
@@ -100,13 +96,6 @@ _ACTION_DESCRIPTORS: tuple[ActionDescriptor, ...] = (
         description="Discover backend commands for parameter authoring.",
         command_template="nqctl parameters discover --match LockIn",
         arguments=("match",),
-    ),
-    ActionDescriptor(
-        name="parameters_scaffold",
-        safety="readonly",
-        description="Scaffold extra parameter file from command list.",
-        command_template="nqctl parameters scaffold --match LockIn --output config/extra_parameters.yaml",
-        arguments=("match", "output"),
     ),
     ActionDescriptor(
         name="trajectory_tail",
@@ -297,30 +286,6 @@ def _build_parser() -> argparse.ArgumentParser:
         "--limit", type=int, default=0, help="Max results (0 means all)."
     )
     parser_parameters_discover.set_defaults(handler=_cmd_parameters_discover)
-
-    parser_parameters_scaffold = parameters_subparsers.add_parser(
-        "scaffold",
-        help="Scaffold extra parameter file YAML.",
-    )
-    _add_json_arg(parser_parameters_scaffold)
-    parser_parameters_scaffold.add_argument(
-        "--match", default="", help="Case-insensitive regex token."
-    )
-    parser_parameters_scaffold.add_argument(
-        "--output",
-        type=Path,
-        default=DEFAULT_EXTRA_PARAMETERS_FILE,
-        help="Output path for generated extra parameters file.",
-    )
-    parser_parameters_scaffold.add_argument(
-        "--include-non-get",
-        action="store_true",
-        help="Include non-Get commands (usually not recommended).",
-    )
-    parser_parameters_scaffold.add_argument(
-        "--limit", type=int, default=0, help="Max commands (0 means all)."
-    )
-    parser_parameters_scaffold.set_defaults(handler=_cmd_parameters_scaffold)
 
     parser_parameters_validate = parameters_subparsers.add_parser(
         "validate",
@@ -523,11 +488,6 @@ def _add_runtime_args(parser: argparse.ArgumentParser, *, include_trajectory: bo
         default=str(DEFAULT_PARAMETERS_FILE),
         help=f"Built-in parameter YAML (default: {DEFAULT_PARAMETERS_FILE}).",
     )
-    parser.add_argument(
-        "--extra-parameters-file",
-        default=None,
-        help="Optional extra parameter YAML file.",
-    )
     if include_trajectory:
         parser.add_argument("--trajectory-enable", action="store_true")
         parser.add_argument("--trajectory-dir", help="Trajectory directory override.")
@@ -554,7 +514,6 @@ def _add_json_arg(parser: argparse.ArgumentParser) -> None:
 
 def _cmd_capabilities(args: argparse.Namespace) -> int:
     settings = load_settings(config_file=args.config_file)
-    resolved_extra_parameters = _resolve_extra_parameters_file(args)
     with _instrument_context(args, auto_connect=False) as instrument_ctx:
         instrument, _ = instrument_ctx
         observables = _collect_observables(instrument)
@@ -568,14 +527,7 @@ def _cmd_capabilities(args: argparse.Namespace) -> int:
             "dry_run": settings.safety.dry_run,
             "default_ramp_interval_s": settings.safety.default_ramp_interval_s,
         },
-        "parameter_files": {
-            "default": str(Path(args.parameters_file).expanduser()),
-            "extra": (
-                None
-                if resolved_extra_parameters is None
-                else str(Path(resolved_extra_parameters).expanduser())
-            ),
-        },
+        "parameter_files": {"parameters": str(Path(args.parameters_file).expanduser())},
     }
 
     if args.include_backend_commands:
@@ -759,32 +711,6 @@ def _cmd_parameters_discover(args: argparse.Namespace) -> int:
         "match": args.match,
         "count": len(commands),
         "commands": [asdict(item) for item in commands],
-    }
-    _print_payload(payload, as_json=args.json)
-    return EXIT_OK
-
-
-def _cmd_parameters_scaffold(args: argparse.Namespace) -> int:
-    commands = list(_discover_nanonis_spm_commands(args.match))
-    if args.limit > 0:
-        commands = commands[: args.limit]
-
-    payload_mapping = _build_parameter_scaffold(
-        commands,
-        include_non_get=bool(args.include_non_get),
-        match=args.match,
-    )
-
-    output_path = Path(args.output).expanduser()
-    output_path.parent.mkdir(parents=True, exist_ok=True)
-    with output_path.open("w", encoding="utf-8") as handle:
-        yaml.safe_dump(payload_mapping, handle, sort_keys=False)
-
-    payload = {
-        "output": str(output_path),
-        "parameters": len(payload_mapping.get("parameters", {})),
-        "match": args.match,
-        "include_non_get": bool(args.include_non_get),
     }
     _print_payload(payload, as_json=args.json)
     return EXIT_OK
@@ -1201,7 +1127,6 @@ def _instrument_context(
             name=f"nqctl_{int(time.time() * 1000)}",
             config_file=args.config_file,
             parameters_file=args.parameters_file,
-            extra_parameters_file=_resolve_extra_parameters_file(args),
             include_parameters=include_parameters,
             trajectory_journal=trajectory_journal,
             auto_connect=auto_connect,
@@ -1251,28 +1176,8 @@ def _parse_label_csv(raw_labels: str) -> tuple[str, ...]:
 
 
 def _load_monitor_parameter_specs(args: argparse.Namespace) -> tuple[Any, ...]:
-    merged_specs = load_parameter_spec_bundle(
-        default_parameters_file=args.parameters_file,
-        extra_parameters_file=_resolve_extra_parameters_file(args),
-    )
-    return tuple(merged_specs[name] for name in sorted(merged_specs))
-
-
-def _resolve_extra_parameters_file(args: argparse.Namespace) -> str | None:
-    explicit_extra = getattr(args, "extra_parameters_file", None)
-    if explicit_extra is not None:
-        text = str(explicit_extra).strip()
-        if text:
-            return text
-
-    parameters_file = Path(
-        str(getattr(args, "parameters_file", DEFAULT_PARAMETERS_FILE))
-    ).expanduser()
-    default_parameters_file = DEFAULT_PARAMETERS_FILE.expanduser()
-    default_extra_file = DEFAULT_EXTRA_PARAMETERS_FILE.expanduser()
-    if parameters_file == default_parameters_file and default_extra_file.is_file():
-        return str(default_extra_file)
-    return None
+    specs = load_parameter_specs(args.parameters_file)
+    return tuple(spec for spec in sorted(specs, key=lambda item: item.name))
 
 
 def _require_monitor_label(by_label: Mapping[str, Any], label: str, *, field_name: str) -> Any:
@@ -1363,71 +1268,6 @@ def _discover_nanonis_spm_commands(match_pattern: str) -> tuple[DiscoveredComman
 
     discovered.sort(key=lambda entry: entry.command)
     return tuple(discovered)
-
-
-def _build_parameter_scaffold(
-    command_specs: Sequence[DiscoveredCommand],
-    *,
-    include_non_get: bool,
-    match: str,
-) -> dict[str, Any]:
-    selected = (
-        list(command_specs)
-        if include_non_get
-        else [spec for spec in command_specs if spec.command.endswith("Get")]
-    )
-
-    parameters: dict[str, Any] = {}
-    for spec in selected:
-        parameter_name = _derive_parameter_name(spec.command)
-        parameter_entry: dict[str, Any] = {
-            "label": parameter_name,
-            "unit": "",
-            "type": _guess_value_type(spec.command),
-            "get_cmd": {
-                "command": spec.command,
-                "payload_index": 0,
-                "args": {argument_name: None for argument_name in spec.arguments},
-            },
-            "set_cmd": False,
-        }
-        parameters[parameter_name] = parameter_entry
-
-    return {
-        "version": 1,
-        "defaults": {
-            "snapshot_value": True,
-            "ramp_default_interval_s": 0.05,
-        },
-        "meta": {
-            "generated_by": "nqctl parameters scaffold",
-            "generated_at_utc": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
-            "source_package": f"nanonis-spm/{_installed_package_version('nanonis-spm')}",
-            "match": match,
-            "include_non_get": include_non_get,
-        },
-        "parameters": parameters,
-    }
-
-
-def _derive_parameter_name(command_name: str) -> str:
-    name = re.sub(r"[^A-Za-z0-9]+", "_", command_name).strip("_").lower()
-    if name.endswith("_get"):
-        name = name[:-4]
-    elif name.endswith("get"):
-        name = name[:-3]
-    if not name:
-        raise ValueError(f"Cannot derive parameter name from command '{command_name}'.")
-    return name
-
-
-def _guess_value_type(command_name: str) -> str:
-    lowered = command_name.lower()
-    if "onoffget" in lowered:
-        return "bool"
-    if "statusget" in lowered:
-        return "int"
-    return "float"
 
 
 def _installed_package_version(package_name: str) -> str:

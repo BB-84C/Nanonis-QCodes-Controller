@@ -50,7 +50,7 @@ It also includes a non-blocking trajectory journal so agents can read operation 
 2. `qcodes_driver/`: QCodes instrument and parameter mapping
 3. `safety/`: write policy, bounds, ramps/slew limits, dry-run gating
 4. `config/`: YAML and env-based runtime config
-5. `scripts/`: diagnostics and authoring helpers (`bridge_doctor.py`, `trajectory_reader.py`, `scaffold_extension_manifest.py`)
+5. `scripts/`: diagnostics and authoring helpers (`bridge_doctor.py`, `trajectory_reader.py`, `generate_parameters_manifest.py`)
 6. `tests/`: unit and simulator integration suites
 7. `trajectory/`: append-only event journal, transition detection, follow/replay API
 

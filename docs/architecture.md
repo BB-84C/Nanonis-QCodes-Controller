@@ -28,7 +28,7 @@ flowchart LR
 - `nanonis_qcodes_controller/cli.py`: agent-facing CLI contract (`nqctl`) for capabilities/read/write/ramp/parameter-file/trajectory workflows.
 - `nanonis_qcodes_controller/safety`: write policy engine (gate, bounds, ramp/slew, cooldown).
 - `nanonis_qcodes_controller/trajectory`: non-blocking event journal and readers.
-- `scripts/`: diagnostics and parameter-authoring helpers (`bridge_doctor.py`, `trajectory_reader.py`, `scaffold_extension_manifest.py`).
+- `scripts/`: diagnostics and parameter-manifest tooling (`bridge_doctor.py`, `trajectory_reader.py`, `generate_parameters_manifest.py`).
 - `tests/`: automated tests plus manual probe/demo helpers (`probe_nanonis.py`, `read_client_demo.py`, `guarded_write_demo.py`).
 
 ## Design properties

@@ -25,7 +25,13 @@ from nanonis_qcodes_controller.safety import (
 )
 from nanonis_qcodes_controller.trajectory import TrajectoryJournal, TrajectoryStats
 
-from .extensions import ParameterSpec, SafetySpec, ValidatorSpec, load_parameter_spec_bundle
+from .extensions import (
+    DEFAULT_PARAMETERS_FILE,
+    ParameterSpec,
+    SafetySpec,
+    ValidatorSpec,
+    load_parameter_specs,
+)
 
 
 @dataclass(frozen=True)
@@ -77,7 +83,6 @@ class QcodesNanonisSTM(Instrument):  # type: ignore[misc,unused-ignore]
         client: NanonisClient | None = None,
         config_file: str | Path | None = None,
         parameters_file: str | Path | None = None,
-        extra_parameters_file: str | Path | None = None,
         include_parameters: Sequence[str] | None = None,
         write_policy: WritePolicy | None = None,
         trajectory_journal: TrajectoryJournal | None = None,
@@ -100,10 +105,10 @@ class QcodesNanonisSTM(Instrument):  # type: ignore[misc,unused-ignore]
         else:
             self._client = client
 
-        all_specs = load_parameter_spec_bundle(
-            default_parameters_file=parameters_file,
-            extra_parameters_file=extra_parameters_file,
+        parameter_manifest = (
+            DEFAULT_PARAMETERS_FILE if parameters_file is None else Path(parameters_file)
         )
+        all_specs = {spec.name: spec for spec in load_parameter_specs(parameter_manifest)}
         self._parameter_specs = self._filter_specs(all_specs, include_parameters)
 
         if write_policy is None:
@@ -676,11 +681,11 @@ def _channel_limit_from_safety(
     default_ramp_interval_s: float,
 ) -> ChannelLimit:
     return ChannelLimit(
-        min_value=float(safety.min_value),
-        max_value=float(safety.max_value),
-        max_step=float(safety.max_step),
+        min_value=None if safety.min_value is None else float(safety.min_value),
+        max_value=None if safety.max_value is None else float(safety.max_value),
+        max_step=None if safety.max_step is None else float(safety.max_step),
         max_slew_per_s=None if safety.max_slew_per_s is None else float(safety.max_slew_per_s),
-        cooldown_s=float(safety.cooldown_s),
+        cooldown_s=None if safety.cooldown_s is None else float(safety.cooldown_s),
         ramp_interval_s=(
             default_ramp_interval_s
             if safety.ramp_interval_s is None

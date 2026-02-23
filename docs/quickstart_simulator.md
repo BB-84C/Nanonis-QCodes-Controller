@@ -20,7 +20,7 @@ python -m pip install -e .[dev,qcodes,nanonis]
 ## 2) Configure
 - Copy `.env.example` to `.env`.
 - Keep defaults for simulator-first testing unless your host/ports differ.
-- Optional: tune runtime policy in `config/default_runtime.yaml` and parameter safety in `config/default_parameters.yaml`.
+- Optional: tune runtime policy in `config/default_runtime.yaml` and parameter safety in `config/parameters.yaml`.
 
 ## 3) Connectivity checks
 

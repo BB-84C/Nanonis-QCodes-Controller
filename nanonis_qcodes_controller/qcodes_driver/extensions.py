@@ -7,8 +7,7 @@ from typing import Any, Literal, cast
 
 import yaml
 
-DEFAULT_PARAMETERS_FILE = Path("config/default_parameters.yaml")
-DEFAULT_EXTRA_PARAMETERS_FILE = Path("config/extra_parameters.yaml")
+DEFAULT_PARAMETERS_FILE = Path("config/parameters.yaml")
 
 ScalarValueType = Literal["float", "int", "bool", "str"]
 ValidatorKind = Literal["numbers", "ints", "bool", "enum", "none"]
@@ -22,6 +21,7 @@ class ReadCommandSpec:
     command: str
     payload_index: int = 0
     args: Mapping[str, Any] = field(default_factory=dict)
+    description: str = ""
 
 
 @dataclass(frozen=True)
@@ -29,6 +29,7 @@ class WriteCommandSpec:
     command: str
     value_arg: str
     args: Mapping[str, Any] = field(default_factory=dict)
+    description: str = ""
 
 
 @dataclass(frozen=True)
@@ -41,11 +42,11 @@ class ValidatorSpec:
 
 @dataclass(frozen=True)
 class SafetySpec:
-    min_value: float
-    max_value: float
-    max_step: float
+    min_value: float | None
+    max_value: float | None
+    max_step: float | None
     max_slew_per_s: float | None = None
-    cooldown_s: float = 0.0
+    cooldown_s: float | None = None
     ramp_enabled: bool = True
     ramp_interval_s: float | None = None
 
@@ -61,6 +62,7 @@ class ParameterSpec:
     vals: ValidatorSpec | None
     safety: SafetySpec | None
     snapshot_value: bool = True
+    description: str = ""
 
     @property
     def readable(self) -> bool:
@@ -69,36 +71,6 @@ class ParameterSpec:
     @property
     def writable(self) -> bool:
         return self.set_cmd is not None
-
-
-def load_parameter_spec_bundle(
-    *,
-    default_parameters_file: str | Path | None = None,
-    extra_parameters_file: str | Path | None = None,
-) -> dict[str, ParameterSpec]:
-    default_file = (
-        DEFAULT_PARAMETERS_FILE
-        if default_parameters_file is None
-        else Path(default_parameters_file)
-    )
-    default_specs = load_parameter_specs(default_file)
-    merged: dict[str, ParameterSpec] = {spec.name: spec for spec in default_specs}
-
-    extra_file = None if extra_parameters_file is None else Path(extra_parameters_file)
-
-    if extra_file is None:
-        return merged
-
-    extra_specs = load_parameter_specs(extra_file)
-    for spec in extra_specs:
-        if spec.name in merged:
-            raise ValueError(
-                f"Extra parameter '{spec.name}' collides with a built-in parameter. "
-                "Extra file is add-only."
-            )
-        merged[spec.name] = spec
-
-    return merged
 
 
 def load_parameter_specs(parameter_file: str | Path) -> tuple[ParameterSpec, ...]:
@@ -134,6 +106,7 @@ def _parse_parameter_spec(
 ) -> ParameterSpec:
     label = str(mapping.get("label", name)).strip() or name
     unit = str(mapping.get("unit", "")).strip()
+    description = str(mapping.get("description", "")).strip()
 
     raw_value_type = mapping.get("value_type", mapping.get("type", "float"))
     value_type_text = str(raw_value_type).strip().lower()
@@ -173,6 +146,7 @@ def _parse_parameter_spec(
         name=name,
         label=label,
         unit=unit,
+        description=description,
         value_type=value_type,
         get_cmd=get_cmd,
         set_cmd=set_cmd,
@@ -192,7 +166,13 @@ def _parse_read_command(value: Any, *, context: str) -> ReadCommandSpec | None:
     if payload_index < 0:
         raise ValueError(f"{context}.payload_index must be non-negative.")
     args = _as_mapping(mapping.get("args"), context=f"{context}.args")
-    return ReadCommandSpec(command=command, payload_index=payload_index, args=dict(args))
+    description = str(mapping.get("description", "")).strip()
+    return ReadCommandSpec(
+        command=command,
+        payload_index=payload_index,
+        args=dict(args),
+        description=description,
+    )
 
 
 def _parse_write_command(value: Any, *, context: str) -> WriteCommandSpec | None:
@@ -203,7 +183,13 @@ def _parse_write_command(value: Any, *, context: str) -> WriteCommandSpec | None
     command = _parse_required_string(mapping.get("command"), field_name=f"{context}.command")
     value_arg = _parse_required_string(mapping.get("value_arg"), field_name=f"{context}.value_arg")
     args = _as_mapping(mapping.get("args"), context=f"{context}.args")
-    return WriteCommandSpec(command=command, value_arg=value_arg, args=dict(args))
+    description = str(mapping.get("description", "")).strip()
+    return WriteCommandSpec(
+        command=command,
+        value_arg=value_arg,
+        args=dict(args),
+        description=description,
+    )
 
 
 def _parse_vals(value: Any, *, value_type: ScalarValueType, context: str) -> ValidatorSpec | None:
@@ -266,15 +252,12 @@ def _parse_safety(
     max_value_raw = mapping.get("max", max_default)
     max_step_raw = mapping.get("max_step", max_step_default)
 
-    if min_value_raw is None or max_value_raw is None or max_step_raw is None:
-        raise ValueError(f"{context} must include min, max, and max_step for writable parameters.")
-
-    min_value = float(min_value_raw)
-    max_value = float(max_value_raw)
-    max_step = float(max_step_raw)
-    if max_value <= min_value:
+    min_value = None if min_value_raw is None else float(min_value_raw)
+    max_value = None if max_value_raw is None else float(max_value_raw)
+    max_step = None if max_step_raw is None else float(max_step_raw)
+    if min_value is not None and max_value is not None and max_value <= min_value:
         raise ValueError(f"{context}.max must be > min.")
-    if max_step <= 0:
+    if max_step is not None and max_step <= 0:
         raise ValueError(f"{context}.max_step must be positive.")
 
     max_slew_raw = mapping.get("max_slew_per_s")
@@ -282,8 +265,12 @@ def _parse_safety(
     if max_slew_per_s is not None and max_slew_per_s <= 0:
         raise ValueError(f"{context}.max_slew_per_s must be positive when provided.")
 
-    cooldown_s = float(mapping.get("cooldown_s", 0.0))
-    if cooldown_s < 0:
+    if "cooldown_s" in mapping:
+        cooldown_s_raw = mapping.get("cooldown_s")
+    else:
+        cooldown_s_raw = 0.0
+    cooldown_s = None if cooldown_s_raw is None else float(cooldown_s_raw)
+    if cooldown_s is not None and cooldown_s < 0:
         raise ValueError(f"{context}.cooldown_s must be non-negative.")
 
     if "require_confirmation" in mapping:
@@ -296,8 +283,10 @@ def _parse_safety(
         mapping.get("ramp_enabled", True), field_name=f"{context}.ramp_enabled"
     )
 
-    default_interval = defaults.get("ramp_default_interval_s")
-    ramp_interval_raw = mapping.get("ramp_interval_s", default_interval)
+    if "ramp_interval_s" in mapping:
+        ramp_interval_raw = mapping.get("ramp_interval_s")
+    else:
+        ramp_interval_raw = defaults.get("ramp_default_interval_s")
     ramp_interval_s = None if ramp_interval_raw is None else float(ramp_interval_raw)
     if ramp_interval_s is not None and ramp_interval_s <= 0:
         raise ValueError(f"{context}.ramp_interval_s must be positive when provided.")

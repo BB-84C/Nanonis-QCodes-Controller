@@ -30,8 +30,8 @@ python -m pip install ".[nanonis]"
 
 1. Optionally copy `.env.example` to `.env`.
 2. Set runtime values in `config/default_runtime.yaml`.
-3. Built-in parameter specs are in `config/default_parameters.yaml`.
-4. Optional lab-specific parameter specs can be added in `config/extra_parameters.yaml`.
+3. Unified parameter specs are in `config/parameters.yaml`.
+4. Regenerate from `nanonis_spm.Nanonis` with `scripts/generate_parameters_manifest.py`.
 5. Trajectory monitor defaults are in `config/default_trajectory_monitor.yaml`.
 
 Runtime config controls host, candidate ports, timeout, backend, write policy, and trajectory settings.
@@ -119,16 +119,16 @@ Discover candidate backend commands:
 nqctl parameters discover --match LockIn
 ```
 
-Scaffold an extra parameter file:
+Regenerate the unified parameter manifest:
 
 ```powershell
-nqctl parameters scaffold --match LockIn --output config/extra_parameters.yaml
+python scripts/generate_parameters_manifest.py --output config/parameters.yaml
 ```
 
 Validate parameter YAML:
 
 ```powershell
-nqctl parameters validate --file config/extra_parameters.yaml
+nqctl parameters validate --file config/parameters.yaml
 ```
 
 ## QCodes usage

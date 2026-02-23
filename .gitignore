@@ -21,3 +21,8 @@ tests/**
 !tests/test_trajectory_monitor_actions.py
 !tests/test_cli_trajectory_monitor.py
 !tests/test_cli_trajectory_actions.py
+!tests/test_cli.py
+!tests/test_qcodes_extensions.py
+!tests/test_safety_policy.py
+!tests/test_parameter_manifest_generator.py
+!tests/test_docs_parameters_manifest.py

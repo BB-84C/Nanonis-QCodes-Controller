@@ -14,8 +14,7 @@ Expose a small, stable command surface that orchestration agents can call direct
 
 ## Parameter-file commands
 - `nqctl parameters discover --match LockIn`
-- `nqctl parameters scaffold --match LockIn --output config/extra_parameters.yaml`
-- `nqctl parameters validate --file config/extra_parameters.yaml`
+- `nqctl parameters validate --file config/parameters.yaml`
 
 ## Trajectory commands
 Legacy JSONL readers are still available:
@@ -55,7 +54,7 @@ Monitor config requirements and defaults:
 ## Notes for orchestration agents
 - JSON output is the default format; use `--text` when needed.
 - Use `capabilities` once at task start to learn available parameters and actions.
-- Use `parameters` commands to add observables without code edits.
+- Use `scripts/generate_parameters_manifest.py` to refresh `config/parameters.yaml` from `nanonis_spm.Nanonis`.
 - `set` never auto-ramps; use `ramp` for stepped trajectories.
 - Keep sequencing logic in orchestration layer; `nqctl` exposes atomic operations.
 - For monitor runs, stage `run_name` first via `trajectory monitor config set`.
