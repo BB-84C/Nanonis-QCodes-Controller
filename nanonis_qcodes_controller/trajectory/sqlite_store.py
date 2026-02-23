@@ -16,17 +16,14 @@ class TrajectorySQLiteStore:
 
     def initialize_schema(self) -> None:
         with self._connection:
-            self._connection.execute(
-                """
+            self._connection.execute("""
                 CREATE TABLE IF NOT EXISTS runs (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     run_name TEXT NOT NULL UNIQUE,
                     started_at_utc TEXT NOT NULL
                 )
-                """
-            )
-            self._connection.execute(
-                """
+                """)
+            self._connection.execute("""
                 CREATE TABLE IF NOT EXISTS signal_catalog (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     run_id INTEGER NOT NULL,
@@ -36,10 +33,8 @@ class TrajectorySQLiteStore:
                     FOREIGN KEY(run_id) REFERENCES runs(id),
                     UNIQUE(id, run_id)
                 )
-                """
-            )
-            self._connection.execute(
-                """
+                """)
+            self._connection.execute("""
                 CREATE TABLE IF NOT EXISTS spec_catalog (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     run_id INTEGER NOT NULL,
@@ -49,10 +44,8 @@ class TrajectorySQLiteStore:
                     FOREIGN KEY(run_id) REFERENCES runs(id),
                     UNIQUE(id, run_id)
                 )
-                """
-            )
-            self._connection.execute(
-                """
+                """)
+            self._connection.execute("""
                 CREATE TABLE IF NOT EXISTS signal_samples (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     run_id INTEGER NOT NULL,
@@ -62,10 +55,8 @@ class TrajectorySQLiteStore:
                     FOREIGN KEY(run_id) REFERENCES runs(id),
                     FOREIGN KEY(signal_id, run_id) REFERENCES signal_catalog(id, run_id)
                 )
-                """
-            )
-            self._connection.execute(
-                """
+                """)
+            self._connection.execute("""
                 CREATE TABLE IF NOT EXISTS spec_samples (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     run_id INTEGER NOT NULL,
@@ -75,10 +66,8 @@ class TrajectorySQLiteStore:
                     FOREIGN KEY(run_id) REFERENCES runs(id),
                     FOREIGN KEY(spec_id, run_id) REFERENCES spec_catalog(id, run_id)
                 )
-                """
-            )
-            self._connection.execute(
-                """
+                """)
+            self._connection.execute("""
                 CREATE TABLE IF NOT EXISTS action_events (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     run_id INTEGER NOT NULL,
@@ -93,16 +82,14 @@ class TrajectorySQLiteStore:
                     new_value_json TEXT,
                     FOREIGN KEY(run_id) REFERENCES runs(id)
                 )
-                """
-            )
+                """)
             action_columns = {
                 str(row["name"])
                 for row in self._connection.execute("PRAGMA table_info(action_events)").fetchall()
             }
             if "delta_value" not in action_columns:
                 self._connection.execute("ALTER TABLE action_events ADD COLUMN delta_value REAL")
-            self._connection.execute(
-                """
+            self._connection.execute("""
                 CREATE TABLE IF NOT EXISTS monitor_errors (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     run_id INTEGER,
@@ -112,17 +99,14 @@ class TrajectorySQLiteStore:
                     details_json TEXT,
                     FOREIGN KEY(run_id) REFERENCES runs(id)
                 )
-                """
-            )
+                """)
 
     def table_names(self) -> set[str]:
-        cursor = self._connection.execute(
-            """
+        cursor = self._connection.execute("""
             SELECT name
             FROM sqlite_master
             WHERE type = 'table' AND name NOT LIKE 'sqlite_%'
-            """
-        )
+            """)
         return {str(row["name"]) for row in cursor.fetchall()}
 
     def close(self) -> None:
@@ -295,13 +279,11 @@ class TrajectorySQLiteStore:
 
     def list_action_events(self, *, run_id: int | None = None) -> list[dict[str, Any]]:
         if run_id is None:
-            cursor = self._connection.execute(
-                """
+            cursor = self._connection.execute("""
                 SELECT *
                 FROM action_events
                 ORDER BY run_id ASC, dt_s ASC, id ASC
-                """
-            )
+                """)
         else:
             cursor = self._connection.execute(
                 """
