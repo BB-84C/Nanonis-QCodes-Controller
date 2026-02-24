@@ -129,7 +129,7 @@ def test_capabilities_includes_parameter_specs_for_agents(monkeypatch) -> None:
     assert isinstance(items, list)
     parameter = items[0]
     assert parameter["name"] == "bias_v"
-    assert parameter["description"] == "Tip-sample bias voltage."
+    assert "description" not in parameter
     assert parameter["get_cmd"]["command"] == "Bias.Get"
     assert parameter["get_cmd"]["description"] == "Read configured bias voltage."
     assert parameter["get_cmd"]["args"] == {"channel": 1}
@@ -139,7 +139,7 @@ def test_capabilities_includes_parameter_specs_for_agents(monkeypatch) -> None:
     assert parameter["vals"]["kind"] == "numbers"
 
 
-def test_capabilities_falls_back_to_command_description_and_drops_empty_fields(monkeypatch) -> None:
+def test_capabilities_drops_top_level_description_and_empty_nested_fields(monkeypatch) -> None:
     spec = ParameterSpec(
         name="zspectr_retractsecond",
         label="Zspectr Retractsecond",
@@ -211,7 +211,8 @@ def test_capabilities_falls_back_to_command_description_and_drops_empty_fields(m
     items = parameters_payload["items"]
     assert isinstance(items, list)
     parameter = items[0]
-    assert parameter["description"] == (
+    assert "description" not in parameter
+    assert parameter["get_cmd"]["description"] == (
         "Returns the configuration for the Second condition of the Auto Retract "
         "in the Z-Spectroscopy module."
     )

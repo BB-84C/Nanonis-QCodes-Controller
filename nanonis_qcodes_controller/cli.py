@@ -1242,14 +1242,6 @@ def _collect_parameter_capabilities(instrument: Any) -> list[dict[str, Any]]:
             "safety": safety,
         }
 
-        description = _optional_text(spec.description)
-        if description is None and get_cmd is not None:
-            description = _optional_text(get_cmd.get("description"))
-        if description is None and set_cmd is not None:
-            description = _optional_text(set_cmd.get("description"))
-        if description is not None:
-            capability["description"] = description
-
         capabilities.append(capability)
     return capabilities
 
