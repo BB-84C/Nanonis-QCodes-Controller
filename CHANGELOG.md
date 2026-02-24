@@ -15,3 +15,4 @@ All notable changes to this project are documented in this file.
 - Updated manifest generation to import all callable `nanonis_spm.Nanonis` methods; non-`Get`/`Set` methods now populate root `actions` entries with `action_cmd` metadata and action safety mode.
 - Added `nqctl act <action_name> --arg key=value` with policy-aware action execution and action metadata in `nqctl capabilities` (`action_commands.items[*]`).
 - Updated GitHub-release install examples in `README.md` to use `<version>` placeholders.
+- Anchored command discovery at `Bias_Set`, ignored earlier callable helper methods, and dropped curated-only stale action entries so generated manifests now align with discovered backend action commands.
