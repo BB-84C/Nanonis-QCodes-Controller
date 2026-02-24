@@ -2,10 +2,13 @@ from __future__ import annotations
 
 import inspect
 
+import pytest
+
 from nanonis_qcodes_controller.qcodes_driver.manifest_generator import (
     CommandInfo,
     InferredSetMapping,
     build_unified_manifest,
+    discover_nanonis_commands,
     extract_description,
     infer_set_mapping,
 )
@@ -121,3 +124,95 @@ def test_generated_manifest_emits_non_get_set_commands_as_actions() -> None:
     assert action["action_cmd"]["arg_types"]["Scan_action"] == "int"
     assert action["action_cmd"]["args"]["Scan_action"] == 0
     assert action["safety"]["mode"] == "guarded"
+
+
+def test_generated_manifest_drops_curated_actions_not_discovered() -> None:
+    def _scan_action(self, Scan_action: int, Scan_direction: int) -> None:  # noqa: N802
+        del self, Scan_action, Scan_direction
+
+    action_info = CommandInfo(
+        command="Scan_Action",
+        arguments=("Scan_action", "Scan_direction"),
+        signature=inspect.signature(_scan_action),
+        doc=(
+            "Scan.Action\n"
+            "Controls scanner action and direction.\n"
+            "Arguments:\n"
+            "-- Scan action (int)\n"
+            "-- Scan direction (int)\n"
+            "Return arguments:\n"
+            "-- Error described in response"
+        ),
+    )
+
+    manifest = build_unified_manifest(
+        curated_defaults={},
+        curated_parameters={},
+        curated_actions={
+            "quickSend": {
+                "action_cmd": {
+                    "command": "quickSend",
+                    "args": {},
+                    "arg_types": {},
+                },
+                "safety": {"mode": "guarded"},
+            }
+        },
+        commands=(action_info,),
+    )
+
+    assert "Scan_Action" in manifest["actions"]
+    assert "quickSend" not in manifest["actions"]
+
+
+def test_discover_nanonis_commands_ignores_methods_before_bias_set(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    class FakeNanonis:
+        def quickSend(self) -> None:  # noqa: N802
+            return None
+
+        def decodeArray(self) -> None:  # noqa: N802
+            return None
+
+        def Bias_Set(self, Bias_value_V: float) -> None:  # noqa: N802
+            del Bias_value_V
+
+        def Bias_Get(self) -> None:  # noqa: N802
+            return None
+
+        def Scan_Action(self, Scan_action: int) -> None:  # noqa: N802
+            del Scan_action
+
+    class FakeModule:
+        Nanonis = FakeNanonis
+
+    monkeypatch.setattr(
+        "nanonis_qcodes_controller.qcodes_driver.manifest_generator.importlib.import_module",
+        lambda _name: FakeModule,
+    )
+
+    names = [item.command for item in discover_nanonis_commands()]
+    assert names == ["Bias_Get", "Bias_Set", "Scan_Action"]
+
+
+def test_discover_nanonis_commands_requires_bias_set_anchor(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    class FakeNanonis:
+        def quickSend(self) -> None:  # noqa: N802
+            return None
+
+        def Scan_Action(self, Scan_action: int) -> None:  # noqa: N802
+            del Scan_action
+
+    class FakeModule:
+        Nanonis = FakeNanonis
+
+    monkeypatch.setattr(
+        "nanonis_qcodes_controller.qcodes_driver.manifest_generator.importlib.import_module",
+        lambda _name: FakeModule,
+    )
+
+    with pytest.raises(ValueError, match="Bias_Set"):
+        _ = discover_nanonis_commands()

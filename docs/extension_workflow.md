@@ -46,4 +46,7 @@ nanonis.close()
 ## Notes
 - Core behavior is generic and spec-driven.
 - `set` and `ramp` operate on any writable parameter with safety settings.
-- The generator imports all discovered `Get`/`Set` methods and keeps per-parameter descriptions from method docstrings.
+- Command discovery is anchored at `Bias_Set`; callable members declared before
+  that method are ignored to avoid importing internal helper methods.
+- Discovered `Get`/`Set` methods are emitted under `parameters`, and non-`Get`/`Set`
+  methods are emitted under `actions` with command-level descriptions.

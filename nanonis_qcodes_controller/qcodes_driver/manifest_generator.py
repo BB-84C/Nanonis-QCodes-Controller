@@ -73,10 +73,26 @@ def discover_nanonis_commands(*, match_pattern: str = "") -> tuple[CommandInfo, 
 
     compiled_pattern = re.compile(match_pattern, re.IGNORECASE) if match_pattern else None
     discovered: list[CommandInfo] = []
-
-    for name, member in inspect.getmembers(nanonis_spm.Nanonis, predicate=callable):
+    ordered_callables: list[tuple[str, Any]] = []
+    for name, member in nanonis_spm.Nanonis.__dict__.items():
         if name.startswith("_"):
             continue
+        callable_member: Any = member
+        if isinstance(member, (staticmethod, classmethod)):
+            callable_member = member.__func__
+        if not callable(callable_member):
+            continue
+        ordered_callables.append((name, callable_member))
+
+    anchor_index: int | None = None
+    for index, (name, _member) in enumerate(ordered_callables):
+        if name == "Bias_Set":
+            anchor_index = index
+            break
+    if anchor_index is None:
+        raise ValueError("Could not find Bias_Set anchor in nanonis_spm.Nanonis callables.")
+
+    for name, member in ordered_callables[anchor_index:]:
         if compiled_pattern is not None and compiled_pattern.search(name) is None:
             continue
 
@@ -164,15 +180,12 @@ def build_unified_manifest(
         generated_actions[info.command] = _build_generated_action_entry(info=info)
 
     merged_actions: dict[str, Any] = {}
-    all_action_names = sorted(set(generated_actions).union(curated_actions))
-    for name in all_action_names:
-        generated_entry = generated_actions.get(name)
+    for name in sorted(generated_actions):
+        generated_entry = generated_actions[name]
         curated_entry = curated_actions.get(name)
-        if generated_entry is not None and curated_entry is not None:
+        if curated_entry is not None:
             merged_actions[name] = _deep_merge(generated_entry, curated_entry)
-        elif curated_entry is not None:
-            merged_actions[name] = curated_entry
-        elif generated_entry is not None:
+        else:
             merged_actions[name] = generated_entry
 
     for _name, parameter in merged_parameters.items():
