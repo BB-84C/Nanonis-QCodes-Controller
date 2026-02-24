@@ -16,3 +16,6 @@ All notable changes to this project are documented in this file.
 - Added `nqctl act <action_name> --arg key=value` with policy-aware action execution and action metadata in `nqctl capabilities` (`action_commands.items[*]`).
 - Updated GitHub-release install examples in `README.md` to use `<version>` placeholders.
 - Anchored command discovery at `Bias_Set`, ignored earlier callable helper methods, and dropped curated-only stale action entries so generated manifests now align with discovered backend action commands.
+- Enriched all generated `get_cmd`/`set_cmd`/`action_cmd` entries with `docstring_full` plus structured metadata fields (`response_fields` and `arg_fields`) extracted from Nanonis docstrings.
+- Extended YAML loaders and `nqctl capabilities` output to expose the new structured command metadata for agent-side planning and interpretation.
+- Reworked README CLI guidance to remove legacy `parameters discover/validate` workflow emphasis and clarify `act` versus action metadata surfaces.

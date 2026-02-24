@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "nanonis-qcodes-controller"
-version = "0.1.5"
+version = "0.1.6"
 description = "Simulator-first bridge between Nanonis SPM and QCodes"
 readme = "README.md"
 requires-python = ">=3.10"
