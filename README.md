@@ -65,13 +65,38 @@ python -m pip install ".[nanonis]"
 
 Runtime config controls host, candidate ports, timeout, backend, write policy, and trajectory settings.
 
-## CLI quickstart (`nqctl`)
+## CLI command guide (`nqctl`)
 
-Show capability contract:
+### Inspect and introspect
+
+Get the machine-readable CLI contract (parameters, action commands, policy):
 
 ```powershell
 nqctl capabilities
 ```
+
+Include backend command discovery from the active backend:
+
+```powershell
+nqctl capabilities --include-backend-commands --backend-match Scan
+```
+
+List observable parameter metadata and high-level CLI action descriptors:
+
+```powershell
+nqctl observables list
+nqctl actions list
+```
+
+Inspect active policy, backend command inventory, and connectivity preflight:
+
+```powershell
+nqctl policy show
+nqctl backend commands --match Bias
+nqctl doctor --command-probe
+```
+
+### Execute operations
 
 Read one parameter:
 
@@ -79,91 +104,72 @@ Read one parameter:
 nqctl get bias_v
 ```
 
-Guarded single-step set:
+Apply guarded strict single-step write:
 
 ```powershell
 nqctl set bias_v 0.12
 ```
 
-Explicit guarded ramp:
+Apply explicit guarded ramp:
 
 ```powershell
 nqctl ramp bias_v 0.10 0.25 0.01 --interval-s 0.10
 ```
 
-Invoke one manifest action command:
+Invoke one manifest action command with argument overrides:
 
 ```powershell
 nqctl act Scan_Action --arg Scan_action=0 --arg Scan_direction=1
 ```
 
-Inspect effective policy:
+### `act` vs action metadata
+
+- `nqctl act <action_name> --arg key=value` executes one backend action command from
+  the manifest `actions` section.
+- `nqctl actions list` lists CLI-level action descriptors (what workflows the CLI
+  supports, with safety hints and templates).
+- `nqctl capabilities` exposes executable manifest action inventory under
+  `action_commands.items[*]` (command name, args, arg types, safety mode).
+
+### Trajectory commands
+
+Legacy JSONL readers:
 
 ```powershell
-nqctl policy show
+nqctl trajectory tail --directory artifacts/trajectory --limit 20
+nqctl trajectory follow --directory artifacts/trajectory --interval-s 0.5
 ```
 
-## Trajectory monitor quickstart (`nqctl`)
-
-Inspect monitor defaults and available labels:
-
-```powershell
-nqctl trajectory monitor config show
-nqctl trajectory monitor list-signals
-nqctl trajectory monitor list-specs
-```
-
-Stage a run configuration (required before each run):
-
-```powershell
-nqctl trajectory monitor config set --run-name gui-play-001 --interval-s 0.1 --rotate-entries 6000 --action-window-s 2.5
-```
-
-Start monitoring (foreground; stop with `Ctrl+C`):
-
-```powershell
-nqctl trajectory monitor run
-```
-
-Inspect action trajectory from SQLite:
+SQLite action queries:
 
 ```powershell
 nqctl trajectory action list --db-path artifacts/trajectory/trajectory-monitor.sqlite3 --run-name gui-play-001
 nqctl trajectory action show --db-path artifacts/trajectory/trajectory-monitor.sqlite3 --run-name gui-play-001 --action-idx 0 --with-signal-window
 ```
 
+Monitor config and run loop:
+
+```powershell
+nqctl trajectory monitor config show
+nqctl trajectory monitor config set --run-name gui-play-001 --interval-s 0.1 --rotate-entries 6000 --action-window-s 2.5
+nqctl trajectory monitor list-signals
+nqctl trajectory monitor list-specs
+nqctl trajectory monitor run
+nqctl trajectory monitor config clear
+```
+
 Notes:
-- `run_name` is cleared after each monitor run, so set it again before the next run.
+- `run_name` is cleared after each monitor run attempt; set it again before the next run.
 - Action entries use ISO UTC timestamps and include `delta_value` for numeric spec changes.
-- Legacy JSONL readers remain available via `nqctl trajectory tail` and `nqctl trajectory follow`.
+
+### Output and help
 
 JSON is the default output format. Use `--text` for human-readable key/value output.
 
-Help shortcuts:
-
 ```powershell
 nqctl -help
-nqctl -help parameters
-```
-
-## Parameter extension workflow
-
-Discover candidate backend commands:
-
-```powershell
-nqctl parameters discover --match LockIn
-```
-
-Regenerate the unified parameter manifest:
-
-```powershell
-python scripts/generate_parameters_manifest.py --output config/parameters.yaml
-```
-
-Validate parameter YAML:
-
-```powershell
-nqctl parameters validate --file config/parameters.yaml
+nqctl -help trajectory
+nqctl -help act
 ```
 
 ## QCodes usage

@@ -11,8 +11,8 @@ nanonis:
   backend: "adapter"
 
 safety:
-  allow_writes: false
-  dry_run: true
+  allow_writes: true
+  dry_run: false
   default_ramp_interval_s: 0.05
 
 trajectory:
