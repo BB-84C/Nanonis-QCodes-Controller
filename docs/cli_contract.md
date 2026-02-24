@@ -5,7 +5,7 @@ Expose a small, stable command surface that orchestration agents can call direct
 
 ## Core commands
 - `nqctl capabilities`: returns parameters/actions/policy summary, including rich
-  `parameters.items[*]` metadata (`get_cmd`, `set_cmd`, `vals`, `safety`, descriptions)
+  `parameters.items[*]` metadata (`get_cmd`, `set_cmd`, `vals`, `safety`, non-empty descriptions)
   for agent planning.
 - `nqctl observables list`: returns readable and writable parameter metadata.
 - `nqctl actions list`: returns supported action descriptors.
