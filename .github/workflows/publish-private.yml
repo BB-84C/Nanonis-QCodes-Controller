@@ -195,11 +195,18 @@ jobs:
                       for member in sdist_archive.getmembers()
                       if member.name.endswith("PKG-INFO") and member.isfile()
                   ]
-                  if len(pkg_info_members) != 1:
+                  top_level_pkg_info_members = [
+                      member
+                      for member in pkg_info_members
+                      if member.name.count("/") == 1 and member.name.endswith("/PKG-INFO")
+                  ]
+                  if len(top_level_pkg_info_members) != 1:
                       raise SystemExit(
-                          f"Expected exactly one PKG-INFO entry in {sdist_path}, found {len(pkg_info_members)}"
+                          "Expected exactly one top-level PKG-INFO entry in "
+                          f"{sdist_path}, found {len(top_level_pkg_info_members)} "
+                          f"(total PKG-INFO entries: {len(pkg_info_members)})"
                       )
-                  pkg_info_data = sdist_archive.extractfile(pkg_info_members[0])
+                  pkg_info_data = sdist_archive.extractfile(top_level_pkg_info_members[0])
                   if pkg_info_data is None:
                       raise SystemExit(f"Unable to read PKG-INFO from {sdist_path}")
                   metadata_text = io.TextIOWrapper(pkg_info_data, encoding="utf-8").read()
