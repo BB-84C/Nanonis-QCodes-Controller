@@ -197,18 +197,53 @@ def build_unified_manifest(
         get_cmd = parameter.get("get_cmd")
         if isinstance(get_cmd, dict):
             get_description = str(get_cmd.get("description", "")).strip()
+            get_command = str(get_cmd.get("command", "")).strip()
             if not get_description:
-                get_command = str(get_cmd.get("command", "")).strip()
                 if get_command:
                     get_cmd["description"] = extract_description(command_docs.get(get_command))
+            if get_command:
+                doc_text = command_docs.get(get_command, "")
+                _arg_items, return_items = _parse_doc_sections(doc_text)
+                get_cmd["docstring_full"] = _normalize_docstring_full(doc_text)
+                get_cmd["response_fields"] = _build_response_fields(return_items)
 
         set_cmd = parameter.get("set_cmd")
         if isinstance(set_cmd, dict):
             set_description = str(set_cmd.get("description", "")).strip()
+            set_command = str(set_cmd.get("command", "")).strip()
             if not set_description:
-                set_command = str(set_cmd.get("command", "")).strip()
                 if set_command:
                     set_cmd["description"] = extract_description(command_docs.get(set_command))
+            if set_command:
+                doc_text = command_docs.get(set_command, "")
+                arg_items, _return_items = _parse_doc_sections(doc_text)
+                arg_docs = _parse_argument_docs(doc_text)
+                args_mapping = set_cmd.get("args")
+                value_arg = str(set_cmd.get("value_arg", "")).strip()
+                set_ordered_args: list[str] = []
+                if value_arg:
+                    set_ordered_args.append(value_arg)
+                if isinstance(args_mapping, dict):
+                    for key in args_mapping:
+                        name = str(key)
+                        if name not in set_ordered_args:
+                            set_ordered_args.append(name)
+                synthetic_signature = inspect.Signature(
+                    [
+                        inspect.Parameter(
+                            name=arg_name,
+                            kind=inspect.Parameter.POSITIONAL_OR_KEYWORD,
+                        )
+                        for arg_name in set_ordered_args
+                    ]
+                )
+                set_cmd["docstring_full"] = _normalize_docstring_full(doc_text)
+                set_cmd["arg_fields"] = _build_arg_fields(
+                    signature=synthetic_signature,
+                    args=tuple(set_ordered_args),
+                    arg_docs=arg_docs,
+                    argument_items=arg_items,
+                )
 
     for _name, action in merged_actions.items():
         if not isinstance(action, dict):
@@ -241,6 +276,31 @@ def build_unified_manifest(
                         _infer_scalar_type_from_value(arg_value),
                     )
             action_cmd["arg_types"] = normalized_arg_types
+
+            if command_name:
+                doc_text = command_docs.get(command_name, "")
+                arg_items, _return_items = _parse_doc_sections(doc_text)
+                arg_docs = _parse_argument_docs(doc_text)
+                args_mapping = action_cmd.get("args")
+                action_ordered_args: list[str] = []
+                if isinstance(args_mapping, dict):
+                    action_ordered_args = [str(name) for name in args_mapping.keys()]
+                synthetic_signature = inspect.Signature(
+                    [
+                        inspect.Parameter(
+                            name=arg_name,
+                            kind=inspect.Parameter.POSITIONAL_OR_KEYWORD,
+                        )
+                        for arg_name in action_ordered_args
+                    ]
+                )
+                action_cmd["docstring_full"] = _normalize_docstring_full(doc_text)
+                action_cmd["arg_fields"] = _build_arg_fields(
+                    signature=synthetic_signature,
+                    args=tuple(action_ordered_args),
+                    arg_docs=arg_docs,
+                    argument_items=arg_items,
+                )
 
         safety = action.get("safety")
         if isinstance(safety, dict):
@@ -422,6 +482,7 @@ def _build_generated_parameter_entry(
     if get_info is None:
         get_cmd = False
     else:
+        argument_items, return_items = _parse_doc_sections(get_info.doc)
         read_args = _infer_read_args(
             signature=get_info.signature, args=get_info.arguments, arg_docs=get_arg_docs
         )
@@ -430,12 +491,15 @@ def _build_generated_parameter_entry(
             "payload_index": 0,
             "args": read_args,
             "description": extract_description(get_info.doc),
+            "docstring_full": _normalize_docstring_full(get_info.doc),
+            "response_fields": _build_response_fields(return_items),
         }
 
     set_cmd: dict[str, Any] | bool
     if set_info is None:
         set_cmd = False
     else:
+        argument_items, _return_items = _parse_doc_sections(set_info.doc)
         set_mapping = infer_set_mapping(
             signature=set_info.signature,
             args=set_info.arguments,
@@ -446,6 +510,13 @@ def _build_generated_parameter_entry(
             "value_arg": set_mapping.value_arg,
             "args": set_mapping.fixed_args,
             "description": extract_description(set_info.doc),
+            "docstring_full": _normalize_docstring_full(set_info.doc),
+            "arg_fields": _build_arg_fields(
+                signature=set_info.signature,
+                args=set_info.arguments,
+                arg_docs=set_arg_docs,
+                argument_items=argument_items,
+            ),
         }
 
     entry: dict[str, Any] = {
@@ -472,6 +543,7 @@ def _build_generated_parameter_entry(
 
 def _build_generated_action_entry(*, info: CommandInfo) -> dict[str, Any]:
     arg_docs = _parse_argument_docs(info.doc)
+    argument_items, _return_items = _parse_doc_sections(info.doc)
     args: dict[str, Any] = {}
     arg_types: dict[str, ScalarValueType] = {}
     for arg_name in info.arguments:
@@ -507,9 +579,187 @@ def _build_generated_action_entry(*, info: CommandInfo) -> dict[str, Any]:
             "args": args,
             "arg_types": arg_types,
             "description": extract_description(info.doc),
+            "docstring_full": _normalize_docstring_full(info.doc),
+            "arg_fields": _build_arg_fields(
+                signature=info.signature,
+                args=info.arguments,
+                arg_docs=arg_docs,
+                argument_items=argument_items,
+            ),
         },
         "safety": {"mode": "guarded"},
     }
+
+
+def _normalize_docstring_full(doc: str | None) -> str:
+    if doc is None:
+        return ""
+    lines = [html.unescape(line).rstrip() for line in str(doc).splitlines()]
+    while lines and not lines[-1].strip():
+        lines.pop()
+    return "\n".join(lines).strip()
+
+
+def _parse_doc_sections(doc: str) -> tuple[list[str], list[str]]:
+    if not doc:
+        return ([], [])
+
+    lines = [html.unescape(line).rstrip() for line in doc.splitlines()]
+    mode: str | None = None
+    arg_items: list[str] = []
+    return_items: list[str] = []
+    current: str | None = None
+
+    def _flush_current(target: list[str]) -> None:
+        nonlocal current
+        if current is not None:
+            target.append(current.strip())
+            current = None
+
+    for raw in lines:
+        stripped = raw.strip()
+        lowered = stripped.lower()
+        if lowered.startswith("arguments:"):
+            if mode == "returns":
+                _flush_current(return_items)
+            elif mode == "args":
+                _flush_current(arg_items)
+            mode = "args"
+            continue
+        if lowered.startswith("return arguments"):
+            if mode == "args":
+                _flush_current(arg_items)
+            elif mode == "returns":
+                _flush_current(return_items)
+            mode = "returns"
+            continue
+        if mode not in {"args", "returns"}:
+            continue
+
+        target = arg_items if mode == "args" else return_items
+        if stripped.startswith("--"):
+            _flush_current(target)
+            current = stripped[2:].strip()
+            continue
+
+        if current is not None and stripped:
+            current = f"{current} {stripped}"
+
+    if mode == "args":
+        _flush_current(arg_items)
+    elif mode == "returns":
+        _flush_current(return_items)
+    return (arg_items, return_items)
+
+
+def _build_response_fields(return_items: list[str]) -> list[dict[str, Any]]:
+    fields: list[dict[str, Any]] = []
+    for index, item in enumerate(return_items):
+        name = _extract_doc_item_name(item)
+        value_type, unit = _extract_doc_type_and_unit(item)
+        fields.append(
+            {
+                "index": index,
+                "name": name,
+                "type": value_type,
+                "unit": unit,
+                "description": item.strip(),
+            }
+        )
+    return fields
+
+
+def _build_arg_fields(
+    *,
+    signature: inspect.Signature,
+    args: tuple[str, ...],
+    arg_docs: dict[str, str],
+    argument_items: list[str],
+) -> list[dict[str, Any]]:
+    arg_item_map: dict[str, str] = {}
+    for item in argument_items:
+        key = _normalize_key(_extract_doc_item_name(item))
+        if key:
+            arg_item_map[key] = item
+
+    fields: list[dict[str, Any]] = []
+    for arg_name in args:
+        parameter = signature.parameters[arg_name]
+        doc_line = _match_doc_for_arg(arg_name, arg_docs)
+        item = arg_item_map.get(_normalize_key(arg_name), doc_line)
+        value_type, _unit = _extract_doc_type_and_unit(item)
+        if value_type == "unknown":
+            value_type = _infer_type_for_arg(
+                parameter=parameter, doc_line=doc_line, command_name=""
+            )
+        required = parameter.default is inspect.Parameter.empty
+        fields.append(
+            {
+                "name": arg_name,
+                "type": value_type,
+                "required": required,
+                "description": item.strip(),
+            }
+        )
+    return fields
+
+
+def _extract_doc_item_name(item: str) -> str:
+    base = str(item)
+    if " is " in base:
+        base = base.split(" is ", 1)[0]
+    base = re.split(r"\(", base, maxsplit=1)[0].strip()
+    return base
+
+
+def _extract_doc_type_and_unit(item: str) -> tuple[str, str]:
+    groups = [str(group).strip() for group in re.findall(r"\(([^)]*)\)", item)]
+    if not groups:
+        return ("unknown", "")
+
+    type_index: int | None = None
+    value_type = "unknown"
+    for index in range(len(groups) - 1, -1, -1):
+        normalized = _normalize_doc_type(groups[index])
+        if normalized != "unknown":
+            type_index = index
+            value_type = normalized
+            break
+
+    unit = ""
+    if type_index is not None:
+        for index in range(type_index - 1, -1, -1):
+            if _normalize_doc_type(groups[index]) == "unknown":
+                unit = groups[index]
+                break
+    elif len(groups) == 1:
+        unit = groups[0]
+    return (value_type, unit)
+
+
+def _normalize_doc_type(token: str) -> str:
+    lowered = str(token).strip().lower()
+    if not lowered:
+        return "unknown"
+    if "array" in lowered:
+        if "float" in lowered:
+            return "array[float]"
+        if "int" in lowered:
+            return "array[int]"
+        if "bool" in lowered:
+            return "array[bool]"
+        if "str" in lowered or "string" in lowered or "char" in lowered:
+            return "array[str]"
+        return "array"
+    if "float" in lowered or "double" in lowered:
+        return "float"
+    if "int" in lowered or "unsigned" in lowered or "signed" in lowered:
+        return "int"
+    if "bool" in lowered:
+        return "bool"
+    if "str" in lowered or "string" in lowered or "char" in lowered:
+        return "str"
+    return "unknown"
 
 
 def _parse_argument_docs(doc: str) -> dict[str, str]:

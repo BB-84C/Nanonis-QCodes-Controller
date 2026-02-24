@@ -74,6 +74,14 @@ def test_load_action_specs_parses_manifest_actions(tmp_path: Path) -> None:
                 "        Scan_action: int",
                 "        Scan_direction: int",
                 "      description: Start or stop a scan.",
+                "      docstring_full: |-",
+                "        Scan.Action",
+                "        Controls scan action and direction.",
+                "      arg_fields:",
+                "        - name: Scan_action",
+                "          type: int",
+                "          required: true",
+                "          description: Scan action (int)",
                 "    safety:",
                 "      mode: alwaysAllowed",
             ]
@@ -87,4 +95,6 @@ def test_load_action_specs_parses_manifest_actions(tmp_path: Path) -> None:
     assert specs[0].name == "Scan_Action"
     assert specs[0].action_cmd.command == "Scan_Action"
     assert specs[0].action_cmd.arg_types["Scan_action"] == "int"
+    assert specs[0].action_cmd.docstring_full.startswith("Scan.Action")
+    assert specs[0].action_cmd.arg_fields[0].name == "Scan_action"
     assert specs[0].safety_mode == "alwaysAllowed"

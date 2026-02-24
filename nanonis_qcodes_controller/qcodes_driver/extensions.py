@@ -21,11 +21,30 @@ _ALLOWED_ACTION_SAFETY_MODES: frozenset[str] = frozenset({"alwaysAllowed", "guar
 
 
 @dataclass(frozen=True)
+class ResponseFieldSpec:
+    index: int
+    name: str
+    type: str
+    unit: str
+    description: str
+
+
+@dataclass(frozen=True)
+class ArgFieldSpec:
+    name: str
+    type: str
+    required: bool
+    description: str
+
+
+@dataclass(frozen=True)
 class ReadCommandSpec:
     command: str
     payload_index: int = 0
     args: Mapping[str, Any] = field(default_factory=dict)
     description: str = ""
+    docstring_full: str = ""
+    response_fields: tuple[ResponseFieldSpec, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -34,6 +53,8 @@ class WriteCommandSpec:
     value_arg: str
     args: Mapping[str, Any] = field(default_factory=dict)
     description: str = ""
+    docstring_full: str = ""
+    arg_fields: tuple[ArgFieldSpec, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -42,6 +63,8 @@ class ActionCommandSpec:
     args: Mapping[str, Any] = field(default_factory=dict)
     arg_types: Mapping[str, ScalarValueType] = field(default_factory=dict)
     description: str = ""
+    docstring_full: str = ""
+    arg_fields: tuple[ArgFieldSpec, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -241,6 +264,8 @@ def _parse_action_command(value: Any, *, context: str) -> ActionCommandSpec:
     args_mapping = _as_mapping(mapping.get("args"), context=f"{context}.args")
     arg_types_mapping = _as_mapping(mapping.get("arg_types"), context=f"{context}.arg_types")
     description = str(mapping.get("description", "")).strip()
+    docstring_full = str(mapping.get("docstring_full", "")).strip()
+    arg_fields = _parse_arg_fields(mapping.get("arg_fields"), context=f"{context}.arg_fields")
 
     parsed_arg_types: dict[str, ScalarValueType] = {}
     arg_names = sorted({*args_mapping.keys(), *arg_types_mapping.keys()})
@@ -261,6 +286,8 @@ def _parse_action_command(value: Any, *, context: str) -> ActionCommandSpec:
         args={str(key): value for key, value in args_mapping.items()},
         arg_types=parsed_arg_types,
         description=description,
+        docstring_full=docstring_full,
+        arg_fields=arg_fields,
     )
 
 
@@ -302,11 +329,18 @@ def _parse_read_command(value: Any, *, context: str) -> ReadCommandSpec | None:
         raise ValueError(f"{context}.payload_index must be non-negative.")
     args = _as_mapping(mapping.get("args"), context=f"{context}.args")
     description = str(mapping.get("description", "")).strip()
+    docstring_full = str(mapping.get("docstring_full", "")).strip()
+    response_fields = _parse_response_fields(
+        mapping.get("response_fields"),
+        context=f"{context}.response_fields",
+    )
     return ReadCommandSpec(
         command=command,
         payload_index=payload_index,
         args=dict(args),
         description=description,
+        docstring_full=docstring_full,
+        response_fields=response_fields,
     )
 
 
@@ -319,12 +353,64 @@ def _parse_write_command(value: Any, *, context: str) -> WriteCommandSpec | None
     value_arg = _parse_required_string(mapping.get("value_arg"), field_name=f"{context}.value_arg")
     args = _as_mapping(mapping.get("args"), context=f"{context}.args")
     description = str(mapping.get("description", "")).strip()
+    docstring_full = str(mapping.get("docstring_full", "")).strip()
+    arg_fields = _parse_arg_fields(mapping.get("arg_fields"), context=f"{context}.arg_fields")
     return WriteCommandSpec(
         command=command,
         value_arg=value_arg,
         args=dict(args),
         description=description,
+        docstring_full=docstring_full,
+        arg_fields=arg_fields,
     )
+
+
+def _parse_response_fields(value: Any, *, context: str) -> tuple[ResponseFieldSpec, ...]:
+    if value in (None, False):
+        return ()
+    if not isinstance(value, list):
+        raise ValueError(f"{context} must be a list when provided.")
+
+    parsed: list[ResponseFieldSpec] = []
+    for index, item in enumerate(value):
+        mapping = _as_mapping(item, context=f"{context}[{index}]")
+        parsed.append(
+            ResponseFieldSpec(
+                index=int(mapping.get("index", index)),
+                name=_parse_required_string(
+                    mapping.get("name"), field_name=f"{context}[{index}].name"
+                ),
+                type=str(mapping.get("type", "")).strip() or "unknown",
+                unit=str(mapping.get("unit", "")).strip(),
+                description=str(mapping.get("description", "")).strip(),
+            )
+        )
+    return tuple(parsed)
+
+
+def _parse_arg_fields(value: Any, *, context: str) -> tuple[ArgFieldSpec, ...]:
+    if value in (None, False):
+        return ()
+    if not isinstance(value, list):
+        raise ValueError(f"{context} must be a list when provided.")
+
+    parsed: list[ArgFieldSpec] = []
+    for index, item in enumerate(value):
+        mapping = _as_mapping(item, context=f"{context}[{index}]")
+        parsed.append(
+            ArgFieldSpec(
+                name=_parse_required_string(
+                    mapping.get("name"), field_name=f"{context}[{index}].name"
+                ),
+                type=str(mapping.get("type", "")).strip() or "unknown",
+                required=_parse_bool(
+                    mapping.get("required", False),
+                    field_name=f"{context}[{index}].required",
+                ),
+                description=str(mapping.get("description", "")).strip(),
+            )
+        )
+    return tuple(parsed)
 
 
 def _parse_vals(value: Any, *, value_type: ScalarValueType, context: str) -> ValidatorSpec | None:

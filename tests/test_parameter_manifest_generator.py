@@ -91,6 +91,12 @@ def test_generated_manifest_emits_get_and_set_command_descriptions() -> None:
     assert "description" not in parameter
     assert parameter["get_cmd"]["description"] == "Returns the Bias voltage value."
     assert parameter["set_cmd"]["description"] == "Sets the Bias voltage to the specified value."
+    assert parameter["get_cmd"]["docstring_full"].startswith("Bias.Get")
+    assert parameter["set_cmd"]["docstring_full"].startswith("Bias.Set")
+    assert parameter["get_cmd"]["response_fields"][0]["index"] == 0
+    assert parameter["get_cmd"]["response_fields"][0]["type"] == "float"
+    assert parameter["set_cmd"]["arg_fields"][0]["name"] == "Bias_value_V"
+    assert parameter["set_cmd"]["arg_fields"][0]["required"] is True
 
 
 def test_generated_manifest_emits_non_get_set_commands_as_actions() -> None:
@@ -123,6 +129,9 @@ def test_generated_manifest_emits_non_get_set_commands_as_actions() -> None:
     assert action["action_cmd"]["command"] == "Scan_Action"
     assert action["action_cmd"]["arg_types"]["Scan_action"] == "int"
     assert action["action_cmd"]["args"]["Scan_action"] == 0
+    assert action["action_cmd"]["docstring_full"].startswith("Scan.Action")
+    assert action["action_cmd"]["arg_fields"][0]["name"] == "Scan_action"
+    assert action["action_cmd"]["arg_fields"][0]["type"] == "int"
     assert action["safety"]["mode"] == "guarded"
 
 

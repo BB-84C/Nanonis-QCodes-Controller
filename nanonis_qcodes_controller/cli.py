@@ -1247,6 +1247,7 @@ def _collect_parameter_capabilities(instrument: Any) -> list[dict[str, Any]]:
         get_cmd = None
         if spec.get_cmd is not None:
             get_description = _optional_text(spec.get_cmd.description)
+            get_docstring_full = _optional_text(spec.get_cmd.docstring_full)
             get_cmd = {
                 "command": spec.get_cmd.command,
                 "payload_index": int(spec.get_cmd.payload_index),
@@ -1254,10 +1255,17 @@ def _collect_parameter_capabilities(instrument: Any) -> list[dict[str, Any]]:
             }
             if get_description is not None:
                 get_cmd["description"] = get_description
+            if get_docstring_full is not None:
+                get_cmd["docstring_full"] = get_docstring_full
+            if spec.get_cmd.response_fields:
+                get_cmd["response_fields"] = [
+                    asdict(field) for field in spec.get_cmd.response_fields
+                ]
 
         set_cmd = None
         if spec.set_cmd is not None:
             set_description = _optional_text(spec.set_cmd.description)
+            set_docstring_full = _optional_text(spec.set_cmd.docstring_full)
             set_cmd = {
                 "command": spec.set_cmd.command,
                 "value_arg": spec.set_cmd.value_arg,
@@ -1265,6 +1273,10 @@ def _collect_parameter_capabilities(instrument: Any) -> list[dict[str, Any]]:
             }
             if set_description is not None:
                 set_cmd["description"] = set_description
+            if set_docstring_full is not None:
+                set_cmd["docstring_full"] = set_docstring_full
+            if spec.set_cmd.arg_fields:
+                set_cmd["arg_fields"] = [asdict(field) for field in spec.set_cmd.arg_fields]
 
         vals = None
         if spec.vals is not None:
@@ -1315,8 +1327,13 @@ def _collect_action_command_capabilities(instrument: Any) -> list[dict[str, Any]
             "arg_types": dict(spec.action_cmd.arg_types),
         }
         description = _optional_text(spec.action_cmd.description)
+        docstring_full = _optional_text(spec.action_cmd.docstring_full)
         if description is not None:
             action_cmd["description"] = description
+        if docstring_full is not None:
+            action_cmd["docstring_full"] = docstring_full
+        if spec.action_cmd.arg_fields:
+            action_cmd["arg_fields"] = [asdict(field) for field in spec.action_cmd.arg_fields]
 
         capabilities.append(
             {

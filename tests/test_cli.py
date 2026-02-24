@@ -12,8 +12,10 @@ from nanonis_qcodes_controller.qcodes_driver.extensions import (
     DEFAULT_PARAMETERS_FILE,
     ActionCommandSpec,
     ActionSpec,
+    ArgFieldSpec,
     ParameterSpec,
     ReadCommandSpec,
+    ResponseFieldSpec,
     SafetySpec,
     ValidatorSpec,
     WriteCommandSpec,
@@ -148,12 +150,31 @@ def test_capabilities_includes_parameter_specs_for_agents(monkeypatch) -> None:
             payload_index=0,
             args={"channel": 1},
             description="Read configured bias voltage.",
+            docstring_full="Bias.Get\nReturns configured bias voltage.",
+            response_fields=(
+                ResponseFieldSpec(
+                    index=0,
+                    name="Bias value",
+                    type="float",
+                    unit="V",
+                    description="Bias value (V) (float32)",
+                ),
+            ),
         ),
         set_cmd=WriteCommandSpec(
             command="Bias.Set",
             value_arg="bias",
             args={"channel": 1},
             description="Write configured bias voltage.",
+            docstring_full="Bias.Set\nConfigures bias voltage.",
+            arg_fields=(
+                ArgFieldSpec(
+                    name="bias",
+                    type="float",
+                    required=True,
+                    description="Bias value (V) (float32)",
+                ),
+            ),
         ),
         vals=ValidatorSpec(kind="numbers", min_value=-10.0, max_value=10.0),
         safety=SafetySpec(min_value=-10.0, max_value=10.0, max_step=1.0, ramp_enabled=True),
@@ -166,6 +187,15 @@ def test_capabilities_includes_parameter_specs_for_agents(monkeypatch) -> None:
             args={"Scan_action": 0, "Scan_direction": 0},
             arg_types={"Scan_action": "int", "Scan_direction": "int"},
             description="Start or stop scanner movement.",
+            docstring_full="Scan.Action\nControls scan actions.",
+            arg_fields=(
+                ArgFieldSpec(
+                    name="Scan_action",
+                    type="int",
+                    required=True,
+                    description="Scan action (int)",
+                ),
+            ),
         ),
         safety_mode="guarded",
     )
@@ -225,10 +255,13 @@ def test_capabilities_includes_parameter_specs_for_agents(monkeypatch) -> None:
     assert "description" not in parameter
     assert parameter["get_cmd"]["command"] == "Bias.Get"
     assert parameter["get_cmd"]["description"] == "Read configured bias voltage."
+    assert parameter["get_cmd"]["docstring_full"].startswith("Bias.Get")
+    assert parameter["get_cmd"]["response_fields"][0]["name"] == "Bias value"
     assert parameter["get_cmd"]["args"] == {"channel": 1}
     assert parameter["set_cmd"]["command"] == "Bias.Set"
     assert parameter["set_cmd"]["value_arg"] == "bias"
     assert parameter["set_cmd"]["description"] == "Write configured bias voltage."
+    assert parameter["set_cmd"]["arg_fields"][0]["name"] == "bias"
     assert parameter["vals"]["kind"] == "numbers"
     actions_payload = payload["action_commands"]
     assert isinstance(actions_payload, dict)
@@ -237,6 +270,8 @@ def test_capabilities_includes_parameter_specs_for_agents(monkeypatch) -> None:
     assert action["name"] == "Scan_Action"
     assert action["safety_mode"] == "guarded"
     assert action["action_cmd"]["command"] == "Scan_Action"
+    assert action["action_cmd"]["docstring_full"].startswith("Scan.Action")
+    assert action["action_cmd"]["arg_fields"][0]["name"] == "Scan_action"
 
 
 def test_capabilities_drops_top_level_description_and_empty_nested_fields(monkeypatch) -> None:
