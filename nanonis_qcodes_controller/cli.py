@@ -1172,26 +1172,39 @@ def _collect_observables(instrument: Any) -> list[dict[str, Any]]:
     return observables
 
 
+def _optional_text(value: Any) -> str | None:
+    if value is None:
+        return None
+    text = str(value).strip()
+    if not text:
+        return None
+    return text
+
+
 def _collect_parameter_capabilities(instrument: Any) -> list[dict[str, Any]]:
     capabilities: list[dict[str, Any]] = []
     for spec in instrument.parameter_specs():
         get_cmd = None
         if spec.get_cmd is not None:
+            get_description = _optional_text(spec.get_cmd.description)
             get_cmd = {
                 "command": spec.get_cmd.command,
                 "payload_index": int(spec.get_cmd.payload_index),
                 "args": dict(spec.get_cmd.args),
-                "description": spec.get_cmd.description,
             }
+            if get_description is not None:
+                get_cmd["description"] = get_description
 
         set_cmd = None
         if spec.set_cmd is not None:
+            set_description = _optional_text(spec.set_cmd.description)
             set_cmd = {
                 "command": spec.set_cmd.command,
                 "value_arg": spec.set_cmd.value_arg,
                 "args": dict(spec.set_cmd.args),
-                "description": spec.set_cmd.description,
             }
+            if set_description is not None:
+                set_cmd["description"] = set_description
 
         vals = None
         if spec.vals is not None:
@@ -1214,23 +1227,30 @@ def _collect_parameter_capabilities(instrument: Any) -> list[dict[str, Any]]:
                 "ramp_interval_s": spec.safety.ramp_interval_s,
             }
 
-        capabilities.append(
-            {
-                "name": spec.name,
-                "label": spec.label,
-                "description": spec.description,
-                "unit": spec.unit,
-                "value_type": spec.value_type,
-                "snapshot_value": spec.snapshot_value,
-                "readable": bool(spec.readable),
-                "writable": bool(spec.writable),
-                "has_ramp": bool(spec.safety is not None and spec.safety.ramp_enabled),
-                "get_cmd": get_cmd,
-                "set_cmd": set_cmd,
-                "vals": vals,
-                "safety": safety,
-            }
-        )
+        capability: dict[str, Any] = {
+            "name": spec.name,
+            "label": spec.label,
+            "unit": spec.unit,
+            "value_type": spec.value_type,
+            "snapshot_value": spec.snapshot_value,
+            "readable": bool(spec.readable),
+            "writable": bool(spec.writable),
+            "has_ramp": bool(spec.safety is not None and spec.safety.ramp_enabled),
+            "get_cmd": get_cmd,
+            "set_cmd": set_cmd,
+            "vals": vals,
+            "safety": safety,
+        }
+
+        description = _optional_text(spec.description)
+        if description is None and get_cmd is not None:
+            description = _optional_text(get_cmd.get("description"))
+        if description is None and set_cmd is not None:
+            description = _optional_text(set_cmd.get("description"))
+        if description is not None:
+            capability["description"] = description
+
+        capabilities.append(capability)
     return capabilities
 
 

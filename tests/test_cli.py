@@ -137,3 +137,82 @@ def test_capabilities_includes_parameter_specs_for_agents(monkeypatch) -> None:
     assert parameter["set_cmd"]["value_arg"] == "bias"
     assert parameter["set_cmd"]["description"] == "Write configured bias voltage."
     assert parameter["vals"]["kind"] == "numbers"
+
+
+def test_capabilities_falls_back_to_command_description_and_drops_empty_fields(monkeypatch) -> None:
+    spec = ParameterSpec(
+        name="zspectr_retractsecond",
+        label="Zspectr Retractsecond",
+        unit="",
+        value_type="int",
+        get_cmd=ReadCommandSpec(
+            command="ZSpectr_RetractSecondGet",
+            payload_index=0,
+            args={},
+            description=(
+                "Returns the configuration for the Second condition of the Auto Retract "
+                "in the Z-Spectroscopy module."
+            ),
+        ),
+        set_cmd=WriteCommandSpec(
+            command="ZSpectr_RetractSecondSet",
+            value_arg="Threshold",
+            args={"Second_condition": 0, "Signal_index": 1, "Comparison": 0},
+            description="",
+        ),
+        vals=ValidatorSpec(kind="ints"),
+        safety=SafetySpec(min_value=None, max_value=None, max_step=None, ramp_enabled=True),
+        description="",
+    )
+
+    class FakeInstrument:
+        def parameter_specs(self) -> tuple[ParameterSpec, ...]:
+            return (spec,)
+
+    @contextmanager
+    def fake_instrument_context(*_args, **_kwargs):
+        yield FakeInstrument(), None
+
+    monkeypatch.setattr(
+        cli,
+        "load_settings",
+        lambda config_file=None: SimpleNamespace(
+            safety=SimpleNamespace(
+                allow_writes=False,
+                dry_run=True,
+                default_ramp_interval_s=0.05,
+            )
+        ),
+    )
+    monkeypatch.setattr(cli, "_instrument_context", fake_instrument_context)
+
+    captured_payloads: list[dict[str, object]] = []
+
+    def fake_print_payload(payload, *, as_json: bool) -> None:
+        del as_json
+        captured_payloads.append(dict(payload))
+
+    monkeypatch.setattr(cli, "_print_payload", fake_print_payload)
+
+    args = argparse.Namespace(
+        config_file=None,
+        parameters_file=str(DEFAULT_PARAMETERS_FILE),
+        include_backend_commands=False,
+        backend_match=None,
+        json=True,
+    )
+    exit_code = cli._cmd_capabilities(args)
+
+    assert exit_code == cli.EXIT_OK
+    assert captured_payloads
+    payload = captured_payloads[-1]
+    parameters_payload = payload["parameters"]
+    assert isinstance(parameters_payload, dict)
+    items = parameters_payload["items"]
+    assert isinstance(items, list)
+    parameter = items[0]
+    assert parameter["description"] == (
+        "Returns the configuration for the Second condition of the Auto Retract "
+        "in the Z-Spectroscopy module."
+    )
+    assert "description" not in parameter["set_cmd"]

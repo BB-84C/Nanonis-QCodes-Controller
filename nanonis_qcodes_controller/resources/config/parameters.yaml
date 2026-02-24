@@ -1043,7 +1043,6 @@ parameters:
       command: Current_100Get
       payload_index: 0
       args: {}
-      description: ''
     set_cmd: false
     vals:
       kind: numbers
@@ -7882,6 +7881,8 @@ parameters:
     label: Zspectr Retractsecond
     unit: ''
     type: int
+    description: Configuration for the Second condition of Auto Retract in the
+      Z-Spectroscopy module.
     get_cmd:
       command: ZSpectr_RetractSecondGet
       payload_index: 0
