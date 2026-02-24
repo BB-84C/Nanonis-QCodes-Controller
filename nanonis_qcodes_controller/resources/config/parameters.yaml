@@ -4,12 +4,15 @@ defaults:
   ramp_default_interval_s: 0.05
 meta:
   generated_by: scripts/generate_parameters_manifest.py
-  generated_at_utc: '2026-02-23T19:58:55Z'
+  generated_at_utc: '2026-02-24T05:05:10Z'
   source_package: nanonis-spm/1.0.9
-  methods_seen: 551
+  methods_seen: 684
   get_set_commands_imported: 551
+  action_commands_imported: 133
   parameters_emitted: 327
+  actions_emitted: 133
   with_description_count: 326
+  actions_with_description_count: 117
   writable_count: 257
 parameters:
   aprfgen_freq:
@@ -1043,6 +1046,7 @@ parameters:
       command: Current_100Get
       payload_index: 0
       args: {}
+      description: ''
     set_cmd: false
     vals:
       kind: numbers
@@ -7981,3 +7985,1572 @@ parameters:
       cooldown_s: null
       ramp_enabled: true
       ramp_interval_s: null
+actions:
+  APRFGen_FreqSwpStart:
+    action_cmd:
+      command: APRFGen_FreqSwpStart
+      args:
+        Direction: 1
+      arg_types:
+        Direction: int
+      description: APRFGen.FreqSwpStart Starts a Frequency Sweep.
+    safety:
+      mode: guarded
+  APRFGen_ListSwpStart:
+    action_cmd:
+      command: APRFGen_ListSwpStart
+      args:
+        Direction: 1
+      arg_types:
+        Direction: int
+      description: APRFGen.ListSwpStart Starts a List Sweep.
+    safety:
+      mode: guarded
+  APRFGen_PowerSwpStart:
+    action_cmd:
+      command: APRFGen_PowerSwpStart
+      args:
+        Direction: 1
+      arg_types:
+        Direction: int
+      description: APRFGen.PowerSwpStart Starts a Power Sweep.
+    safety:
+      mode: guarded
+  APRFGen_SwpStop:
+    action_cmd:
+      command: APRFGen_SwpStop
+      args: {}
+      arg_types: {}
+      description: APRFGen.SwpStop Stops the running Sweep (Frequency, Power, or List)
+        and switches the mode to CW.
+    safety:
+      mode: guarded
+  APRFGen_TrigRearm:
+    action_cmd:
+      command: APRFGen_TrigRearm
+      args: {}
+      arg_types: {}
+      description: APRFGen.TrigRearm Rearms the trigger.
+    safety:
+      mode: guarded
+  AtomTrack_DriftComp:
+    action_cmd:
+      command: AtomTrack_DriftComp
+      args: {}
+      arg_types: {}
+      description: AtomTrack.DriftComp Applies the Drift measurement to the Drift
+        compensation and turns On the compensation.
+    safety:
+      mode: guarded
+  AtomTrack_QuickCompStart:
+    action_cmd:
+      command: AtomTrack_QuickCompStart
+      args:
+        AT_control: 0
+      arg_types:
+        AT_control: int
+      description: AtomTrack.QuickCompStart Starts the Tilt or Drift compensation.
+    safety:
+      mode: guarded
+  AutoApproach_Open:
+    action_cmd:
+      command: AutoApproach_Open
+      args: {}
+      arg_types: {}
+      description: AutoApproach.Open Opens the Auto-Approach module.
+    safety:
+      mode: guarded
+  BeamDefl_AutoOffset:
+    action_cmd:
+      command: BeamDefl_AutoOffset
+      args:
+        Deflection_signal: 1
+      arg_types:
+        Deflection_signal: int
+      description: BeamDefl.AutoOffset Auto-offsets the Beam Deflection signal. This
+        function works like the corresponding buttons on the beam deflection module.
+        It adds the current deflection value (vertical deflection, horizontal deflection
+        or intensity) to the offset so the deflection signal is close to 0.
+    safety:
+      mode: guarded
+  BiasSpectr_Open:
+    action_cmd:
+      command: BiasSpectr_Open
+      args: {}
+      arg_types: {}
+      description: BiasSpectr.Open Opens the Bias Spectroscopy module.
+    safety:
+      mode: guarded
+  BiasSpectr_Start:
+    action_cmd:
+      command: BiasSpectr_Start
+      args:
+        Get_data: 0
+        Save_base_name: ''
+      arg_types:
+        Get_data: int
+        Save_base_name: str
+      description: BiasSpectr.Start Starts a bias spectroscopy in the Bias Spectroscopy
+        module. Before using this function, select the channels to record in the Bias
+        Spectroscopy module.
+    safety:
+      mode: guarded
+  BiasSpectr_Stop:
+    action_cmd:
+      command: BiasSpectr_Stop
+      args: {}
+      arg_types: {}
+      description: BiasSpectr.Stop Stops the current Bias Spectroscopy measurement.
+    safety:
+      mode: guarded
+  BiasSwp_Open:
+    action_cmd:
+      command: BiasSwp_Open
+      args: {}
+      arg_types: {}
+      description: BiasSwp.Open Opens the Bias Sweep module.
+    safety:
+      mode: guarded
+  BiasSwp_Start:
+    action_cmd:
+      command: BiasSwp_Start
+      args:
+        Get_data: 0
+        Sweep_direction: 1
+        Z_Controller_status: 0
+        Save_base_name: ''
+        Reset_bias: 0
+      arg_types:
+        Get_data: int
+        Sweep_direction: int
+        Z_Controller_status: int
+        Save_base_name: str
+        Reset_bias: int
+      description: BiasSwp.Start Starts a bias sweep in the Bias Sweep module. Before
+        using this function, select the channels to record in the Bias Sweep module.
+    safety:
+      mode: guarded
+  Bias_Pulse:
+    action_cmd:
+      command: Bias_Pulse
+      args:
+        Wait_until_done: 0
+        Bias_pulse_width_s: 0.0
+        Bias_value_V: 0.0
+        Z_Controller_on_hold: 0
+        Pulse_absolute_relative: 0
+      arg_types:
+        Wait_until_done: int
+        Bias_pulse_width_s: float
+        Bias_value_V: float
+        Z_Controller_on_hold: int
+        Pulse_absolute_relative: int
+      description: Bias.Pulse Generates one bias pulse.
+    safety:
+      mode: guarded
+  CPDComp_Close:
+    action_cmd:
+      command: CPDComp_Close
+      args: {}
+      arg_types: {}
+      description: CPDComp.Close Closes the CPD compensation module. This module stops
+        automatically bias wobbling and CPD estimating when it closes.
+    safety:
+      mode: guarded
+  CPDComp_Open:
+    action_cmd:
+      command: CPDComp_Open
+      args: {}
+      arg_types: {}
+      description: CPDComp.Open Opens the CPD compensation module. This module starts
+        automatically bias wobbling and CPD estimating when it opens.
+    safety:
+      mode: guarded
+  DataLog_Open:
+    action_cmd:
+      command: DataLog_Open
+      args: {}
+      arg_types: {}
+      description: DataLog.Open Opens the Data Logger module.
+    safety:
+      mode: guarded
+  DataLog_Start:
+    action_cmd:
+      command: DataLog_Start
+      args: {}
+      arg_types: {}
+      description: DataLog.Start Starts the acquisition in the Data Logger module.
+        Before using this function, select the channels to record in the Data Logger.
+    safety:
+      mode: guarded
+  DataLog_Stop:
+    action_cmd:
+      command: DataLog_Stop
+      args: {}
+      arg_types: {}
+      description: DataLog.Stop Stops the acquisition in the Data Logger module.
+    safety:
+      mode: guarded
+  DigLines_Pulse:
+    action_cmd:
+      command: DigLines_Pulse
+      args:
+        Port: 0
+        Digital_lines: 1
+        Pulse_width_s: 0.0
+        Pulse_pause_s: 0.0
+        Number_of_pulses: 1
+        Wait_until_finished: 0
+      arg_types:
+        Port: int
+        Digital_lines: int
+        Pulse_width_s: float
+        Pulse_pause_s: float
+        Number_of_pulses: int
+        Wait_until_finished: int
+      description: DigLines.Pulse Configures and starts the pulse generator on the
+        selected digital outputs.
+    safety:
+      mode: guarded
+  FolMe_Stop:
+    action_cmd:
+      command: FolMe_Stop
+      args: {}
+      arg_types: {}
+      description: FolMe.Stop Stops the tip movement in Follow Me mode.
+    safety:
+      mode: guarded
+  FunGen1Ch_Start:
+    action_cmd:
+      command: FunGen1Ch_Start
+      args:
+        Periods: 0
+        Wait_until_finished: 0
+      arg_types:
+        Periods: int
+        Wait_until_finished: int
+      description: FunGen1Ch.Start Starts the generation of the waveform on AO8 (SC4)
+        or FAST AO (SC5) through the Function Generator module.
+    safety:
+      mode: guarded
+  FunGen1Ch_Stop:
+    action_cmd:
+      command: FunGen1Ch_Stop
+      args: {}
+      arg_types: {}
+      description: FunGen1Ch.Stop Stops the generation of the waveform through the
+        Function Generator module.
+    safety:
+      mode: guarded
+  FunGen2Ch_Start:
+    action_cmd:
+      command: FunGen2Ch_Start
+      args:
+        Periods: 0
+        Wait_until_finished: 0
+      arg_types:
+        Periods: int
+        Wait_until_finished: int
+      description: FunGen2Ch.Start Starts the generation of the waveforms on the FAST
+        AO or any available analog output through the Function Generator 2-Channels
+        module.
+    safety:
+      mode: guarded
+  FunGen2Ch_Stop:
+    action_cmd:
+      command: FunGen2Ch_Stop
+      args: {}
+      arg_types: {}
+      description: FunGen2Ch.Stop Stops the generation of the waveform through the
+        Function Generator 2-Channels module.
+    safety:
+      mode: guarded
+  GenSwp_Open:
+    action_cmd:
+      command: GenSwp_Open
+      args: {}
+      arg_types: {}
+      description: GenSwp.Open Opens the Generic Sweeper module.
+    safety:
+      mode: guarded
+  GenSwp_Start:
+    action_cmd:
+      command: GenSwp_Start
+      args:
+        Get_data: 0
+        Sweep_direction: 1
+        Save_base_name: ''
+        Reset_signal: 1
+        Z_Controller: 0
+      arg_types:
+        Get_data: int
+        Sweep_direction: int
+        Save_base_name: str
+        Reset_signal: int
+        Z_Controller: int
+      description: GenSwp.Start Starts the sweep in the Generic Sweeper.
+    safety:
+      mode: guarded
+  GenSwp_Stop:
+    action_cmd:
+      command: GenSwp_Stop
+      args: {}
+      arg_types: {}
+      description: GenSwp.Stop Stops the sweep in the Generic Sweeper module.
+    safety:
+      mode: guarded
+  HSSwp_Start:
+    action_cmd:
+      command: HSSwp_Start
+      args:
+        Wait_Until_Done: 0.0
+        Timeout: 0.0
+      arg_types:
+        Wait_Until_Done: float
+        Timeout: float
+      description: HSSwp.Start Starts a sweep in the High-Speed Sweeper module. When
+        Send response back is set to True, it returns immediately afterwards.
+    safety:
+      mode: guarded
+  HSSwp_Stop:
+    action_cmd:
+      command: HSSwp_Stop
+      args: {}
+      arg_types: {}
+      description: HSSwp.Stop Stops the sweep in the High-Speed Sweeper module.
+    safety:
+      mode: guarded
+  Interf_CtrlCalibrOpen:
+    action_cmd:
+      command: Interf_CtrlCalibrOpen
+      args: {}
+      arg_types: {}
+      description: Interf.CtrlCalibrOpen Opens the calibration panel for the interferometer
+        controller.
+    safety:
+      mode: guarded
+  Interf_CtrlNullDefl:
+    action_cmd:
+      command: Interf_CtrlNullDefl
+      args: {}
+      arg_types: {}
+      description: Interf.CtrlNullDefl Applies null deflection to the interferometer
+        controller.
+    safety:
+      mode: guarded
+  Interf_CtrlReset:
+    action_cmd:
+      command: Interf_CtrlReset
+      args: {}
+      arg_types: {}
+      description: Interf.CtrlReset Resets the interferometer controller.
+    safety:
+      mode: guarded
+  LockInFreqSwp_Open:
+    action_cmd:
+      command: LockInFreqSwp_Open
+      args: {}
+      arg_types: {}
+      description: LockInFreqSwp.Open Opens the Transfer function (Lock-In Frequency
+        Sweep) module. The transfer function does not run when its front panel is
+        closed. To automate measurements it might be required to open the module first
+        using this VI.
+    safety:
+      mode: guarded
+  LockInFreqSwp_Start:
+    action_cmd:
+      command: LockInFreqSwp_Start
+      args:
+        Get_Data: 0
+        Direction: 1
+      arg_types:
+        Get_Data: int
+        Direction: int
+      description: LockInFreqSwp.Start Starts a Lock-In frequency sweep.
+    safety:
+      mode: guarded
+  MCVA5_SingleStateUpdate:
+    action_cmd:
+      command: MCVA5_SingleStateUpdate
+      args:
+        Preamp_Nr: 0.0
+      arg_types:
+        Preamp_Nr: float
+      description: MCVA5.SingleStateUpdate Reads once the state of the selected preamplifier
+        and returns the Ready and Overload states of all channels.
+    safety:
+      mode: guarded
+  MCVA5_SingleTempUpdate:
+    action_cmd:
+      command: MCVA5_SingleTempUpdate
+      args:
+        Preamp_Nr: 0.0
+      arg_types:
+        Preamp_Nr: float
+      description: MCVA5.SingleTempUpdate Reads once the temperatures of all channels
+        of the selected preamplifier.
+    safety:
+      mode: guarded
+  MPass_Activate:
+    action_cmd:
+      command: MPass_Activate
+      args:
+        On_Off: 0.0
+      arg_types:
+        On_Off: float
+      description: MPass.Activate Activates Multi-Pass in the Scan Control module.
+    safety:
+      mode: guarded
+  MPass_Load:
+    action_cmd:
+      command: MPass_Load
+      args:
+        File_Path: 0.0
+      arg_types:
+        File_Path: float
+      description: MPass.Load Loads a Multi-Pass configuration file (.mpas) in the
+        Multi-Pass Configuration module.
+    safety:
+      mode: guarded
+  MPass_Save:
+    action_cmd:
+      command: MPass_Save
+      args:
+        File_Path: 0.0
+      arg_types:
+        File_Path: float
+      description: MPass.Save Saves the current configuration in the Multi-Pass Configuration
+        module into a Multi-Pass configuration file (.mpas).
+    safety:
+      mode: guarded
+  MProbeBias_Pulse:
+    action_cmd:
+      command: MProbeBias_Pulse
+      args:
+        Scanner_Index: 0.0
+        Wait_Until_Done: 0.0
+        Width: 0.0
+        Value: 0.0
+        ZCtrl_Hold: 0.0
+        Abs_Rel: 0.0
+      arg_types:
+        Scanner_Index: float
+        Wait_Until_Done: float
+        Width: float
+        Value: float
+        ZCtrl_Hold: float
+        Abs_Rel: float
+      description: MProbeBias.Pulse Generates one bias pulse.
+    safety:
+      mode: guarded
+  MProbeScanner_ScannerSwitch:
+    action_cmd:
+      command: MProbeScanner_ScannerSwitch
+      args:
+        Scanner_Index: 0.0
+      arg_types:
+        Scanner_Index: float
+      description: MProbeScanner.ScannerSwitch Switches the active scanner to the
+        selected one.
+    safety:
+      mode: guarded
+  MProbeScanner_Stop:
+    action_cmd:
+      command: MProbeScanner_Stop
+      args:
+        Scanner_Index: 0.0
+      arg_types:
+        Scanner_Index: float
+      description: MProbeScanner.Stop Stops the tip movement of the selected scanner.
+    safety:
+      mode: guarded
+  MProbeZCtrl_Home:
+    action_cmd:
+      command: MProbeZCtrl_Home
+      args:
+        Scanner_Index: 0.0
+      arg_types:
+        Scanner_Index: float
+      description: MProbeZCtrl.Home Moves the tip to its home position. This function
+        moves the tip to the home position defined by the Home Absolute (m)/ Home
+        Relative (m) value.
+    safety:
+      mode: guarded
+  MProbeZCtrl_Withdraw:
+    action_cmd:
+      command: MProbeZCtrl_Withdraw
+      args:
+        Scanner_Index: 0.0
+      arg_types:
+        Scanner_Index: float
+      description: MProbeZCtrl.Withdraw Withdraws the tip. This function switches
+        off the Z-Controller and then fully withdraws the tip (to the upper limit
+        of the Z-piezo range).
+    safety:
+      mode: guarded
+  Marks_LineDraw:
+    action_cmd:
+      command: Marks_LineDraw
+      args:
+        Start_point_X_coordinate_m: 0.0
+        Start_point_Y_coordinate_m: 0.0
+        End_point_X_coordinate_m: 0.0
+        End_point_Y_coordinate_m: 0.0
+        Color: 0
+      arg_types:
+        Start_point_X_coordinate_m: float
+        Start_point_Y_coordinate_m: float
+        End_point_X_coordinate_m: float
+        End_point_Y_coordinate_m: float
+        Color: int
+      description: Marks.LineDraw Draws a line in the scan frame.
+    safety:
+      mode: guarded
+  Marks_LinesDraw:
+    action_cmd:
+      command: Marks_LinesDraw
+      args:
+        Number_of_lines: 1
+        Start_point_X_coordinate_m: 0.0
+        Start_point_Y_coordinate_m: 0.0
+        End_point_X_coordinate_m: 0.0
+        End_point_Y_coordinate_m: 0.0
+        Color: 0
+      arg_types:
+        Number_of_lines: int
+        Start_point_X_coordinate_m: float
+        Start_point_Y_coordinate_m: float
+        End_point_X_coordinate_m: float
+        End_point_Y_coordinate_m: float
+        Color: int
+      description: Marks.LinesDraw Draws multiple lines in the scan frame.
+    safety:
+      mode: guarded
+  Marks_LinesErase:
+    action_cmd:
+      command: Marks_LinesErase
+      args:
+        Line_index: 1
+      arg_types:
+        Line_index: int
+      description: Marks.LinesErase Erase the line specified by the index parameter
+        from the scan frame.
+    safety:
+      mode: guarded
+  Marks_PointDraw:
+    action_cmd:
+      command: Marks_PointDraw
+      args:
+        X_coordinate_m: 0.0
+        Y_coordinate_m: 0.0
+        Text: ''
+        Color: 0
+      arg_types:
+        X_coordinate_m: float
+        Y_coordinate_m: float
+        Text: str
+        Color: int
+      description: Marks.PointDraw Draws text at the specified point of the scan frame.
+        This function can be very useful to mark an important location in the scan
+        image (i.e. the position where the Tip Shaper executed).
+    safety:
+      mode: guarded
+  Marks_PointsDraw:
+    action_cmd:
+      command: Marks_PointsDraw
+      args:
+        nr_points: 0.0
+        X_coordinate_m: 0.0
+        Y_coordinate_m: 0.0
+        Text: 0
+        Color: 0
+      arg_types:
+        nr_points: float
+        X_coordinate_m: float
+        Y_coordinate_m: float
+        Text: int
+        Color: int
+      description: Marks.PointsDraw Draws text at the specified points of the scan
+        frame. This function can be very useful to mark important locations in the
+        scan image (i.e. the position where the Tip Shaper executed).
+    safety:
+      mode: guarded
+  Marks_PointsErase:
+    action_cmd:
+      command: Marks_PointsErase
+      args:
+        Point_index: 1
+      arg_types:
+        Point_index: int
+      description: Marks.PointsErase Erase the point specified by the index parameter
+        from the scan frame.
+    safety:
+      mode: guarded
+  Motor_StartClosedLoop:
+    action_cmd:
+      command: Motor_StartClosedLoop
+      args:
+        Absolute_relative: 0
+        Target_Xm: 0.0
+        Target_Ym: 0.0
+        Target_Zm: 0.0
+        Wait_until_finished: 0
+        Group: 0
+      arg_types:
+        Absolute_relative: int
+        Target_Xm: float
+        Target_Ym: float
+        Target_Zm: float
+        Wait_until_finished: int
+        Group: int
+      description: "Motor.StartClosedLoop Moves the coarse positioning device (motor,\
+        \ piezo actuator\u2026) in closed loop. This is not supported by all motor\
+        \ control modules."
+    safety:
+      mode: guarded
+  Motor_StartMove:
+    action_cmd:
+      command: Motor_StartMove
+      args:
+        Direction: 1
+        Number_of_steps: 1
+        Group: 0
+        Wait_until_finished: 0
+      arg_types:
+        Direction: int
+        Number_of_steps: int
+        Group: int
+        Wait_until_finished: int
+      description: "Motor.StartMove Moves the coarse positioning device (motor, piezo\
+        \ actuator\u2026)."
+    safety:
+      mode: guarded
+  Motor_StopMove:
+    action_cmd:
+      command: Motor_StopMove
+      args: {}
+      arg_types: {}
+      description: Motor.StopMove Stops the motor motion.
+    safety:
+      mode: guarded
+  Osci1T_Run:
+    action_cmd:
+      command: Osci1T_Run
+      args: {}
+      arg_types: {}
+      description: Osci1T.Run Starts the Oscilloscope 1-Channel. This module does
+        not run when its front panel is closed. To automate measurements it is required
+        to run the module first using this function.
+    safety:
+      mode: guarded
+  Osci2T_Run:
+    action_cmd:
+      command: Osci2T_Run
+      args: {}
+      arg_types: {}
+      description: Osci2T.Run Starts the Oscilloscope 1-Channel. This module does
+        not run when its front panel is closed. To automate measurements it is required
+        to run the module first using this function.
+    safety:
+      mode: guarded
+  OsciHR_PSDAvrgRestart:
+    action_cmd:
+      command: OsciHR_PSDAvrgRestart
+      args: {}
+      arg_types: {}
+      description: OsciHR.PSDAvrgRestart Restarts the PSD averaging process in the
+        Oscilloscope High Resolution module.
+    safety:
+      mode: guarded
+  OsciHR_PSDShow:
+    action_cmd:
+      command: OsciHR_PSDShow
+      args:
+        Show_PSD_section: 0
+      arg_types:
+        Show_PSD_section: int
+      description: OsciHR.PSDShow Shows or hides the PSD section of the Oscilloscope
+        High Resolution.
+    safety:
+      mode: guarded
+  OsciHR_Run:
+    action_cmd:
+      command: OsciHR_Run
+      args: {}
+      arg_types: {}
+      description: OsciHR.Run Starts the Oscilloscope High Resolution module. The
+        Oscilloscope High Resolution module does not run when its front panel is closed.
+        To automate measurements it might be required to run the module first using
+        this function.
+    safety:
+      mode: guarded
+  OsciHR_TrigRearm:
+    action_cmd:
+      command: OsciHR_TrigRearm
+      args: {}
+      arg_types: {}
+      description: OsciHR.TrigRearm Rearms the trigger in the Oscilloscope High Resolution
+        module.
+    safety:
+      mode: guarded
+  PLLFreqSwp_Open:
+    action_cmd:
+      command: PLLFreqSwp_Open
+      args:
+        Modulator_index: 1
+      arg_types:
+        Modulator_index: int
+      description: PLLFreqSwp.Open Opens the PLL Frequency Sweep module.
+    safety:
+      mode: guarded
+  PLLFreqSwp_Start:
+    action_cmd:
+      command: PLLFreqSwp_Start
+      args:
+        Modulator_index: 1
+        Get_data: 0
+        Sweep_direction: 1
+      arg_types:
+        Modulator_index: int
+        Get_data: int
+        Sweep_direction: int
+      description: PLLFreqSwp.Start Starts a frequency sweep. Before using this function,
+        set the center frequency and frequency range in the Oscillation Control module.
+        Also, set the other parameters (number of points...) in the frequency sweep
+        module.
+    safety:
+      mode: guarded
+  PLLFreqSwp_Stop:
+    action_cmd:
+      command: PLLFreqSwp_Stop
+      args:
+        Modulator_index: 1
+      arg_types:
+        Modulator_index: int
+      description: PLLFreqSwp.Stop Stops the sweep in the PLL Frequency Sweep module.
+    safety:
+      mode: guarded
+  PLLPhasSwp_Start:
+    action_cmd:
+      command: PLLPhasSwp_Start
+      args:
+        Modulator_index: 1
+        Get_data: 0
+      arg_types:
+        Modulator_index: int
+        Get_data: int
+      description: PLLPhasSwp.Start Starts a phase sweep.
+    safety:
+      mode: guarded
+  PLLPhasSwp_Stop:
+    action_cmd:
+      command: PLLPhasSwp_Stop
+      args:
+        Modulator_index: 1
+      arg_types:
+        Modulator_index: int
+      description: PLLPhasSwp.Stop Stops the sweep in the PLL Phase Sweep module.
+    safety:
+      mode: guarded
+  PLLSignalAnlzr_FFTAvgRestart:
+    action_cmd:
+      command: PLLSignalAnlzr_FFTAvgRestart
+      args: {}
+      arg_types: {}
+      description: PLLSignalAnlzr.FFTAvgRestart Restarts the averaging in the spectrum
+        section of the PLL Signal Analyzer.
+    safety:
+      mode: guarded
+  PLLSignalAnlzr_Open:
+    action_cmd:
+      command: PLLSignalAnlzr_Open
+      args: {}
+      arg_types: {}
+      description: PLLSignalAnlzr.Open Opens the PLL Signal Analyzer.
+    safety:
+      mode: guarded
+  PLLSignalAnlzr_TrigAuto:
+    action_cmd:
+      command: PLLSignalAnlzr_TrigAuto
+      args: {}
+      arg_types: {}
+      description: PLLSignalAnlzr.TrigAuto Sets the trigger parameters to pre-defined
+        values in the PLL Signal Analyzer.
+    safety:
+      mode: guarded
+  PLLSignalAnlzr_TrigRearm:
+    action_cmd:
+      command: PLLSignalAnlzr_TrigRearm
+      args: {}
+      arg_types: {}
+      description: PLLSignalAnlzr.TrigRearm Rearms the trigger in the PLL Signal Analyzer.
+    safety:
+      mode: guarded
+  PLLZoomFFT_AvgRestart:
+    action_cmd:
+      command: PLLZoomFFT_AvgRestart
+      args: {}
+      arg_types: {}
+      description: PLLZoomFFT.AvgRestart Restarts the averaging in the PLL Zoom FFT
+        module.
+    safety:
+      mode: guarded
+  PLLZoomFFT_Open:
+    action_cmd:
+      command: PLLZoomFFT_Open
+      args: {}
+      arg_types: {}
+      description: PLLZoomFFT.Open Opens the PLL Zoom FFT module.
+    safety:
+      mode: guarded
+  PLL_FreqShiftAutoCenter:
+    action_cmd:
+      command: PLL_FreqShiftAutoCenter
+      args:
+        Modulator_index: 1
+      arg_types:
+        Modulator_index: int
+      description: PLL.FreqShiftAutoCenter Auto-centers frequency shift of the oscillation
+        control module. It works like the corresponding button on the oscillation
+        control module. It adds the current frequency shift to the center frequency
+        and sets the frequency shift to zero.
+    safety:
+      mode: guarded
+  Pattern_ExpOpen:
+    action_cmd:
+      command: Pattern_ExpOpen
+      args: {}
+      arg_types: {}
+      description: Pattern.ExpOpen Opens the selected grid experiment. This is required
+        to configure the experiment and be able to start it.
+    safety:
+      mode: guarded
+  Pattern_ExpPause:
+    action_cmd:
+      command: Pattern_ExpPause
+      args:
+        Pause_Resume: 0
+      arg_types:
+        Pause_Resume: int
+      description: Pattern.ExpPause Pauses or resumes the selected grid experiment.
+    safety:
+      mode: guarded
+  Pattern_ExpStart:
+    action_cmd:
+      command: Pattern_ExpStart
+      args:
+        Pattern: 0
+      arg_types:
+        Pattern: int
+      description: Pattern.ExpStart Starts the selected grid experiment. Before using
+        this function, select the experiment through <i>Pattern.PropsSet</i>, and
+        be sure to have it open in the software or through the function <i>Pattern.ExpOpen</i>.
+        Otherwise it will give an error saying that the experiment has not been configured
+        yet.
+    safety:
+      mode: guarded
+  Pattern_ExpStop:
+    action_cmd:
+      command: Pattern_ExpStop
+      args: {}
+      arg_types: {}
+      description: Pattern.ExpStop Stops the selected grid experiment.
+    safety:
+      mode: guarded
+  Piezo_HystFileLoad:
+    action_cmd:
+      command: Piezo_HystFileLoad
+      args:
+        File_path: 0.0
+      arg_types:
+        File_path: float
+      description: Piezo.HystFileLoad Loads and applies the Hysteresis Compensation
+        values for both axes from a .csv file in the Piezo Configuration module.
+    safety:
+      mode: guarded
+  Piezo_HystFileSave:
+    action_cmd:
+      command: Piezo_HystFileSave
+      args:
+        File_path: 0.0
+      arg_types:
+        File_path: float
+      description: Piezo.HystFileSave Saves the Hysteresis Compensation values for
+        both axes into a .csv file from the Piezo Configuration module.
+    safety:
+      mode: guarded
+  Scan_Action:
+    action_cmd:
+      command: Scan_Action
+      args:
+        Scan_action: 0
+        Scan_direction: 1
+      arg_types:
+        Scan_action: int
+        Scan_direction: int
+      description: Scan.Action Starts, stops, pauses or resumes a scan.
+    safety:
+      mode: guarded
+  Scan_BackgroundDelete:
+    action_cmd:
+      command: Scan_BackgroundDelete
+      args:
+        Wait_until_deleted: 0.0
+        Timeout_ms: 0.0
+        Which_background: 0.0
+      arg_types:
+        Wait_until_deleted: float
+        Timeout_ms: float
+        Which_background: float
+      description: Scan.BackgroundDelete Deletes the data from the last pasted background
+        or from all backgrounds. If Wait Until Deletef is True, this function returns
+        only when the data has been deleted or timeout occurs (whichever occurs first).
+    safety:
+      mode: guarded
+  Scan_BackgroundPaste:
+    action_cmd:
+      command: Scan_BackgroundPaste
+      args:
+        Wait_until_pasted: 0.0
+        Timeout_ms: 0.0
+      arg_types:
+        Wait_until_pasted: float
+        Timeout_ms: float
+      description: Scan.BackgroundPaste Pastes the current scan databuffer into the
+        background. If Wait Until Pasted is True, this function returns only when
+        the data has been pasted or timeout occurs (whichever occurs first).
+    safety:
+      mode: guarded
+  Scan_FrameDataGrab:
+    action_cmd:
+      command: Scan_FrameDataGrab
+      args:
+        Channel_index: 1
+        Data_direction: 1
+      arg_types:
+        Channel_index: int
+        Data_direction: int
+      description: Scan.FrameDataGrab Returns the scan data of the selected frame.
+    safety:
+      mode: guarded
+  Scan_Save:
+    action_cmd:
+      command: Scan_Save
+      args:
+        Wait_until_saved: 0.0
+        Timeout_ms: 0.0
+      arg_types:
+        Wait_until_saved: float
+        Timeout_ms: float
+      description: Scan.Save Saves the current scan databuffer into file. If Wait
+        Until Saved is True, this function returns only when the data has been saved
+        or timeout occurs (whichever occurs first).
+    safety:
+      mode: guarded
+  Scan_WaitEndOfScan:
+    action_cmd:
+      command: Scan_WaitEndOfScan
+      args:
+        Timeout_ms: 0
+      arg_types:
+        Timeout_ms: int
+      description: Scan.WaitEndOfScan Waits for the End-of-Scan. This function returns
+        only when an End-of-Scan or timeout occurs (whichever occurs first).
+    safety:
+      mode: guarded
+  Script_Autosave:
+    action_cmd:
+      command: Script_Autosave
+      args:
+        Acquire_buffer: 0
+        Sweep_number: 1
+        All_sweeps_to_same_file: 0
+        Folder_path: 0.0
+        Basename: 0.0
+      arg_types:
+        Acquire_buffer: int
+        Sweep_number: int
+        All_sweeps_to_same_file: int
+        Folder_path: float
+        Basename: float
+      description: Script.Autosave Saves automatically to file the data stored in
+        the Acquire Buffers after running a script in the Script module.
+    safety:
+      mode: guarded
+  Script_Deploy:
+    action_cmd:
+      command: Script_Deploy
+      args:
+        Script_index: 1
+      arg_types:
+        Script_index: int
+      description: Script.Deploy Deploys a script in the script module.
+    safety:
+      mode: guarded
+  Script_LUTDeploy:
+    action_cmd:
+      command: Script_LUTDeploy
+      args:
+        Script_index: 0.0
+        Wait_until_finished: 0.0
+        Timeout_ms: 0.0
+      arg_types:
+        Script_index: float
+        Wait_until_finished: float
+        Timeout_ms: float
+      description: Script.LUTDeploy Deploys a LUT from the LUT Editor in the script
+        module.
+    safety:
+      mode: guarded
+  Script_LUTLoad:
+    action_cmd:
+      command: Script_LUTLoad
+      args:
+        Script_index: 0.0
+        Script_file_path: 0.0
+        LUT_Values: 0.0
+      arg_types:
+        Script_index: float
+        Script_file_path: float
+        LUT_Values: float
+      description: Script.LUTLoad Loads a LUT from file or directly by setting an
+        array of values into the LUT Editor in the script module.
+    safety:
+      mode: guarded
+  Script_LUTOpen:
+    action_cmd:
+      command: Script_LUTOpen
+      args: {}
+      arg_types: {}
+      description: Script.LUTOpen Opens the LUT (Look Up Table) Editor from the Script
+        module.
+    safety:
+      mode: guarded
+  Script_LUTSave:
+    action_cmd:
+      command: Script_LUTSave
+      args:
+        Script_index: 0.0
+        Script_file_path: 0.0
+      arg_types:
+        Script_index: float
+        Script_file_path: float
+      description: Script.LUTSave Saves a LUT to file.
+    safety:
+      mode: guarded
+  Script_Load:
+    action_cmd:
+      command: Script_Load
+      args:
+        Script_index: 1
+        Script_file_path: ''
+        Load_session: 0
+      arg_types:
+        Script_index: int
+        Script_file_path: str
+        Load_session: int
+      description: Script.Load Loads a script in the script module.
+    safety:
+      mode: guarded
+  Script_Open:
+    action_cmd:
+      command: Script_Open
+      args: {}
+      arg_types: {}
+      description: Script.Open Opens the Script module.
+    safety:
+      mode: guarded
+  Script_Run:
+    action_cmd:
+      command: Script_Run
+      args:
+        Script_index: 1
+        Wait_until_script_finishes: 0
+      arg_types:
+        Script_index: int
+        Wait_until_script_finishes: int
+      description: Script.Run Runs a script in the script module.
+    safety:
+      mode: guarded
+  Script_Save:
+    action_cmd:
+      command: Script_Save
+      args:
+        Script_index: 1
+        Script_file_path: ''
+        Save_session: 0
+      arg_types:
+        Script_index: int
+        Script_file_path: str
+        Save_session: int
+      description: Script.Save Saves the current script in the specified .ini file.
+    safety:
+      mode: guarded
+  Script_Stop:
+    action_cmd:
+      command: Script_Stop
+      args: {}
+      arg_types: {}
+      description: Script.Stop Stops the running script in the script module.
+    safety:
+      mode: guarded
+  Script_Undeploy:
+    action_cmd:
+      command: Script_Undeploy
+      args:
+        Script_index: 1
+      arg_types:
+        Script_index: int
+      description: Script.Undeploy Undeploys a script in the script module.
+    safety:
+      mode: guarded
+  SignalChart_Open:
+    action_cmd:
+      command: SignalChart_Open
+      args: {}
+      arg_types: {}
+      description: SignalChart.Open Opens the Signal Chart module.
+    safety:
+      mode: guarded
+  SpectrumAnlzr_Run:
+    action_cmd:
+      command: SpectrumAnlzr_Run
+      args:
+        Spectrum_Analyzer_instance: 0
+      arg_types:
+        Spectrum_Analyzer_instance: int
+      description: SpectrumAnlzr.Run Starts the Spectrum Analyzer modules. The Spectrum
+        Analyzer does not run when its front panel is closed. To automate measurements
+        it is required to run the module first using this function.
+    safety:
+      mode: guarded
+  TCPLog_Start:
+    action_cmd:
+      command: TCPLog_Start
+      args: {}
+      arg_types: {}
+      description: TCPLog.Start Starts the acquisition in the TCP Logger module. Before
+        using this function, select the channels to record in the TCP Logger.
+    safety:
+      mode: guarded
+  TCPLog_Stop:
+    action_cmd:
+      command: TCPLog_Stop
+      args: {}
+      arg_types: {}
+      description: TCPLog.Stop Stops the acquisition in the TCP Logger module.
+    safety:
+      mode: guarded
+  TipRec_BufferClear:
+    action_cmd:
+      command: TipRec_BufferClear
+      args: {}
+      arg_types: {}
+      description: TipRec.BufferClear Clears the buffer of the Tip Move Recorder.
+    safety:
+      mode: guarded
+  TipRec_DataSave:
+    action_cmd:
+      command: TipRec_DataSave
+      args:
+        Clear_buffer: 0
+        Basename: ''
+      arg_types:
+        Clear_buffer: int
+        Basename: str
+      description: TipRec.DataSave Saves the data acquired in Follow Me mode (displayed
+        in the Tip Move Recorder) to a file.
+    safety:
+      mode: guarded
+  TipShaper_Start:
+    action_cmd:
+      command: TipShaper_Start
+      args:
+        Wait_until_finished: 0
+        Timeout_ms: 0
+      arg_types:
+        Wait_until_finished: int
+        Timeout_ms: int
+      description: TipShaper.Start Starts the tip shaper procedure.
+    safety:
+      mode: guarded
+  Util_LayoutLoad:
+    action_cmd:
+      command: Util_LayoutLoad
+      args:
+        Layout_file_path: ''
+        Load_session_layout: 0
+      arg_types:
+        Layout_file_path: str
+        Load_session_layout: int
+      description: Util.LayoutLoad Loads a layout from the specified .ini file.
+    safety:
+      mode: guarded
+  Util_LayoutSave:
+    action_cmd:
+      command: Util_LayoutSave
+      args:
+        Layout_file_path: ''
+        Save_session_layout: 0
+      arg_types:
+        Layout_file_path: str
+        Save_session_layout: int
+      description: Util.LayoutSave Saves the current layout in the specified .ini
+        file.
+    safety:
+      mode: guarded
+  Util_Lock:
+    action_cmd:
+      command: Util_Lock
+      args: {}
+      arg_types: {}
+      description: Util.Lock Locks the Nanonis software. Launches the Lock modal window,
+        preventing the user to interact with the Nanonis software until unlocking
+        it manually or through the <i>Util.UnLock</i> function.
+    safety:
+      mode: guarded
+  Util_Quit:
+    action_cmd:
+      command: Util_Quit
+      args:
+        Use_Stored_Values: 0.0
+        Settings_Name: 0.0
+        Layout_Name: 0.0
+        Save_Signals: 0.0
+      arg_types:
+        Use_Stored_Values: float
+        Settings_Name: float
+        Layout_Name: float
+        Save_Signals: float
+      description: Quits the Nanonis software with the option to save settings, layout
+        and signals (same functionality provided by the dialog window that pops-up
+        when quitting the software through the File menu).
+    safety:
+      mode: guarded
+  Util_SettingsLoad:
+    action_cmd:
+      command: Util_SettingsLoad
+      args:
+        Settings_file_path: ''
+        Load_session_settings: 0
+      arg_types:
+        Settings_file_path: str
+        Load_session_settings: int
+      description: Util.SettingsLoad Loads the settings from the specified .ini file.
+    safety:
+      mode: guarded
+  Util_SettingsSave:
+    action_cmd:
+      command: Util_SettingsSave
+      args:
+        Settings_file_path: ''
+        Save_session_settings: 0
+      arg_types:
+        Settings_file_path: str
+        Save_session_settings: int
+      description: Util.SettingsSave Saves the current settings in the specified .ini
+        file.
+    safety:
+      mode: guarded
+  Util_UnLock:
+    action_cmd:
+      command: Util_UnLock
+      args: {}
+      arg_types: {}
+      description: Util.UnLock Unlocks the Nanonis software. Closes the Lock modal
+        window which prevents the user to interact with the Nanonis software.
+    safety:
+      mode: guarded
+  ZCtrl_Home:
+    action_cmd:
+      command: ZCtrl_Home
+      args: {}
+      arg_types: {}
+      description: ZCtrl.Home Moves the tip to its home position. This function moves
+        the tip to the home position defined by the Home Absolute (m)/ Home Relative
+        (m) value. (Absolute and relative can be switched in the controller configuration
+        panel in the software).
+    safety:
+      mode: guarded
+  ZCtrl_Withdraw:
+    action_cmd:
+      command: ZCtrl_Withdraw
+      args:
+        Wait_until_finished: 0
+        Timeout_ms: 0
+      arg_types:
+        Wait_until_finished: int
+        Timeout_ms: int
+      description: ZCtrl.Withdraw Withdraws the tip. This function switches off the
+        Z-Controller and then fully withdraws the tip (to the upper limit of the Z-piezo
+        range).
+    safety:
+      mode: guarded
+  ZSpectr_Open:
+    action_cmd:
+      command: ZSpectr_Open
+      args: {}
+      arg_types: {}
+      description: ZSpectr.Open Opens the Z Spectroscopy module.
+    safety:
+      mode: guarded
+  ZSpectr_Start:
+    action_cmd:
+      command: ZSpectr_Start
+      args:
+        Get_data: 0
+        Save_base_name: ''
+      arg_types:
+        Get_data: int
+        Save_base_name: str
+      description: ZSpectr.Start Starts a Z spectroscopy in the Z Spectroscopy module.
+        Before using this function, select the channels to record in the Z Spectroscopy
+        module.
+    safety:
+      mode: guarded
+  ZSpectr_Stop:
+    action_cmd:
+      command: ZSpectr_Stop
+      args: {}
+      arg_types: {}
+      description: ZSpectr.Stop Stops the current Z Spectroscopy measurement.
+    safety:
+      mode: guarded
+  close:
+    action_cmd:
+      command: close
+      args: {}
+      arg_types: {}
+      description: ''
+    safety:
+      mode: guarded
+  correctType:
+    action_cmd:
+      command: correctType
+      args:
+        BodyType: 0.0
+        Body: 0.0
+      arg_types:
+        BodyType: float
+        Body: float
+      description: ''
+    safety:
+      mode: guarded
+  decodeArray:
+    action_cmd:
+      command: decodeArray
+      args:
+        response: 0.0
+        index: 0.0
+        numOfElements: 0.0
+        responseType: 0.0
+      arg_types:
+        response: float
+        index: float
+        numOfElements: float
+        responseType: float
+      description: ''
+    safety:
+      mode: guarded
+  decodeArrayPrepended:
+    action_cmd:
+      command: decodeArrayPrepended
+      args:
+        response: 0.0
+        index: 0.0
+        numOfElements: 0.0
+        responseType: 0.0
+      arg_types:
+        response: float
+        index: float
+        numOfElements: float
+        responseType: float
+      description: ''
+    safety:
+      mode: guarded
+  decodeSingularString:
+    action_cmd:
+      command: decodeSingularString
+      args:
+        response: 0.0
+        index: 0.0
+        stringLength: 0.0
+      arg_types:
+        response: float
+        index: float
+        stringLength: float
+      description: ''
+    safety:
+      mode: guarded
+  decodeStringPrepended:
+    action_cmd:
+      command: decodeStringPrepended
+      args:
+        response: 0.0
+        index: 0.0
+        numOfStrings: 0.0
+      arg_types:
+        response: float
+        index: float
+        numOfStrings: float
+      description: ''
+    safety:
+      mode: guarded
+  handle2DArray:
+    action_cmd:
+      command: handle2DArray
+      args:
+        Array: 0.0
+        BodyType: 0.0
+        BodyPart: 0.0
+      arg_types:
+        Array: float
+        BodyType: float
+        BodyPart: float
+      description: ''
+    safety:
+      mode: guarded
+  handleArray:
+    action_cmd:
+      command: handleArray
+      args:
+        Array: 0.0
+        BodyType: 0.0
+        BodyPart: 0.0
+      arg_types:
+        Array: float
+        BodyType: float
+        BodyPart: float
+      description: ''
+    safety:
+      mode: guarded
+  handleArrayPrepend:
+    action_cmd:
+      command: handleArrayPrepend
+      args:
+        Array: 0.0
+        BodyType: 0.0
+        BodyPart: 0.0
+      arg_types:
+        Array: float
+        BodyType: float
+        BodyPart: float
+      description: ''
+    safety:
+      mode: guarded
+  handleArrayString:
+    action_cmd:
+      command: handleArrayString
+      args:
+        Array: 0.0
+        BodyType: 0.0
+        BodyPart: 0.0
+      arg_types:
+        Array: float
+        BodyType: float
+        BodyPart: float
+      description: ''
+    safety:
+      mode: guarded
+  handleString:
+    action_cmd:
+      command: handleString
+      args:
+        BodyElement: 0.0
+        BodyType: 0.0
+        BodyPart: 0.0
+      arg_types:
+        BodyElement: float
+        BodyType: float
+        BodyPart: float
+      description: ''
+    safety:
+      mode: guarded
+  parseError:
+    action_cmd:
+      command: parseError
+      args:
+        response: 0.0
+        index: 0.0
+      arg_types:
+        response: float
+        index: float
+      description: ''
+    safety:
+      mode: guarded
+  parseGeneralResponse:
+    action_cmd:
+      command: parseGeneralResponse
+      args:
+        Response: 0.0
+        ResponseTypes: 0.0
+      arg_types:
+        Response: float
+        ResponseTypes: float
+      description: ''
+    safety:
+      mode: guarded
+  printDebugInfo:
+    action_cmd:
+      command: printDebugInfo
+      args:
+        responseTypes: 0.0
+        bodyParts: 0.0
+      arg_types:
+        responseTypes: float
+        bodyParts: float
+      description: ''
+    safety:
+      mode: guarded
+  quickSend:
+    action_cmd:
+      command: quickSend
+      args:
+        Command: 0.0
+        Body: 0.0
+        BodyType: 0.0
+        ResponseTypes: 0.0
+      arg_types:
+        Command: float
+        Body: float
+        BodyType: float
+        ResponseTypes: float
+      description: 'quickSend(self, Command, Body, BodyType,ResponseTypes) Parameters
+        for quicksend: Command : as written in documentation Body: Body to send as
+        array [] - use [] when no argument should be sent! BodyType: Array of [Type
+        of data] - see also ResponseTypes ResponseTypes: Array of Types to decode
+        response IDENTIFIERS: H : unsigned int16 h : int16 I : unsigned int32 i :
+        int32 f : float32 d : float64 (double) Arrays (1D): Start with * length taken
+        from directly before the array (+ or -) *I : array of unsigned int32 (+ or
+        -) *i : array of int32 (+ or -) *f : array of float32 (+ or -) *d : array
+        of float64 (+ or -) *c : String! (Array of chars - interpreted as string!)
+        NEED TO UPDATE WITHOUT "*"!!!! Arrays (2D): start with 2 width and height
+        taken from the two variables before the array (+ or -) 2f : 2d array of float32
+        UNIQUE FOR RETURN TYPES: "**" Identifier for arrays whose size is defined
+        by the first returned argument'
+    safety:
+      mode: guarded
+  returnDebugInfo:
+    action_cmd:
+      command: returnDebugInfo
+      args:
+        displayInfo: 0.0
+      arg_types:
+        displayInfo: float
+      description: ''
+    safety:
+      mode: guarded
+  send:
+    action_cmd:
+      command: send
+      args:
+        Command: 0.0
+        Body: 0.0
+        BodyType: 0.0
+      arg_types:
+        Command: float
+        Body: float
+        BodyType: float
+      description: ''
+    safety:
+      mode: guarded

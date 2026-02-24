@@ -4,7 +4,10 @@ from pathlib import Path
 
 import pytest
 
-from nanonis_qcodes_controller.qcodes_driver.extensions import load_scalar_parameter_specs
+from nanonis_qcodes_controller.qcodes_driver.extensions import (
+    load_action_specs,
+    load_scalar_parameter_specs,
+)
 
 
 def test_load_scalar_parameter_specs_parses_manifest(tmp_path: Path) -> None:
@@ -53,3 +56,35 @@ def test_load_scalar_parameter_specs_rejects_unknown_value_type(tmp_path: Path) 
 
     with pytest.raises(ValueError):
         _ = load_scalar_parameter_specs(manifest_path)
+
+
+def test_load_action_specs_parses_manifest_actions(tmp_path: Path) -> None:
+    manifest_path = tmp_path / "manifest.yaml"
+    manifest_path.write_text(
+        "\n".join(
+            [
+                "actions:",
+                "  Scan_Action:",
+                "    action_cmd:",
+                "      command: Scan_Action",
+                "      args:",
+                "        Scan_action: 0",
+                "        Scan_direction: 1",
+                "      arg_types:",
+                "        Scan_action: int",
+                "        Scan_direction: int",
+                "      description: Start or stop a scan.",
+                "    safety:",
+                "      mode: alwaysAllowed",
+            ]
+        ),
+        encoding="utf-8",
+    )
+
+    specs = load_action_specs(manifest_path)
+
+    assert len(specs) == 1
+    assert specs[0].name == "Scan_Action"
+    assert specs[0].action_cmd.command == "Scan_Action"
+    assert specs[0].action_cmd.arg_types["Scan_action"] == "int"
+    assert specs[0].safety_mode == "alwaysAllowed"

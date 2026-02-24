@@ -13,9 +13,11 @@ DEFAULT_PARAMETERS_FILE = Path("config/parameters.yaml")
 
 ScalarValueType = Literal["float", "int", "bool", "str"]
 ValidatorKind = Literal["numbers", "ints", "bool", "enum", "none"]
+ActionSafetyMode = Literal["alwaysAllowed", "guarded", "blocked"]
 
 _ALLOWED_VALUE_TYPES: frozenset[str] = frozenset({"float", "int", "bool", "str"})
 _ALLOWED_VALIDATOR_KINDS: frozenset[str] = frozenset({"numbers", "ints", "bool", "enum", "none"})
+_ALLOWED_ACTION_SAFETY_MODES: frozenset[str] = frozenset({"alwaysAllowed", "guarded", "blocked"})
 
 
 @dataclass(frozen=True)
@@ -32,6 +34,21 @@ class WriteCommandSpec:
     value_arg: str
     args: Mapping[str, Any] = field(default_factory=dict)
     description: str = ""
+
+
+@dataclass(frozen=True)
+class ActionCommandSpec:
+    command: str
+    args: Mapping[str, Any] = field(default_factory=dict)
+    arg_types: Mapping[str, ScalarValueType] = field(default_factory=dict)
+    description: str = ""
+
+
+@dataclass(frozen=True)
+class ActionSpec:
+    name: str
+    action_cmd: ActionCommandSpec
+    safety_mode: ActionSafetyMode = "guarded"
 
 
 @dataclass(frozen=True)
@@ -75,13 +92,35 @@ class ParameterSpec:
         return self.set_cmd is not None
 
 
-def load_parameter_specs(parameter_file: str | Path) -> tuple[ParameterSpec, ...]:
+def _resolve_manifest_path(parameter_file: str | Path) -> Path:
     manifest_path = Path(parameter_file).expanduser()
     if not manifest_path.exists():
         if manifest_path == DEFAULT_PARAMETERS_FILE.expanduser():
-            manifest_path = resolve_packaged_default("parameters.yaml")
-        else:
-            raise ValueError(f"Parameter file does not exist: {manifest_path}")
+            return resolve_packaged_default("parameters.yaml")
+        raise ValueError(f"Parameter file does not exist: {manifest_path}")
+    return manifest_path
+
+
+def _parse_scalar_value_type(value: Any, *, field_name: str) -> ScalarValueType:
+    normalized = str(value).strip().lower()
+    if normalized not in _ALLOWED_VALUE_TYPES:
+        allowed = ", ".join(sorted(_ALLOWED_VALUE_TYPES))
+        raise ValueError(f"{field_name} must be one of: {allowed}. Received: {value}")
+    return cast(ScalarValueType, normalized)
+
+
+def _infer_scalar_value_type(value: Any) -> ScalarValueType:
+    if isinstance(value, bool):
+        return "bool"
+    if isinstance(value, int):
+        return "int"
+    if isinstance(value, float):
+        return "float"
+    return "str"
+
+
+def load_parameter_specs(parameter_file: str | Path) -> tuple[ParameterSpec, ...]:
+    manifest_path = _resolve_manifest_path(parameter_file)
 
     with manifest_path.open("r", encoding="utf-8") as handle:
         loaded = yaml.safe_load(handle)
@@ -99,6 +138,30 @@ def load_parameter_specs(parameter_file: str | Path) -> tuple[ParameterSpec, ...
     for name in sorted(parameters_raw):
         spec_mapping = _as_mapping(parameters_raw[name], context=f"parameters.{name}")
         specs.append(_parse_parameter_spec(name=name, mapping=spec_mapping, defaults=defaults))
+
+    return tuple(specs)
+
+
+def load_action_specs(parameter_file: str | Path) -> tuple[ActionSpec, ...]:
+    manifest_path = _resolve_manifest_path(parameter_file)
+
+    with manifest_path.open("r", encoding="utf-8") as handle:
+        loaded = yaml.safe_load(handle)
+
+    if loaded is None:
+        return ()
+
+    root = _as_mapping(loaded, context="root")
+    actions_raw = root.get("actions", {})
+    if actions_raw in (None, False):
+        return ()
+    if not isinstance(actions_raw, dict):
+        raise ValueError("Parameter file field 'actions' must be a mapping keyed by action name.")
+
+    specs: list[ActionSpec] = []
+    for name in sorted(actions_raw):
+        spec_mapping = _as_mapping(actions_raw[name], context=f"actions.{name}")
+        specs.append(_parse_action_spec(name=str(name), mapping=spec_mapping))
 
     return tuple(specs)
 
@@ -159,6 +222,73 @@ def _parse_parameter_spec(
         safety=safety,
         snapshot_value=snapshot_value,
     )
+
+
+def _parse_action_spec(*, name: str, mapping: Mapping[str, Any]) -> ActionSpec:
+    action_cmd = _parse_action_command(
+        mapping.get("action_cmd"), context=f"actions.{name}.action_cmd"
+    )
+    safety_mode = _parse_action_safety_mode(
+        mapping.get("safety"),
+        context=f"actions.{name}.safety",
+    )
+    return ActionSpec(name=name, action_cmd=action_cmd, safety_mode=safety_mode)
+
+
+def _parse_action_command(value: Any, *, context: str) -> ActionCommandSpec:
+    mapping = _as_mapping(value, context=context)
+    command = _parse_required_string(mapping.get("command"), field_name=f"{context}.command")
+    args_mapping = _as_mapping(mapping.get("args"), context=f"{context}.args")
+    arg_types_mapping = _as_mapping(mapping.get("arg_types"), context=f"{context}.arg_types")
+    description = str(mapping.get("description", "")).strip()
+
+    parsed_arg_types: dict[str, ScalarValueType] = {}
+    arg_names = sorted({*args_mapping.keys(), *arg_types_mapping.keys()})
+    for arg_name in arg_names:
+        normalized_name = str(arg_name)
+        explicit_type = arg_types_mapping.get(arg_name)
+        if explicit_type is not None:
+            parsed_arg_types[normalized_name] = _parse_scalar_value_type(
+                explicit_type,
+                field_name=f"{context}.arg_types.{normalized_name}",
+            )
+            continue
+
+        parsed_arg_types[normalized_name] = _infer_scalar_value_type(args_mapping.get(arg_name))
+
+    return ActionCommandSpec(
+        command=command,
+        args={str(key): value for key, value in args_mapping.items()},
+        arg_types=parsed_arg_types,
+        description=description,
+    )
+
+
+def _parse_action_safety_mode(value: Any, *, context: str) -> ActionSafetyMode:
+    if value is None:
+        return "guarded"
+
+    if isinstance(value, str):
+        mode_raw = value
+    else:
+        mapping = _as_mapping(value, context=context)
+        mode_raw = mapping.get("mode", "guarded")
+
+    normalized = str(mode_raw).strip()
+    lowered = normalized.lower()
+    if lowered == "readonly":
+        return "alwaysAllowed"
+
+    canonical: dict[str, ActionSafetyMode] = {
+        "alwaysallowed": "alwaysAllowed",
+        "guarded": "guarded",
+        "blocked": "blocked",
+    }
+    mode = canonical.get(lowered)
+    if mode is None:
+        allowed = ", ".join(sorted(_ALLOWED_ACTION_SAFETY_MODES))
+        raise ValueError(f"{context}.mode must be one of: {allowed}. Received: {mode_raw}")
+    return mode
 
 
 def _parse_read_command(value: Any, *, context: str) -> ReadCommandSpec | None:

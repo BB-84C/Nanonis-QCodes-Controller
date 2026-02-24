@@ -58,6 +58,8 @@ python -m pip install ".[nanonis]"
 1. Optionally copy `.env.example` to `.env`.
 2. Set runtime values in `config/default_runtime.yaml`.
 3. Unified parameter specs are in `config/parameters.yaml`.
+   - `parameters`: scalar `get`/`set` mappings.
+   - `actions`: non-`Get`/`Set` backend methods with `action_cmd` metadata.
 4. Regenerate from `nanonis_spm.Nanonis` with `scripts/generate_parameters_manifest.py`.
 5. Trajectory monitor defaults are in `config/default_trajectory_monitor.yaml`.
 
@@ -87,6 +89,12 @@ Explicit guarded ramp:
 
 ```powershell
 nqctl ramp bias_v 0.10 0.25 0.01 --interval-s 0.10
+```
+
+Invoke one manifest action command:
+
+```powershell
+nqctl act Scan_Action --arg Scan_action=0 --arg Scan_direction=1
 ```
 
 Inspect effective policy:

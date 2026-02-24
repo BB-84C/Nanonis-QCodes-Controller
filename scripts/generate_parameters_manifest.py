@@ -57,7 +57,7 @@ def main() -> int:
         explicit_curated=args.curated_files,
     )
 
-    curated_defaults, curated_parameters = _load_curated_inputs(curated_paths)
+    curated_defaults, curated_parameters, curated_actions = _load_curated_inputs(curated_paths)
     commands = list(discover_nanonis_commands(match_pattern=str(args.match)))
     if args.limit > 0:
         commands = commands[: args.limit]
@@ -65,6 +65,7 @@ def main() -> int:
     manifest = build_unified_manifest(
         curated_defaults=curated_defaults,
         curated_parameters=curated_parameters,
+        curated_actions=curated_actions,
         commands=tuple(commands),
     )
 
@@ -76,8 +77,11 @@ def main() -> int:
     print(f"Wrote unified parameters manifest: {output_path}")
     print(f"Methods seen: {meta.get('methods_seen')}")
     print(f"Get/Set commands imported: {meta.get('get_set_commands_imported')}")
+    print(f"Action commands imported: {meta.get('action_commands_imported')}")
     print(f"Parameters emitted: {meta.get('parameters_emitted')}")
+    print(f"Actions emitted: {meta.get('actions_emitted')}")
     print(f"With descriptions: {meta.get('with_description_count')}")
+    print(f"Actions with descriptions: {meta.get('actions_with_description_count')}")
     print(f"Writable count: {meta.get('writable_count')}")
     return 0
 
@@ -103,9 +107,12 @@ def _resolve_curated_paths(
     return []
 
 
-def _load_curated_inputs(paths: list[Path]) -> tuple[dict[str, Any], dict[str, Any]]:
+def _load_curated_inputs(
+    paths: list[Path],
+) -> tuple[dict[str, Any], dict[str, Any], dict[str, Any]]:
     defaults: dict[str, Any] = {}
     parameters: dict[str, Any] = {}
+    actions: dict[str, Any] = {}
     for path in paths:
         if not path.is_file():
             continue
@@ -127,7 +134,14 @@ def _load_curated_inputs(paths: list[Path]) -> tuple[dict[str, Any], dict[str, A
                     continue
                 parameters[str(name)] = mapping
 
-    return defaults, parameters
+        loaded_actions = loaded.get("actions")
+        if isinstance(loaded_actions, dict):
+            for name, mapping in loaded_actions.items():
+                if not isinstance(mapping, dict):
+                    continue
+                actions[str(name)] = mapping
+
+    return defaults, parameters, actions
 
 
 if __name__ == "__main__":

@@ -4,11 +4,13 @@
 Expose a small, stable command surface that orchestration agents can call directly.
 
 ## Core commands
-- `nqctl capabilities`: returns parameters/actions/policy summary, including rich
-  `parameters.items[*]` metadata (`get_cmd`, `set_cmd`, `vals`, `safety`) for
-  agent planning. Descriptions are exposed on `get_cmd`/`set_cmd` when present.
+- `nqctl capabilities`: returns parameters/action-commands/actions/policy summary,
+  including rich `parameters.items[*]` metadata (`get_cmd`, `set_cmd`, `vals`,
+  `safety`) and `action_commands.items[*]` metadata (`action_cmd`, `safety_mode`).
+  Descriptions are exposed on command blocks when present.
 - `nqctl observables list`: returns readable and writable parameter metadata.
 - `nqctl actions list`: returns supported action descriptors.
+- `nqctl act <action_name> --arg <key=value>`: invoke one manifest action command.
 - `nqctl get <parameter>`: reads one parameter value.
 - `nqctl set <parameter> <value>`: guarded strict single-step write.
 - `nqctl ramp <parameter> <start> <end> <step> --interval-s <sec>`: guarded explicit ramp.
@@ -56,6 +58,8 @@ Monitor config requirements and defaults:
 ## Notes for orchestration agents
 - JSON output is the default format; use `--text` when needed.
 - Use `capabilities` once at task start to learn available parameters and actions.
+- Non-`Get`/`Set` backend methods are exposed via `actions` section in `parameters.yaml`.
+- Action safety modes are: `alwaysAllowed`, `guarded`, `blocked`.
 - Use `scripts/generate_parameters_manifest.py` to refresh `config/parameters.yaml` from `nanonis_spm.Nanonis`.
 - `set` never auto-ramps; use `ramp` for stepped trajectories.
 - Keep sequencing logic in orchestration layer; `nqctl` exposes atomic operations.

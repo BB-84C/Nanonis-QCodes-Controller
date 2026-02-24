@@ -12,4 +12,6 @@ All notable changes to this project are documented in this file.
 - Expanded distribution readiness documentation and release tracking with concrete private-index release verification notes.
 - Updated `nqctl capabilities` to expose rich `parameters.items[*]` metadata (`get_cmd`, `set_cmd`, validators, safety) for agent-driven planning of `get`/`set`/`ramp`.
 - Updated `nqctl capabilities` to remove top-level parameter `description` output and keep descriptions on `get_cmd`/`set_cmd` only.
+- Updated manifest generation to import all callable `nanonis_spm.Nanonis` methods; non-`Get`/`Set` methods now populate root `actions` entries with `action_cmd` metadata and action safety mode.
+- Added `nqctl act <action_name> --arg key=value` with policy-aware action execution and action metadata in `nqctl capabilities` (`action_commands.items[*]`).
 - Updated GitHub-release install examples in `README.md` to use `<version>` placeholders.

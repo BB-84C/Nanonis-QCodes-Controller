@@ -77,8 +77,6 @@ def discover_nanonis_commands(*, match_pattern: str = "") -> tuple[CommandInfo, 
     for name, member in inspect.getmembers(nanonis_spm.Nanonis, predicate=callable):
         if name.startswith("_"):
             continue
-        if not (name.endswith("Get") or name.endswith("Set")):
-            continue
         if compiled_pattern is not None and compiled_pattern.search(name) is None:
             continue
 
@@ -107,11 +105,13 @@ def build_unified_manifest(
     *,
     curated_defaults: dict[str, Any],
     curated_parameters: dict[str, Any],
+    curated_actions: dict[str, Any],
     commands: tuple[CommandInfo, ...],
 ) -> dict[str, Any]:
     command_docs = {item.command: item.doc for item in commands}
 
     grouped: dict[str, dict[str, CommandInfo]] = {}
+    action_commands: list[CommandInfo] = []
     for info in commands:
         if info.command.endswith("Get"):
             stem = info.command[:-3]
@@ -119,6 +119,8 @@ def build_unified_manifest(
         elif info.command.endswith("Set"):
             stem = info.command[:-3]
             grouped.setdefault(stem, {})["set"] = info
+        else:
+            action_commands.append(info)
 
     generated_parameters: dict[str, dict[str, Any]] = {}
     get_set_commands_imported = 0
@@ -157,6 +159,22 @@ def build_unified_manifest(
         elif generated_entry is not None:
             merged_parameters[name] = generated_entry
 
+    generated_actions: dict[str, dict[str, Any]] = {}
+    for info in sorted(action_commands, key=lambda item: item.command):
+        generated_actions[info.command] = _build_generated_action_entry(info=info)
+
+    merged_actions: dict[str, Any] = {}
+    all_action_names = sorted(set(generated_actions).union(curated_actions))
+    for name in all_action_names:
+        generated_entry = generated_actions.get(name)
+        curated_entry = curated_actions.get(name)
+        if generated_entry is not None and curated_entry is not None:
+            merged_actions[name] = _deep_merge(generated_entry, curated_entry)
+        elif curated_entry is not None:
+            merged_actions[name] = curated_entry
+        elif generated_entry is not None:
+            merged_actions[name] = generated_entry
+
     for _name, parameter in merged_parameters.items():
         if not isinstance(parameter, dict):
             continue
@@ -179,12 +197,53 @@ def build_unified_manifest(
                 if set_command:
                     set_cmd["description"] = extract_description(command_docs.get(set_command))
 
+    for _name, action in merged_actions.items():
+        if not isinstance(action, dict):
+            continue
+
+        _ = action.pop("description", None)
+
+        action_cmd = action.get("action_cmd")
+        if isinstance(action_cmd, dict):
+            command_name = str(action_cmd.get("command", "")).strip()
+            command_description = str(action_cmd.get("description", "")).strip()
+            if not command_description and command_name:
+                action_cmd["description"] = extract_description(command_docs.get(command_name))
+
+            arg_types = action_cmd.get("arg_types")
+            args = action_cmd.get("args")
+            normalized_arg_types: dict[str, ScalarValueType]
+            if isinstance(arg_types, dict):
+                normalized_arg_types = {
+                    str(key): _normalize_scalar_type(value) for key, value in arg_types.items()
+                }
+            else:
+                normalized_arg_types = {}
+
+            if isinstance(args, dict):
+                for arg_name, arg_value in args.items():
+                    normalized_key = str(arg_name)
+                    normalized_arg_types.setdefault(
+                        normalized_key,
+                        _infer_scalar_type_from_value(arg_value),
+                    )
+            action_cmd["arg_types"] = normalized_arg_types
+
+        safety = action.get("safety")
+        if isinstance(safety, dict):
+            mode = _normalize_action_safety_mode(safety.get("mode", "guarded"))
+            safety["mode"] = mode
+            action["safety"] = safety
+        else:
+            action["safety"] = {"mode": "guarded"}
+
     defaults = {
         "snapshot_value": bool(curated_defaults.get("snapshot_value", True)),
         "ramp_default_interval_s": float(curated_defaults.get("ramp_default_interval_s", 0.05)),
     }
 
-    description_count = 0
+    parameter_description_count = 0
+    action_description_count = 0
     writable_count = 0
     for parameter in merged_parameters.values():
         get_cmd = parameter.get("get_cmd")
@@ -195,9 +254,14 @@ def build_unified_manifest(
             or isinstance(set_cmd, dict)
             and str(set_cmd.get("description", "")).strip()
         ):
-            description_count += 1
+            parameter_description_count += 1
         if set_cmd is not None and set_cmd is not False:
             writable_count += 1
+
+    for action in merged_actions.values():
+        action_cmd = action.get("action_cmd") if isinstance(action, dict) else None
+        if isinstance(action_cmd, dict) and str(action_cmd.get("description", "")).strip():
+            action_description_count += 1
 
     return {
         "version": 1,
@@ -208,11 +272,15 @@ def build_unified_manifest(
             "source_package": f"nanonis-spm/{installed_nanonis_spm_version()}",
             "methods_seen": len(commands),
             "get_set_commands_imported": get_set_commands_imported,
+            "action_commands_imported": len(action_commands),
             "parameters_emitted": len(merged_parameters),
-            "with_description_count": description_count,
+            "actions_emitted": len(merged_actions),
+            "with_description_count": parameter_description_count,
+            "actions_with_description_count": action_description_count,
             "writable_count": writable_count,
         },
         "parameters": merged_parameters,
+        "actions": merged_actions,
     }
 
 
@@ -387,6 +455,48 @@ def _build_generated_parameter_entry(
             "ramp_interval_s": None,
         }
     return entry
+
+
+def _build_generated_action_entry(*, info: CommandInfo) -> dict[str, Any]:
+    arg_docs = _parse_argument_docs(info.doc)
+    args: dict[str, Any] = {}
+    arg_types: dict[str, ScalarValueType] = {}
+    for arg_name in info.arguments:
+        parameter = info.signature.parameters[arg_name]
+        doc_line = _match_doc_for_arg(arg_name, arg_docs)
+        inferred_type = _infer_action_arg_type(
+            parameter=parameter,
+            doc_line=doc_line,
+            arg_name=arg_name,
+        )
+        arg_types[arg_name] = inferred_type
+
+        if parameter.default is not inspect.Parameter.empty:
+            args[arg_name] = parameter.default
+            continue
+        if _is_selector_arg(arg_name=arg_name, doc_line=doc_line, inferred_type=inferred_type):
+            args[arg_name] = 1
+            continue
+        if inferred_type == "bool":
+            args[arg_name] = 0
+        elif inferred_type == "int":
+            args[arg_name] = 0
+        elif inferred_type == "float":
+            args[arg_name] = 0.0
+        elif inferred_type == "str":
+            args[arg_name] = ""
+        else:
+            args[arg_name] = None
+
+    return {
+        "action_cmd": {
+            "command": info.command,
+            "args": args,
+            "arg_types": arg_types,
+            "description": extract_description(info.doc),
+        },
+        "safety": {"mode": "guarded"},
+    }
 
 
 def _parse_argument_docs(doc: str) -> dict[str, str]:
@@ -590,6 +700,38 @@ def _infer_type_for_arg(
     return "float"
 
 
+def _infer_action_arg_type(
+    *,
+    parameter: inspect.Parameter,
+    doc_line: str,
+    arg_name: str,
+) -> ScalarValueType:
+    from_doc = _infer_scalar_type_from_text(doc_line)
+    if from_doc is not None:
+        return from_doc
+
+    annotation = parameter.annotation
+    if annotation is not inspect.Parameter.empty:
+        from_annotation = _infer_scalar_type_from_text(str(annotation))
+        if from_annotation is not None:
+            return from_annotation
+
+    from_name = _infer_scalar_type_from_text(arg_name)
+    if from_name is not None:
+        return from_name
+
+    normalized = _normalize_key(arg_name)
+    if any(token in normalized for token in _SELECTOR_TOKENS):
+        return "int"
+    if any(token in normalized for token in _VALUE_TOKENS):
+        return "float"
+    if any(
+        token in normalized for token in ("path", "file", "folder", "directory", "name", "basename")
+    ):
+        return "str"
+    return "str"
+
+
 def _is_selector_arg(*, arg_name: str, doc_line: str, inferred_type: ScalarValueType) -> bool:
     if inferred_type != "int":
         return False
@@ -615,6 +757,32 @@ def _infer_scalar_type_from_text(text: str) -> ScalarValueType | None:
     if re.search(r"\b(string|str|char|text)\b", lowered):
         return "str"
     return None
+
+
+def _normalize_scalar_type(value: Any) -> ScalarValueType:
+    normalized = str(value).strip().lower()
+    if normalized in _SCALAR_TYPES:
+        return normalized
+    return "str"
+
+
+def _infer_scalar_type_from_value(value: Any) -> ScalarValueType:
+    if isinstance(value, bool):
+        return "bool"
+    if isinstance(value, int):
+        return "int"
+    if isinstance(value, float):
+        return "float"
+    return "str"
+
+
+def _normalize_action_safety_mode(value: Any) -> str:
+    normalized = str(value).strip().lower()
+    if normalized in {"readonly", "alwaysallowed"}:
+        return "alwaysAllowed"
+    if normalized == "blocked":
+        return "blocked"
+    return "guarded"
 
 
 def _default_vals_for_type(value_type: ScalarValueType) -> dict[str, Any]:

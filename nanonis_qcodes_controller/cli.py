@@ -91,6 +91,13 @@ _ACTION_DESCRIPTORS: tuple[ActionDescriptor, ...] = (
         arguments=("parameter", "start", "end", "step", "interval_s"),
     ),
     ActionDescriptor(
+        name="act",
+        safety="policy-controlled",
+        description="Invoke a manifest-defined backend action command.",
+        command_template="nqctl act <action_name> --arg key=value",
+        arguments=("action_name", "arg"),
+    ),
+    ActionDescriptor(
         name="parameters_discover",
         safety="readonly",
         description="Discover backend commands for parameter authoring.",
@@ -252,6 +259,31 @@ def _build_parser() -> argparse.ArgumentParser:
     )
     parser_ramp.add_argument("--plan-only", action="store_true", help="Show ramp plan only.")
     parser_ramp.set_defaults(handler=_cmd_ramp)
+
+    parser_act = subparsers.add_parser(
+        "act",
+        help="Invoke one manifest action command.",
+        description=(
+            "Invoke one action command defined in parameters.yaml actions section.\n"
+            "Use repeatable --arg key=value entries to override default arguments."
+        ),
+        formatter_class=argparse.RawTextHelpFormatter,
+        epilog=(
+            "Examples:\n"
+            "  nqctl act Scan_Action --arg Scan_action=0 --arg Scan_direction=1\n"
+            "  nqctl act Scan_WaitEndOfScan --arg Timeout_ms=5000"
+        ),
+    )
+    _add_runtime_args(parser_act, include_trajectory=True)
+    parser_act.add_argument("action_name", help="Action name from actions manifest section.")
+    parser_act.add_argument(
+        "--arg",
+        action="append",
+        default=[],
+        help="Action argument override (repeatable): key=value",
+    )
+    parser_act.add_argument("--plan-only", action="store_true", help="Show action plan only.")
+    parser_act.set_defaults(handler=_cmd_act)
 
     parser_observables = subparsers.add_parser("observables", help="Observable metadata commands.")
     observables_subparsers = parser_observables.add_subparsers(
@@ -518,11 +550,13 @@ def _cmd_capabilities(args: argparse.Namespace) -> int:
         instrument, _ = instrument_ctx
         observables = _collect_observables(instrument)
         parameters = _collect_parameter_capabilities(instrument)
+        action_commands = _collect_action_command_capabilities(instrument)
 
     payload: dict[str, Any] = {
         "cli": {"name": "nqctl", "version": __version__},
         "observables": observables,
         "parameters": {"count": len(parameters), "items": parameters},
+        "action_commands": {"count": len(action_commands), "items": action_commands},
         "actions": [asdict(descriptor) for descriptor in _ACTION_DESCRIPTORS],
         "policy": {
             "allow_writes": settings.safety.allow_writes,
@@ -656,6 +690,32 @@ def _cmd_ramp(args: argparse.Namespace) -> int:
             "plan": _json_safe(plan),
             "applied": report is not None and not report.dry_run,
             "report": None if report is None else _json_safe(report),
+            "timestamp_utc": _now_utc_iso(),
+        }
+        if journal is not None:
+            payload["trajectory"] = asdict(journal.stats())
+
+    _print_payload(payload, as_json=args.json)
+    return EXIT_OK
+
+
+def _cmd_act(args: argparse.Namespace) -> int:
+    action_name = str(args.action_name).strip()
+    if not action_name:
+        raise ValueError("Action name cannot be empty.")
+
+    action_args = _parse_action_args(raw_args=tuple(args.arg))
+    with _instrument_context(args, auto_connect=True) as instrument_ctx:
+        instrument, journal = instrument_ctx
+        result = instrument.execute_action(
+            action_name,
+            args=action_args,
+            plan_only=bool(args.plan_only),
+        )
+        payload: dict[str, Any] = {
+            "action": action_name,
+            "plan_only": bool(args.plan_only),
+            "result": _json_safe(result),
             "timestamp_utc": _now_utc_iso(),
         }
         if journal is not None:
@@ -1246,6 +1306,28 @@ def _collect_parameter_capabilities(instrument: Any) -> list[dict[str, Any]]:
     return capabilities
 
 
+def _collect_action_command_capabilities(instrument: Any) -> list[dict[str, Any]]:
+    capabilities: list[dict[str, Any]] = []
+    for spec in instrument.action_specs():
+        action_cmd: dict[str, Any] = {
+            "command": spec.action_cmd.command,
+            "args": dict(spec.action_cmd.args),
+            "arg_types": dict(spec.action_cmd.arg_types),
+        }
+        description = _optional_text(spec.action_cmd.description)
+        if description is not None:
+            action_cmd["description"] = description
+
+        capabilities.append(
+            {
+                "name": spec.name,
+                "safety_mode": spec.safety_mode,
+                "action_cmd": action_cmd,
+            }
+        )
+    return capabilities
+
+
 def _parse_label_csv(raw_labels: str) -> tuple[str, ...]:
     labels = [token.strip() for token in str(raw_labels).split(",")]
     return tuple(label for label in labels if label)
@@ -1283,6 +1365,22 @@ def _parse_positive_float_arg(*, name: str, raw_value: str) -> float:
     if value <= 0:
         raise ValueError(f"{name} must be positive.")
     return value
+
+
+def _parse_action_args(*, raw_args: Sequence[str]) -> dict[str, str]:
+    parsed: dict[str, str] = {}
+    for raw_item in raw_args:
+        token = str(raw_item)
+        if "=" not in token:
+            raise ValueError(f"Invalid --arg value '{token}'. Expected key=value format.")
+        key, raw_value = token.split("=", 1)
+        normalized_key = key.strip()
+        if not normalized_key:
+            raise ValueError(f"Invalid --arg value '{token}'. Argument key cannot be empty.")
+        if normalized_key in parsed:
+            raise ValueError(f"Duplicate --arg key: {normalized_key}")
+        parsed[normalized_key] = raw_value
+    return parsed
 
 
 def _build_ramp_targets(*, start: float, end: float, step: float) -> tuple[float, ...]:

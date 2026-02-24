@@ -10,6 +10,8 @@ import pytest
 from nanonis_qcodes_controller import cli
 from nanonis_qcodes_controller.qcodes_driver.extensions import (
     DEFAULT_PARAMETERS_FILE,
+    ActionCommandSpec,
+    ActionSpec,
     ParameterSpec,
     ReadCommandSpec,
     SafetySpec,
@@ -50,6 +52,84 @@ def test_text_output_opt_in_flag() -> None:
     assert args.json is False
 
 
+def test_act_parser_supports_repeatable_arg_flags() -> None:
+    parser = cli._build_parser()
+    args = parser.parse_args(
+        [
+            "act",
+            "Scan_Action",
+            "--arg",
+            "Scan_action=0",
+            "--arg",
+            "Scan_direction=1",
+            "--plan-only",
+        ]
+    )
+    assert args.action_name == "Scan_Action"
+    assert args.arg == ["Scan_action=0", "Scan_direction=1"]
+    assert args.plan_only is True
+
+
+def test_cmd_act_invokes_instrument_execute_action(monkeypatch) -> None:
+    class FakeInstrument:
+        def execute_action(
+            self,
+            action_name: str,
+            *,
+            args: dict[str, str] | None,
+            plan_only: bool,
+        ) -> dict[str, object]:
+            assert action_name == "Scan_Action"
+            assert args == {"Scan_action": "0", "Scan_direction": "1"}
+            assert args is not None
+            assert plan_only is False
+            return {
+                "name": action_name,
+                "command": "Scan_Action",
+                "applied": True,
+                "dry_run": False,
+                "args": dict(args),
+                "response": {"payload": []},
+            }
+
+    @contextmanager
+    def fake_instrument_context(*_args, **_kwargs):
+        yield FakeInstrument(), None
+
+    monkeypatch.setattr(cli, "_instrument_context", fake_instrument_context)
+    captured_payloads: list[dict[str, object]] = []
+
+    def fake_print_payload(payload, *, as_json: bool) -> None:
+        del as_json
+        captured_payloads.append(dict(payload))
+
+    monkeypatch.setattr(cli, "_print_payload", fake_print_payload)
+
+    args = argparse.Namespace(
+        action_name="Scan_Action",
+        arg=["Scan_action=0", "Scan_direction=1"],
+        plan_only=False,
+        json=True,
+    )
+    exit_code = cli._cmd_act(args)
+
+    assert exit_code == cli.EXIT_OK
+    assert captured_payloads
+    payload = captured_payloads[-1]
+    assert payload["action"] == "Scan_Action"
+    result = payload["result"]
+    assert isinstance(result, dict)
+    assert result["applied"] is True
+
+
+def test_parse_action_args_rejects_invalid_entries() -> None:
+    with pytest.raises(ValueError, match="key=value"):
+        _ = cli._parse_action_args(raw_args=("Scan_action",))
+
+    with pytest.raises(ValueError, match="Duplicate --arg key"):
+        _ = cli._parse_action_args(raw_args=("Scan_action=0", "Scan_action=1"))
+
+
 def test_now_utc_iso_is_valid_iso8601_utc() -> None:
     timestamp = cli._now_utc_iso()
     assert timestamp.endswith("Z")
@@ -79,10 +159,23 @@ def test_capabilities_includes_parameter_specs_for_agents(monkeypatch) -> None:
         safety=SafetySpec(min_value=-10.0, max_value=10.0, max_step=1.0, ramp_enabled=True),
         description="Tip-sample bias voltage.",
     )
+    action_spec = ActionSpec(
+        name="Scan_Action",
+        action_cmd=ActionCommandSpec(
+            command="Scan_Action",
+            args={"Scan_action": 0, "Scan_direction": 0},
+            arg_types={"Scan_action": "int", "Scan_direction": "int"},
+            description="Start or stop scanner movement.",
+        ),
+        safety_mode="guarded",
+    )
 
     class FakeInstrument:
         def parameter_specs(self) -> tuple[ParameterSpec, ...]:
             return (spec,)
+
+        def action_specs(self) -> tuple[ActionSpec, ...]:
+            return (action_spec,)
 
     @contextmanager
     def fake_instrument_context(*_args, **_kwargs):
@@ -137,6 +230,13 @@ def test_capabilities_includes_parameter_specs_for_agents(monkeypatch) -> None:
     assert parameter["set_cmd"]["value_arg"] == "bias"
     assert parameter["set_cmd"]["description"] == "Write configured bias voltage."
     assert parameter["vals"]["kind"] == "numbers"
+    actions_payload = payload["action_commands"]
+    assert isinstance(actions_payload, dict)
+    assert actions_payload["count"] == 1
+    action = actions_payload["items"][0]
+    assert action["name"] == "Scan_Action"
+    assert action["safety_mode"] == "guarded"
+    assert action["action_cmd"]["command"] == "Scan_Action"
 
 
 def test_capabilities_drops_top_level_description_and_empty_nested_fields(monkeypatch) -> None:
@@ -168,6 +268,9 @@ def test_capabilities_drops_top_level_description_and_empty_nested_fields(monkey
     class FakeInstrument:
         def parameter_specs(self) -> tuple[ParameterSpec, ...]:
             return (spec,)
+
+        def action_specs(self) -> tuple[ActionSpec, ...]:
+            return ()
 
     @contextmanager
     def fake_instrument_context(*_args, **_kwargs):

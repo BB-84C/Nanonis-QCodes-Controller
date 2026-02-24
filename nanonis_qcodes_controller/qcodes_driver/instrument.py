@@ -19,6 +19,7 @@ from nanonis_qcodes_controller.client.errors import NanonisProtocolError
 from nanonis_qcodes_controller.config import load_settings
 from nanonis_qcodes_controller.safety import (
     ChannelLimit,
+    PolicyViolation,
     WriteExecutionReport,
     WritePlan,
     WritePolicy,
@@ -27,9 +28,11 @@ from nanonis_qcodes_controller.trajectory import TrajectoryJournal, TrajectorySt
 
 from .extensions import (
     DEFAULT_PARAMETERS_FILE,
+    ActionSpec,
     ParameterSpec,
     SafetySpec,
     ValidatorSpec,
+    load_action_specs,
     load_parameter_specs,
 )
 
@@ -75,6 +78,37 @@ class RampExecutionReport:
     reports: tuple[WriteExecutionReport, ...]
 
 
+_TRUE_STRINGS = {"1", "true", "yes", "on"}
+_FALSE_STRINGS = {"0", "false", "no", "off"}
+
+
+def _coerce_action_value(value: Any, *, value_type: str, field_name: str) -> Any:
+    if value_type == "float":
+        try:
+            return float(value)
+        except (TypeError, ValueError):
+            return str(value)
+    if value_type == "int":
+        try:
+            return int(value)
+        except (TypeError, ValueError):
+            return str(value)
+    if value_type == "bool":
+        if isinstance(value, bool):
+            return value
+        if isinstance(value, int):
+            return value != 0
+        normalized = str(value).strip().lower()
+        if normalized in _TRUE_STRINGS:
+            return True
+        if normalized in _FALSE_STRINGS:
+            return False
+        raise ValueError(f"{field_name} must be a boolean value.")
+    if value_type == "str":
+        return str(value)
+    raise ValueError(f"Unsupported action value type: {value_type}")
+
+
 class QcodesNanonisSTM(Instrument):  # type: ignore[misc,unused-ignore]
     def __init__(
         self,
@@ -109,6 +143,7 @@ class QcodesNanonisSTM(Instrument):  # type: ignore[misc,unused-ignore]
             DEFAULT_PARAMETERS_FILE if parameters_file is None else Path(parameters_file)
         )
         all_specs = {spec.name: spec for spec in load_parameter_specs(parameter_manifest)}
+        self._action_specs = {spec.name: spec for spec in load_action_specs(parameter_manifest)}
         self._parameter_specs = self._filter_specs(all_specs, include_parameters)
 
         if write_policy is None:
@@ -179,6 +214,94 @@ class QcodesNanonisSTM(Instrument):  # type: ignore[misc,unused-ignore]
         if spec is None:
             raise ValueError(f"Unknown parameter: {name}")
         return spec
+
+    def action_specs(self) -> tuple[ActionSpec, ...]:
+        names = sorted(self._action_specs)
+        return tuple(self._action_specs[name] for name in names)
+
+    def action_spec(self, name: str) -> ActionSpec:
+        normalized = str(name).strip()
+        if not normalized:
+            raise ValueError("Action name cannot be empty.")
+        spec = self._action_specs.get(normalized)
+        if spec is None:
+            raise ValueError(f"Unknown action: {name}")
+        return spec
+
+    def execute_action(
+        self,
+        action_name: str,
+        *,
+        args: Mapping[str, Any] | None = None,
+        plan_only: bool = False,
+    ) -> Mapping[str, Any]:
+        spec = self.action_spec(action_name)
+        merged_args = dict(spec.action_cmd.args)
+        if args is not None:
+            merged_args.update(dict(args))
+
+        allowed_args = set(spec.action_cmd.arg_types).union(spec.action_cmd.args)
+        unknown_args = sorted(key for key in merged_args if key not in allowed_args)
+        if unknown_args:
+            formatted = ", ".join(unknown_args)
+            raise ValueError(
+                f"Action '{spec.name}' received unknown arguments: {formatted}. "
+                "Use `nqctl capabilities` to inspect supported arguments."
+            )
+
+        typed_args: dict[str, Any] = {}
+        for arg_name, value in merged_args.items():
+            value_type = spec.action_cmd.arg_types.get(arg_name, "str")
+            typed_args[arg_name] = _coerce_action_value(
+                value,
+                value_type=value_type,
+                field_name=f"{spec.name}.{arg_name}",
+            )
+
+        dry_run = False
+        applied = False
+        response: Mapping[str, Any] | None = None
+
+        mode = spec.safety_mode
+        if mode == "blocked":
+            raise PolicyViolation(f"Action '{spec.name}' is blocked by action policy.")
+
+        if mode == "guarded":
+            self._write_policy.ensure_writes_enabled()
+            dry_run = bool(plan_only or self._write_policy.dry_run)
+            if dry_run:
+                self._append_write_audit(
+                    operation=f"action:{spec.name}",
+                    status="dry_run",
+                    dry_run=True,
+                    detail="Guarded action dry-run; backend command not executed.",
+                    metadata={"command": spec.action_cmd.command, "args": _json_safe(typed_args)},
+                )
+            else:
+                response = self._call(spec.action_cmd.command, args=typed_args)
+                applied = True
+                self._append_write_audit(
+                    operation=f"action:{spec.name}",
+                    status="applied",
+                    dry_run=False,
+                    detail="Guarded action executed.",
+                    metadata={"command": spec.action_cmd.command, "args": _json_safe(typed_args)},
+                )
+        else:
+            dry_run = bool(plan_only)
+            if not dry_run:
+                response = self._call(spec.action_cmd.command, args=typed_args)
+                applied = True
+
+        return {
+            "name": spec.name,
+            "command": spec.action_cmd.command,
+            "safety_mode": spec.safety_mode,
+            "args": typed_args,
+            "dry_run": dry_run,
+            "applied": applied,
+            "response": response,
+        }
 
     def writable_parameter_names(self) -> tuple[str, ...]:
         names = [spec.name for spec in self.parameter_specs() if spec.writable]
