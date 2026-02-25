@@ -69,67 +69,91 @@ Runtime config controls host, candidate ports, timeout, backend, write policy, a
 
 ### Inspect and introspect
 
-Get the machine-readable CLI contract (parameters, action commands, policy):
+Get the machine-readable execution contract (lean payload):
 
 ```powershell
 nqctl capabilities
 ```
 
-Include backend command discovery from the active backend:
+Show the legacy full payload (old capabilities surface):
 
 ```powershell
-nqctl capabilities --include-backend-commands --backend-match Scan
+nqctl showall
 ```
 
-List observable parameter metadata and high-level CLI action descriptors:
+Inspect backend command inventory and connectivity preflight:
+
+```powershell
+nqctl backend commands --match Scan
+nqctl doctor --command-probe
+```
+
+List observable metadata and high-level CLI action descriptors:
 
 ```powershell
 nqctl observables list
 nqctl actions list
 ```
 
-Inspect active policy, backend command inventory, and connectivity preflight:
+Inspect active runtime policy:
 
 ```powershell
 nqctl policy show
-nqctl backend commands --match Bias
-nqctl doctor --command-probe
 ```
 
 ### Execute operations
 
-Read one parameter:
+Read a parameter:
 
 ```powershell
 nqctl get bias_v
 ```
 
-Apply guarded strict single-step write:
+For multi-field responses, `get` returns structured fields (not only one scalar):
 
 ```powershell
-nqctl set bias_v 0.12
+nqctl get scan_buffer
 ```
 
-Apply explicit guarded ramp:
+Apply writes with structured args (canonical form):
+
+```powershell
+nqctl set bias_v --arg Bias_value_V=0.12 (single arg input)
+nqctl set scan_buffer --arg Pixels=512 --arg Lines=512 (multiple args input)
+```
+
+
+Defaulting/autofill mechanism for partial `set`:
+
+- Explicit `--arg` values always win.
+- Missing required set fields trigger one read (`get_cmd`) and are filled by normalized field name.
+- Matching is by field name, not response index position.
+- Get-only fields with no set counterpart are ignored.
+- Remaining unresolved optional fields can fall back to manifest defaults.
+
+Apply explicit guarded ramp (scalar parameters):
 
 ```powershell
 nqctl ramp bias_v 0.10 0.25 0.01 --interval-s 0.10
 ```
 
-Invoke one manifest action command with argument overrides:
+Invoke one manifest action command with structured args:
 
 ```powershell
 nqctl act Scan_Action --arg Scan_action=0 --arg Scan_direction=1
+nqctl act Scan_WaitEndOfScan --arg Timeout_ms=5000
 ```
 
-### `act` vs action metadata
+For `act`, required/default behavior is driven by `action_cmd.arg_fields` in the manifest.
+
+### `act` vs metadata surfaces
 
 - `nqctl act <action_name> --arg key=value` executes one backend action command from
   the manifest `actions` section.
 - `nqctl actions list` lists CLI-level action descriptors (what workflows the CLI
   supports, with safety hints and templates).
 - `nqctl capabilities` exposes executable manifest action inventory under
-  `action_commands.items[*]` (command name, args, arg types, safety mode).
+  `action_commands.items[*]` (command schema, `arg_fields`, safety mode).
 
 ### Trajectory commands
 
@@ -168,6 +192,8 @@ JSON is the default output format. Use `--text` for human-readable key/value out
 
 ```powershell
 nqctl -help
+nqctl -help showall
+nqctl -help set
 nqctl -help trajectory
 nqctl -help act
 ```

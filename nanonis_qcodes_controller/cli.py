@@ -214,6 +214,19 @@ def _build_parser() -> argparse.ArgumentParser:
     parser_capabilities.add_argument("--backend-match", help="Optional filter token.")
     parser_capabilities.set_defaults(handler=_cmd_capabilities)
 
+    parser_showall = subparsers.add_parser(
+        "showall",
+        help="Show full legacy capabilities payload.",
+    )
+    _add_runtime_args(parser_showall, include_trajectory=False)
+    parser_showall.add_argument(
+        "--include-backend-commands",
+        action="store_true",
+        help="Connect and include backend command names.",
+    )
+    parser_showall.add_argument("--backend-match", help="Optional filter token.")
+    parser_showall.set_defaults(handler=_cmd_showall)
+
     parser_get = subparsers.add_parser("get", help="Read a single parameter value.")
     _add_runtime_args(parser_get, include_trajectory=True)
     parser_get.add_argument("parameter", help="Parameter name from parameter files.")
@@ -221,19 +234,28 @@ def _build_parser() -> argparse.ArgumentParser:
 
     parser_set = subparsers.add_parser(
         "set",
-        help="Apply guarded strict single-step write.",
+        help="Apply guarded structured write.",
         description=(
-            "Apply guarded strict single-step write for writable numeric parameters.\n"
-            "Use `nqctl ramp` for stepped trajectories."
+            "Apply guarded structured write for writable parameters.\n"
+            "Use repeatable --arg key=value for multi-field commands."
         ),
         formatter_class=argparse.RawTextHelpFormatter,
         epilog=(
-            "Examples:\n  nqctl set bias_v 0.15\n  nqctl set zctrl_setpoint_a 8e-11 --plan-only"
+            "Examples:\n"
+            "  nqctl set bias_v 0.15\n"
+            "  nqctl set scan_buffer --arg Pixels=512\n"
+            "  nqctl set zctrl_setpoint_a --arg Z_Controller_setpoint=8e-11 --plan-only"
         ),
     )
     _add_runtime_args(parser_set, include_trajectory=True)
     parser_set.add_argument("parameter", help="Writable parameter name.")
-    parser_set.add_argument("value", help="Target numeric value.")
+    parser_set.add_argument("value", nargs="?", help="Optional shorthand scalar value.")
+    parser_set.add_argument(
+        "--arg",
+        action="append",
+        default=[],
+        help="Parameter argument override (repeatable): key=value",
+    )
     parser_set.add_argument("--interval-s", type=float, help="Optional interval for slew checks.")
     parser_set.add_argument("--plan-only", action="store_true", help="Show plan only.")
     parser_set.set_defaults(handler=_cmd_set)
@@ -545,6 +567,20 @@ def _add_json_arg(parser: argparse.ArgumentParser) -> None:
 
 
 def _cmd_capabilities(args: argparse.Namespace) -> int:
+    with _instrument_context(args, auto_connect=False) as instrument_ctx:
+        instrument, _ = instrument_ctx
+        parameters = _collect_parameter_capabilities(instrument)
+        action_commands = _collect_action_command_capabilities(instrument)
+
+    payload: dict[str, Any] = {
+        "parameters": {"count": len(parameters), "items": parameters},
+        "action_commands": {"count": len(action_commands), "items": action_commands},
+    }
+    _print_payload(payload, as_json=args.json)
+    return EXIT_OK
+
+
+def _cmd_showall(args: argparse.Namespace) -> int:
     settings = load_settings(config_file=args.config_file)
     with _instrument_context(args, auto_connect=False) as instrument_ctx:
         instrument, _ = instrument_ctx
@@ -584,10 +620,16 @@ def _cmd_get(args: argparse.Namespace) -> int:
     ) as instrument_ctx:
         instrument, journal = instrument_ctx
         spec = instrument.parameter_spec(parameter_name)
-        value = instrument.get_parameter_value(parameter_name)
+        snapshot = instrument.get_parameter_snapshot(parameter_name)
+        values = snapshot.get("values", {})
+        if len(values) == 1:
+            value = next(iter(values.values()))
+        else:
+            value = values
         payload: dict[str, Any] = {
             "parameter": parameter_name,
             "value": _json_safe(value),
+            "fields": _json_safe(values),
             "unit": spec.unit,
             "timestamp_utc": _now_utc_iso(),
         }
@@ -607,7 +649,7 @@ def _cmd_set(args: argparse.Namespace) -> int:
             "or edit config/default_runtime.yaml."
         )
 
-    target_value = _parse_float_arg(name="value", raw_value=args.value)
+    provided_args = _parse_action_args(raw_args=tuple(args.arg))
     interval_s = None if args.interval_s is None else float(args.interval_s)
     if interval_s is not None and interval_s < 0:
         raise ValueError("--interval-s must be non-negative.")
@@ -616,27 +658,37 @@ def _cmd_set(args: argparse.Namespace) -> int:
         args, auto_connect=True, include_parameters=(parameter_name,)
     ) as instrument_ctx:
         instrument, journal = instrument_ctx
-        plan = instrument.plan_parameter_single_step(
+        spec = instrument.parameter_spec(parameter_name)
+
+        if args.value is not None:
+            if provided_args:
+                raise ValueError("Use either positional <value> or --arg entries, not both.")
+            if spec.set_cmd is None:
+                raise ValueError(f"Parameter '{parameter_name}' is not writable.")
+            writable_targets = [field.name for field in spec.set_cmd.arg_fields if field.required]
+            if len(writable_targets) != 1:
+                raise ValueError(
+                    "Positional set shorthand is only supported when exactly one required set field exists. "
+                    "Use --arg key=value for this parameter."
+                )
+            provided_args = {writable_targets[0]: args.value}
+
+        if not provided_args:
+            raise ValueError(
+                "No set arguments provided. Use --arg key=value or positional <value>."
+            )
+
+        result = instrument.set_parameter_fields(
             parameter_name,
-            target_value,
-            reason=None,
+            args=provided_args,
+            plan_only=bool(args.plan_only),
             interval_s=interval_s,
         )
-        report = None
-        if not args.plan_only:
-            report = instrument.set_parameter_single_step(
-                parameter_name,
-                target_value,
-                reason=None,
-                interval_s=interval_s,
-            )
 
         payload: dict[str, Any] = {
             "parameter": parameter_name,
-            "target_value": target_value,
-            "plan": _json_safe(plan),
-            "applied": report is not None and not report.dry_run,
-            "report": None if report is None else _json_safe(report),
+            "plan_only": bool(args.plan_only),
+            "result": _json_safe(result),
             "timestamp_utc": _now_utc_iso(),
         }
         if journal is not None:
@@ -1247,36 +1299,24 @@ def _collect_parameter_capabilities(instrument: Any) -> list[dict[str, Any]]:
         get_cmd = None
         if spec.get_cmd is not None:
             get_description = _optional_text(spec.get_cmd.description)
-            get_docstring_full = _optional_text(spec.get_cmd.docstring_full)
             get_cmd = {
                 "command": spec.get_cmd.command,
                 "payload_index": int(spec.get_cmd.payload_index),
-                "args": dict(spec.get_cmd.args),
+                "arg_fields": [asdict(field) for field in spec.get_cmd.arg_fields],
+                "response_fields": [asdict(field) for field in spec.get_cmd.response_fields],
             }
             if get_description is not None:
                 get_cmd["description"] = get_description
-            if get_docstring_full is not None:
-                get_cmd["docstring_full"] = get_docstring_full
-            if spec.get_cmd.response_fields:
-                get_cmd["response_fields"] = [
-                    asdict(field) for field in spec.get_cmd.response_fields
-                ]
 
         set_cmd = None
         if spec.set_cmd is not None:
             set_description = _optional_text(spec.set_cmd.description)
-            set_docstring_full = _optional_text(spec.set_cmd.docstring_full)
             set_cmd = {
                 "command": spec.set_cmd.command,
-                "value_arg": spec.set_cmd.value_arg,
-                "args": dict(spec.set_cmd.args),
+                "arg_fields": [asdict(field) for field in spec.set_cmd.arg_fields],
             }
             if set_description is not None:
                 set_cmd["description"] = set_description
-            if set_docstring_full is not None:
-                set_cmd["docstring_full"] = set_docstring_full
-            if spec.set_cmd.arg_fields:
-                set_cmd["arg_fields"] = [asdict(field) for field in spec.set_cmd.arg_fields]
 
         vals = None
         if spec.vals is not None:
@@ -1300,8 +1340,8 @@ def _collect_parameter_capabilities(instrument: Any) -> list[dict[str, Any]]:
             }
 
         capability: dict[str, Any] = {
-            "name": spec.name,
             "label": spec.label,
+            "name": spec.name,
             "unit": spec.unit,
             "value_type": spec.value_type,
             "snapshot_value": spec.snapshot_value,
@@ -1323,23 +1363,17 @@ def _collect_action_command_capabilities(instrument: Any) -> list[dict[str, Any]
     for spec in instrument.action_specs():
         action_cmd: dict[str, Any] = {
             "command": spec.action_cmd.command,
-            "args": dict(spec.action_cmd.args),
-            "arg_types": dict(spec.action_cmd.arg_types),
+            "arg_fields": [asdict(field) for field in spec.action_cmd.arg_fields],
         }
         description = _optional_text(spec.action_cmd.description)
-        docstring_full = _optional_text(spec.action_cmd.docstring_full)
         if description is not None:
             action_cmd["description"] = description
-        if docstring_full is not None:
-            action_cmd["docstring_full"] = docstring_full
-        if spec.action_cmd.arg_fields:
-            action_cmd["arg_fields"] = [asdict(field) for field in spec.action_cmd.arg_fields]
 
         capabilities.append(
             {
                 "name": spec.name,
-                "safety_mode": spec.safety_mode,
                 "action_cmd": action_cmd,
+                "safety_mode": spec.safety_mode,
             }
         )
     return capabilities
@@ -1512,12 +1546,12 @@ def _emit_error(
 
 def _print_payload(payload: Mapping[str, Any], *, as_json: bool) -> None:
     if as_json:
-        print(json.dumps(_json_safe(dict(payload)), indent=2, sort_keys=True))
+        print(json.dumps(_json_safe(dict(payload)), indent=2))
         return
 
     for key, value in payload.items():
         if isinstance(value, (dict, list)):
-            print(f"{key}: {json.dumps(_json_safe(value), ensure_ascii=True, sort_keys=True)}")
+            print(f"{key}: {json.dumps(_json_safe(value), ensure_ascii=True)}")
         else:
             print(f"{key}: {value}")
 

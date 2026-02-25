@@ -54,6 +54,12 @@ def test_text_output_opt_in_flag() -> None:
     assert args.json is False
 
 
+def test_showall_parser_available() -> None:
+    parser = cli._build_parser()
+    args = parser.parse_args(["showall"])
+    assert args.command == "showall"
+
+
 def test_act_parser_supports_repeatable_arg_flags() -> None:
     parser = cli._build_parser()
     args = parser.parse_args(
@@ -148,15 +154,25 @@ def test_capabilities_includes_parameter_specs_for_agents(monkeypatch) -> None:
         get_cmd=ReadCommandSpec(
             command="Bias.Get",
             payload_index=0,
-            args={"channel": 1},
             description="Read configured bias voltage.",
-            docstring_full="Bias.Get\nReturns configured bias voltage.",
+            arg_fields=(
+                ArgFieldSpec(
+                    name="channel",
+                    type="int",
+                    unit="",
+                    wire_type="i",
+                    required=False,
+                    description="Channel index (int)",
+                    default=1,
+                ),
+            ),
             response_fields=(
                 ResponseFieldSpec(
                     index=0,
                     name="Bias value",
                     type="float",
                     unit="V",
+                    wire_type="f",
                     description="Bias value (V) (float32)",
                 ),
             ),
@@ -164,15 +180,25 @@ def test_capabilities_includes_parameter_specs_for_agents(monkeypatch) -> None:
         set_cmd=WriteCommandSpec(
             command="Bias.Set",
             value_arg="bias",
-            args={"channel": 1},
             description="Write configured bias voltage.",
-            docstring_full="Bias.Set\nConfigures bias voltage.",
             arg_fields=(
+                ArgFieldSpec(
+                    name="channel",
+                    type="int",
+                    unit="",
+                    wire_type="i",
+                    required=False,
+                    description="Channel index (int)",
+                    default=1,
+                ),
                 ArgFieldSpec(
                     name="bias",
                     type="float",
+                    unit="V",
+                    wire_type="f",
                     required=True,
                     description="Bias value (V) (float32)",
+                    default=None,
                 ),
             ),
         ),
@@ -184,16 +210,16 @@ def test_capabilities_includes_parameter_specs_for_agents(monkeypatch) -> None:
         name="Scan_Action",
         action_cmd=ActionCommandSpec(
             command="Scan_Action",
-            args={"Scan_action": 0, "Scan_direction": 0},
-            arg_types={"Scan_action": "int", "Scan_direction": "int"},
             description="Start or stop scanner movement.",
-            docstring_full="Scan.Action\nControls scan actions.",
             arg_fields=(
                 ArgFieldSpec(
                     name="Scan_action",
                     type="int",
-                    required=True,
+                    unit="",
+                    wire_type="i",
+                    required=False,
                     description="Scan action (int)",
+                    default=0,
                 ),
             ),
         ),
@@ -244,6 +270,7 @@ def test_capabilities_includes_parameter_specs_for_agents(monkeypatch) -> None:
     assert exit_code == cli.EXIT_OK
     assert captured_payloads
     payload = captured_payloads[-1]
+    assert set(payload.keys()) == {"parameters", "action_commands"}
     assert "parameters" in payload
     parameters_payload = payload["parameters"]
     assert isinstance(parameters_payload, dict)
@@ -255,22 +282,22 @@ def test_capabilities_includes_parameter_specs_for_agents(monkeypatch) -> None:
     assert "description" not in parameter
     assert parameter["get_cmd"]["command"] == "Bias.Get"
     assert parameter["get_cmd"]["description"] == "Read configured bias voltage."
-    assert parameter["get_cmd"]["docstring_full"].startswith("Bias.Get")
+    assert parameter["get_cmd"]["arg_fields"][0]["name"] == "channel"
     assert parameter["get_cmd"]["response_fields"][0]["name"] == "Bias value"
-    assert parameter["get_cmd"]["args"] == {"channel": 1}
     assert parameter["set_cmd"]["command"] == "Bias.Set"
-    assert parameter["set_cmd"]["value_arg"] == "bias"
+    assert "value_arg" not in parameter["set_cmd"]
     assert parameter["set_cmd"]["description"] == "Write configured bias voltage."
-    assert parameter["set_cmd"]["arg_fields"][0]["name"] == "bias"
+    assert parameter["set_cmd"]["arg_fields"][0]["name"] == "channel"
     assert parameter["vals"]["kind"] == "numbers"
     actions_payload = payload["action_commands"]
     assert isinstance(actions_payload, dict)
     assert actions_payload["count"] == 1
     action = actions_payload["items"][0]
     assert action["name"] == "Scan_Action"
+    assert list(action.keys())[0] == "name"
+    assert list(action.keys())[1] == "action_cmd"
     assert action["safety_mode"] == "guarded"
     assert action["action_cmd"]["command"] == "Scan_Action"
-    assert action["action_cmd"]["docstring_full"].startswith("Scan.Action")
     assert action["action_cmd"]["arg_fields"][0]["name"] == "Scan_action"
 
 
@@ -283,17 +310,26 @@ def test_capabilities_drops_top_level_description_and_empty_nested_fields(monkey
         get_cmd=ReadCommandSpec(
             command="ZSpectr_RetractSecondGet",
             payload_index=0,
-            args={},
             description=(
                 "Returns the configuration for the Second condition of the Auto Retract "
                 "in the Z-Spectroscopy module."
             ),
+            response_fields=(),
         ),
         set_cmd=WriteCommandSpec(
             command="ZSpectr_RetractSecondSet",
             value_arg="Threshold",
-            args={"Second_condition": 0, "Signal_index": 1, "Comparison": 0},
             description="",
+            arg_fields=(
+                ArgFieldSpec(
+                    name="Threshold",
+                    type="float",
+                    unit="",
+                    wire_type="f",
+                    required=True,
+                    description="",
+                ),
+            ),
         ),
         vals=ValidatorSpec(kind="ints"),
         safety=SafetySpec(min_value=None, max_value=None, max_step=None, ramp_enabled=True),
@@ -344,6 +380,7 @@ def test_capabilities_drops_top_level_description_and_empty_nested_fields(monkey
     assert exit_code == cli.EXIT_OK
     assert captured_payloads
     payload = captured_payloads[-1]
+    assert set(payload.keys()) == {"parameters", "action_commands"}
     parameters_payload = payload["parameters"]
     assert isinstance(parameters_payload, dict)
     items = parameters_payload["items"]
@@ -355,3 +392,73 @@ def test_capabilities_drops_top_level_description_and_empty_nested_fields(monkey
         "in the Z-Spectroscopy module."
     )
     assert "description" not in parameter["set_cmd"]
+
+
+def test_showall_returns_legacy_full_payload(monkeypatch) -> None:
+    spec = ParameterSpec(
+        name="bias_v",
+        label="Bias",
+        unit="V",
+        value_type="float",
+        get_cmd=ReadCommandSpec(command="Bias_Get", payload_index=0, description="Read bias."),
+        set_cmd=None,
+        vals=None,
+        safety=None,
+    )
+
+    class FakeInstrument:
+        def parameter_specs(self) -> tuple[ParameterSpec, ...]:
+            return (spec,)
+
+        def action_specs(self) -> tuple[ActionSpec, ...]:
+            return ()
+
+        def available_backend_commands(self, match=None):
+            del match
+            return ("Bias_Get",)
+
+    @contextmanager
+    def fake_instrument_context(*_args, **_kwargs):
+        yield FakeInstrument(), None
+
+    monkeypatch.setattr(
+        cli,
+        "load_settings",
+        lambda config_file=None: SimpleNamespace(
+            safety=SimpleNamespace(
+                allow_writes=False,
+                dry_run=True,
+                default_ramp_interval_s=0.05,
+            )
+        ),
+    )
+    monkeypatch.setattr(cli, "_instrument_context", fake_instrument_context)
+
+    captured_payloads: list[dict[str, object]] = []
+
+    def fake_print_payload(payload, *, as_json: bool) -> None:
+        del as_json
+        captured_payloads.append(dict(payload))
+
+    monkeypatch.setattr(cli, "_print_payload", fake_print_payload)
+
+    args = argparse.Namespace(
+        config_file=None,
+        parameters_file=str(DEFAULT_PARAMETERS_FILE),
+        include_backend_commands=False,
+        backend_match=None,
+        json=True,
+    )
+    exit_code = cli._cmd_showall(args)
+
+    assert exit_code == cli.EXIT_OK
+    payload = captured_payloads[-1]
+    assert {
+        "cli",
+        "observables",
+        "parameters",
+        "action_commands",
+        "actions",
+        "policy",
+        "parameter_files",
+    }.issubset(set(payload.keys()))

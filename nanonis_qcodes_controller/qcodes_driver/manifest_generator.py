@@ -1,10 +1,12 @@
 from __future__ import annotations
 
+import ast
 import html
 import importlib
 import importlib.metadata
 import inspect
 import re
+import textwrap
 from dataclasses import dataclass
 from typing import Any
 
@@ -55,6 +57,9 @@ class CommandInfo:
     arguments: tuple[str, ...]
     signature: inspect.Signature
     doc: str
+    body_arg_names: tuple[str, ...]
+    body_wire_types: tuple[str, ...]
+    response_wire_types: tuple[str, ...]
 
 
 @dataclass(frozen=True)
@@ -104,12 +109,16 @@ def discover_nanonis_commands(*, match_pattern: str = "") -> tuple[CommandInfo, 
             and parameter.kind
             in {inspect.Parameter.POSITIONAL_OR_KEYWORD, inspect.Parameter.KEYWORD_ONLY}
         )
+        body_arg_names, body_wire_types, response_wire_types = _extract_quicksend_signature(member)
         discovered.append(
             CommandInfo(
                 command=name,
                 arguments=arguments,
                 signature=signature,
                 doc=inspect.getdoc(member) or "",
+                body_arg_names=body_arg_names,
+                body_wire_types=body_wire_types,
+                response_wire_types=response_wire_types,
             )
         )
 
@@ -125,6 +134,7 @@ def build_unified_manifest(
     commands: tuple[CommandInfo, ...],
 ) -> dict[str, Any]:
     command_docs = {item.command: item.doc for item in commands}
+    command_infos = {item.command: item for item in commands}
 
     grouped: dict[str, dict[str, CommandInfo]] = {}
     action_commands: list[CommandInfo] = []
@@ -201,49 +211,71 @@ def build_unified_manifest(
             if not get_description:
                 if get_command:
                     get_cmd["description"] = extract_description(command_docs.get(get_command))
-            if get_command:
-                doc_text = command_docs.get(get_command, "")
-                _arg_items, return_items = _parse_doc_sections(doc_text)
-                get_cmd["docstring_full"] = _normalize_docstring_full(doc_text)
-                get_cmd["response_fields"] = _build_response_fields(return_items)
+            args_mapping = get_cmd.pop("args", None)
+            _ = get_cmd.pop("docstring_full", None)
+            command_info = command_infos.get(get_command)
+            if command_info is not None:
+                argument_items, return_items = _parse_doc_sections(command_info.doc)
+                get_arg_docs = _parse_argument_docs(command_info.doc)
+                read_args = _infer_read_args(
+                    signature=command_info.signature,
+                    args=command_info.arguments,
+                    arg_docs=get_arg_docs,
+                )
+                get_cmd["arg_fields"] = _build_arg_fields_from_wire(
+                    signature=command_info.signature,
+                    ordered_arg_names=command_info.body_arg_names or command_info.arguments,
+                    wire_types=command_info.body_wire_types,
+                    arg_docs=get_arg_docs,
+                    argument_items=argument_items,
+                    default_values=read_args,
+                    required_arg_names=(),
+                )
+                get_cmd["response_fields"] = _build_response_fields_from_wire(
+                    return_items=return_items,
+                    wire_types=command_info.response_wire_types,
+                )
+            else:
+                if not isinstance(get_cmd.get("response_fields"), list):
+                    get_cmd["response_fields"] = []
+                if not isinstance(get_cmd.get("arg_fields"), list):
+                    get_cmd["arg_fields"] = _arg_fields_from_legacy_args(args_mapping)
 
         set_cmd = parameter.get("set_cmd")
         if isinstance(set_cmd, dict):
             set_description = str(set_cmd.get("description", "")).strip()
             set_command = str(set_cmd.get("command", "")).strip()
+            value_arg = str(set_cmd.get("value_arg", "")).strip()
             if not set_description:
                 if set_command:
                     set_cmd["description"] = extract_description(command_docs.get(set_command))
-            if set_command:
-                doc_text = command_docs.get(set_command, "")
-                arg_items, _return_items = _parse_doc_sections(doc_text)
-                arg_docs = _parse_argument_docs(doc_text)
-                args_mapping = set_cmd.get("args")
-                value_arg = str(set_cmd.get("value_arg", "")).strip()
-                set_ordered_args: list[str] = []
-                if value_arg:
-                    set_ordered_args.append(value_arg)
-                if isinstance(args_mapping, dict):
-                    for key in args_mapping:
-                        name = str(key)
-                        if name not in set_ordered_args:
-                            set_ordered_args.append(name)
-                synthetic_signature = inspect.Signature(
-                    [
-                        inspect.Parameter(
-                            name=arg_name,
-                            kind=inspect.Parameter.POSITIONAL_OR_KEYWORD,
-                        )
-                        for arg_name in set_ordered_args
-                    ]
+            args_mapping = set_cmd.pop("args", None)
+            _ = set_cmd.pop("docstring_full", None)
+            _ = set_cmd.pop("value_arg", None)
+            command_info = command_infos.get(set_command)
+            if command_info is not None:
+                arg_items, _return_items = _parse_doc_sections(command_info.doc)
+                set_arg_docs = _parse_argument_docs(command_info.doc)
+                set_mapping = infer_set_mapping(
+                    signature=command_info.signature,
+                    args=command_info.arguments,
+                    arg_docs=set_arg_docs,
                 )
-                set_cmd["docstring_full"] = _normalize_docstring_full(doc_text)
-                set_cmd["arg_fields"] = _build_arg_fields(
-                    signature=synthetic_signature,
-                    args=tuple(set_ordered_args),
-                    arg_docs=arg_docs,
+                set_defaults = {**set_mapping.fixed_args, set_mapping.value_arg: None}
+                set_cmd["arg_fields"] = _build_arg_fields_from_wire(
+                    signature=command_info.signature,
+                    ordered_arg_names=command_info.body_arg_names or command_info.arguments,
+                    wire_types=command_info.body_wire_types,
+                    arg_docs=set_arg_docs,
                     argument_items=arg_items,
+                    default_values=set_defaults,
+                    required_arg_names=(set_mapping.value_arg,),
                 )
+            elif not isinstance(set_cmd.get("arg_fields"), list):
+                defaults = dict(args_mapping) if isinstance(args_mapping, dict) else {}
+                if value_arg and value_arg not in defaults:
+                    defaults[value_arg] = None
+                set_cmd["arg_fields"] = _arg_fields_from_legacy_args(defaults, value_arg=value_arg)
 
     for _name, action in merged_actions.items():
         if not isinstance(action, dict):
@@ -257,50 +289,52 @@ def build_unified_manifest(
             command_description = str(action_cmd.get("description", "")).strip()
             if not command_description and command_name:
                 action_cmd["description"] = extract_description(command_docs.get(command_name))
-
-            arg_types = action_cmd.get("arg_types")
-            args = action_cmd.get("args")
-            normalized_arg_types: dict[str, ScalarValueType]
-            if isinstance(arg_types, dict):
-                normalized_arg_types = {
-                    str(key): _normalize_scalar_type(value) for key, value in arg_types.items()
-                }
-            else:
-                normalized_arg_types = {}
-
-            if isinstance(args, dict):
-                for arg_name, arg_value in args.items():
-                    normalized_key = str(arg_name)
-                    normalized_arg_types.setdefault(
-                        normalized_key,
-                        _infer_scalar_type_from_value(arg_value),
+            args_mapping = action_cmd.pop("args", None)
+            _ = action_cmd.pop("arg_types", None)
+            _ = action_cmd.pop("docstring_full", None)
+            command_info = command_infos.get(command_name)
+            if command_info is not None:
+                arg_items, _return_items = _parse_doc_sections(command_info.doc)
+                action_arg_docs = _parse_argument_docs(command_info.doc)
+                action_defaults: dict[str, Any] = {}
+                for arg_name in command_info.arguments:
+                    parameter = command_info.signature.parameters[arg_name]
+                    doc_line = _match_doc_for_arg(arg_name, action_arg_docs)
+                    inferred_type = _infer_action_arg_type(
+                        parameter=parameter,
+                        doc_line=doc_line,
+                        arg_name=arg_name,
                     )
-            action_cmd["arg_types"] = normalized_arg_types
+                    if parameter.default is not inspect.Parameter.empty:
+                        action_defaults[arg_name] = parameter.default
+                    elif _is_selector_arg(
+                        arg_name=arg_name,
+                        doc_line=doc_line,
+                        inferred_type=inferred_type,
+                    ):
+                        action_defaults[arg_name] = 1
+                    elif inferred_type == "bool":
+                        action_defaults[arg_name] = 0
+                    elif inferred_type == "int":
+                        action_defaults[arg_name] = 0
+                    elif inferred_type == "float":
+                        action_defaults[arg_name] = 0.0
+                    elif inferred_type == "str":
+                        action_defaults[arg_name] = ""
+                    else:
+                        action_defaults[arg_name] = None
 
-            if command_name:
-                doc_text = command_docs.get(command_name, "")
-                arg_items, _return_items = _parse_doc_sections(doc_text)
-                arg_docs = _parse_argument_docs(doc_text)
-                args_mapping = action_cmd.get("args")
-                action_ordered_args: list[str] = []
-                if isinstance(args_mapping, dict):
-                    action_ordered_args = [str(name) for name in args_mapping.keys()]
-                synthetic_signature = inspect.Signature(
-                    [
-                        inspect.Parameter(
-                            name=arg_name,
-                            kind=inspect.Parameter.POSITIONAL_OR_KEYWORD,
-                        )
-                        for arg_name in action_ordered_args
-                    ]
-                )
-                action_cmd["docstring_full"] = _normalize_docstring_full(doc_text)
-                action_cmd["arg_fields"] = _build_arg_fields(
-                    signature=synthetic_signature,
-                    args=tuple(action_ordered_args),
-                    arg_docs=arg_docs,
+                action_cmd["arg_fields"] = _build_arg_fields_from_wire(
+                    signature=command_info.signature,
+                    ordered_arg_names=command_info.body_arg_names or command_info.arguments,
+                    wire_types=command_info.body_wire_types,
+                    arg_docs=action_arg_docs,
                     argument_items=arg_items,
+                    default_values=action_defaults,
+                    required_arg_names=(),
                 )
+            elif not isinstance(action_cmd.get("arg_fields"), list):
+                action_cmd["arg_fields"] = _arg_fields_from_legacy_args(args_mapping)
 
         safety = action.get("safety")
         if isinstance(safety, dict):
@@ -484,15 +518,28 @@ def _build_generated_parameter_entry(
     else:
         argument_items, return_items = _parse_doc_sections(get_info.doc)
         read_args = _infer_read_args(
-            signature=get_info.signature, args=get_info.arguments, arg_docs=get_arg_docs
+            signature=get_info.signature,
+            args=get_info.arguments,
+            arg_docs=get_arg_docs,
         )
+        ordered_get_args = get_info.body_arg_names or get_info.arguments
         get_cmd = {
             "command": get_info.command,
             "payload_index": 0,
-            "args": read_args,
             "description": extract_description(get_info.doc),
-            "docstring_full": _normalize_docstring_full(get_info.doc),
-            "response_fields": _build_response_fields(return_items),
+            "arg_fields": _build_arg_fields_from_wire(
+                signature=get_info.signature,
+                ordered_arg_names=ordered_get_args,
+                wire_types=get_info.body_wire_types,
+                arg_docs=get_arg_docs,
+                argument_items=argument_items,
+                default_values=read_args,
+                required_arg_names=(),
+            ),
+            "response_fields": _build_response_fields_from_wire(
+                return_items=return_items,
+                wire_types=get_info.response_wire_types,
+            ),
         }
 
     set_cmd: dict[str, Any] | bool
@@ -505,17 +552,19 @@ def _build_generated_parameter_entry(
             args=set_info.arguments,
             arg_docs=set_arg_docs,
         )
+        ordered_set_args = set_info.body_arg_names or set_info.arguments
+        set_defaults = {**set_mapping.fixed_args, set_mapping.value_arg: None}
         set_cmd = {
             "command": set_info.command,
-            "value_arg": set_mapping.value_arg,
-            "args": set_mapping.fixed_args,
             "description": extract_description(set_info.doc),
-            "docstring_full": _normalize_docstring_full(set_info.doc),
-            "arg_fields": _build_arg_fields(
+            "arg_fields": _build_arg_fields_from_wire(
                 signature=set_info.signature,
-                args=set_info.arguments,
+                ordered_arg_names=ordered_set_args,
+                wire_types=set_info.body_wire_types,
                 arg_docs=set_arg_docs,
                 argument_items=argument_items,
+                default_values=set_defaults,
+                required_arg_names=(set_mapping.value_arg,),
             ),
         }
 
@@ -544,8 +593,7 @@ def _build_generated_parameter_entry(
 def _build_generated_action_entry(*, info: CommandInfo) -> dict[str, Any]:
     arg_docs = _parse_argument_docs(info.doc)
     argument_items, _return_items = _parse_doc_sections(info.doc)
-    args: dict[str, Any] = {}
-    arg_types: dict[str, ScalarValueType] = {}
+    action_defaults: dict[str, Any] = {}
     for arg_name in info.arguments:
         parameter = info.signature.parameters[arg_name]
         doc_line = _match_doc_for_arg(arg_name, arg_docs)
@@ -554,50 +602,233 @@ def _build_generated_action_entry(*, info: CommandInfo) -> dict[str, Any]:
             doc_line=doc_line,
             arg_name=arg_name,
         )
-        arg_types[arg_name] = inferred_type
-
         if parameter.default is not inspect.Parameter.empty:
-            args[arg_name] = parameter.default
-            continue
-        if _is_selector_arg(arg_name=arg_name, doc_line=doc_line, inferred_type=inferred_type):
-            args[arg_name] = 1
-            continue
-        if inferred_type == "bool":
-            args[arg_name] = 0
+            action_defaults[arg_name] = parameter.default
+        elif _is_selector_arg(arg_name=arg_name, doc_line=doc_line, inferred_type=inferred_type):
+            action_defaults[arg_name] = 1
+        elif inferred_type == "bool":
+            action_defaults[arg_name] = 0
         elif inferred_type == "int":
-            args[arg_name] = 0
+            action_defaults[arg_name] = 0
         elif inferred_type == "float":
-            args[arg_name] = 0.0
+            action_defaults[arg_name] = 0.0
         elif inferred_type == "str":
-            args[arg_name] = ""
+            action_defaults[arg_name] = ""
         else:
-            args[arg_name] = None
+            action_defaults[arg_name] = None
 
     return {
         "action_cmd": {
             "command": info.command,
-            "args": args,
-            "arg_types": arg_types,
             "description": extract_description(info.doc),
-            "docstring_full": _normalize_docstring_full(info.doc),
-            "arg_fields": _build_arg_fields(
+            "arg_fields": _build_arg_fields_from_wire(
                 signature=info.signature,
-                args=info.arguments,
+                ordered_arg_names=info.body_arg_names or info.arguments,
+                wire_types=info.body_wire_types,
                 arg_docs=arg_docs,
                 argument_items=argument_items,
+                default_values=action_defaults,
+                required_arg_names=(),
             ),
         },
         "safety": {"mode": "guarded"},
     }
 
 
-def _normalize_docstring_full(doc: str | None) -> str:
-    if doc is None:
-        return ""
-    lines = [html.unescape(line).rstrip() for line in str(doc).splitlines()]
-    while lines and not lines[-1].strip():
-        lines.pop()
-    return "\n".join(lines).strip()
+def _extract_quicksend_signature(
+    member: Any,
+) -> tuple[tuple[str, ...], tuple[str, ...], tuple[str, ...]]:
+    try:
+        source = inspect.getsource(member)
+    except (OSError, TypeError):
+        return ((), (), ())
+
+    try:
+        module = ast.parse(textwrap.dedent(source))
+    except SyntaxError:
+        return ((), (), ())
+
+    call: ast.Call | None = None
+    for node in ast.walk(module):
+        if not isinstance(node, ast.Call):
+            continue
+        func = node.func
+        if isinstance(func, ast.Attribute) and func.attr == "quickSend":
+            call = node
+            break
+    if call is None or len(call.args) < 4:
+        return ((), (), ())
+
+    body_arg_names = _extract_body_arg_names(call.args[1])
+    body_wire_types = _extract_literal_string_list(call.args[2])
+    response_wire_types = _extract_literal_string_list(call.args[3])
+    return (body_arg_names, body_wire_types, response_wire_types)
+
+
+def _extract_body_arg_names(node: ast.AST) -> tuple[str, ...]:
+    if not isinstance(node, (ast.List, ast.Tuple)):
+        return ()
+    names: list[str] = []
+    for index, item in enumerate(node.elts):
+        if isinstance(item, ast.Name):
+            names.append(str(item.id))
+            continue
+        if isinstance(item, ast.Attribute):
+            names.append(str(item.attr))
+            continue
+        try:
+            unparsed = ast.unparse(item)
+        except Exception:
+            unparsed = f"arg_{index}"
+        names.append(re.sub(r"\W+", "_", unparsed).strip("_") or f"arg_{index}")
+    return tuple(names)
+
+
+def _extract_literal_string_list(node: ast.AST) -> tuple[str, ...]:
+    if not isinstance(node, (ast.List, ast.Tuple)):
+        return ()
+    output: list[str] = []
+    for item in node.elts:
+        if isinstance(item, ast.Constant) and isinstance(item.value, str):
+            output.append(str(item.value))
+    return tuple(output)
+
+
+def _build_response_fields_from_wire(
+    *,
+    return_items: list[str],
+    wire_types: tuple[str, ...],
+) -> list[dict[str, Any]]:
+    if not wire_types:
+        return _build_response_fields(return_items)
+
+    fields: list[dict[str, Any]] = []
+    for index, wire_type in enumerate(wire_types):
+        item = return_items[index] if index < len(return_items) else ""
+        name = _extract_doc_item_name(item) if item else f"response_{index}"
+        value_type, unit = _extract_doc_type_and_unit(item)
+        if value_type == "unknown":
+            value_type = _normalize_wire_type(wire_type)
+        fields.append(
+            {
+                "index": index,
+                "name": name,
+                "type": value_type,
+                "unit": unit,
+                "wire_type": wire_type,
+                "description": item.strip(),
+            }
+        )
+    return fields
+
+
+def _build_arg_fields_from_wire(
+    *,
+    signature: inspect.Signature,
+    ordered_arg_names: tuple[str, ...],
+    wire_types: tuple[str, ...],
+    arg_docs: dict[str, str],
+    argument_items: list[str],
+    default_values: dict[str, Any],
+    required_arg_names: tuple[str, ...],
+) -> list[dict[str, Any]]:
+    arg_item_map: dict[str, str] = {}
+    for item in argument_items:
+        key = _normalize_key(_extract_doc_item_name(item))
+        if key:
+            arg_item_map[key] = item
+
+    if not ordered_arg_names:
+        ordered_arg_names = tuple(
+            name
+            for name in signature.parameters
+            if name != "self"
+            and signature.parameters[name].kind
+            in {inspect.Parameter.POSITIONAL_OR_KEYWORD, inspect.Parameter.KEYWORD_ONLY}
+        )
+
+    required_names = set(required_arg_names)
+    fields: list[dict[str, Any]] = []
+    for index, arg_name in enumerate(ordered_arg_names):
+        parameter = signature.parameters.get(arg_name)
+        doc_line = _match_doc_for_arg(arg_name, arg_docs)
+        if not doc_line and index < len(argument_items):
+            doc_line = argument_items[index]
+
+        value_type, unit = _extract_doc_type_and_unit(doc_line)
+        wire_type = wire_types[index] if index < len(wire_types) else ""
+        if value_type == "unknown":
+            value_type = _normalize_wire_type(wire_type)
+        if value_type == "unknown" and parameter is not None:
+            value_type = _infer_type_for_arg(
+                parameter=parameter, doc_line=doc_line, command_name=""
+            )
+
+        default_value = default_values.get(arg_name)
+        required = arg_name in required_names
+        if not required and parameter is not None and parameter.default is inspect.Parameter.empty:
+            required = default_value is None
+
+        fields.append(
+            {
+                "name": arg_name,
+                "type": value_type,
+                "unit": unit,
+                "wire_type": wire_type,
+                "required": required,
+                "default": default_value,
+                "description": doc_line.strip(),
+            }
+        )
+    return fields
+
+
+def _arg_fields_from_legacy_args(
+    args_mapping: Any,
+    *,
+    value_arg: str | None = None,
+) -> list[dict[str, Any]]:
+    if not isinstance(args_mapping, dict):
+        return []
+    fields: list[dict[str, Any]] = []
+    for key, value in args_mapping.items():
+        name = str(key)
+        value_type = _infer_scalar_type_from_value(value)
+        required = bool(value_arg and name == value_arg and value is None)
+        fields.append(
+            {
+                "name": name,
+                "type": value_type,
+                "unit": "",
+                "wire_type": "",
+                "required": required,
+                "default": value,
+                "description": "",
+            }
+        )
+    return fields
+
+
+def _normalize_wire_type(wire_type: str) -> str:
+    token = str(wire_type).strip()
+    if not token:
+        return "unknown"
+    is_array = "*" in token
+    normalized = token.replace("+", "").replace("*", "")
+    base = "unknown"
+    if normalized in {"f", "d"}:
+        base = "float"
+    elif normalized in {"?"}:
+        base = "bool"
+    elif normalized in {"s", "c"}:
+        base = "str"
+    elif normalized in {"b", "B", "h", "H", "i", "I", "l", "L", "q", "Q"}:
+        base = "int"
+    if is_array and base != "unknown":
+        return f"array[{base}]"
+    if is_array:
+        return "array"
+    return base
 
 
 def _parse_doc_sections(doc: str) -> tuple[list[str], list[str]]:
@@ -663,6 +894,7 @@ def _build_response_fields(return_items: list[str]) -> list[dict[str, Any]]:
                 "name": name,
                 "type": value_type,
                 "unit": unit,
+                "wire_type": "",
                 "description": item.strip(),
             }
         )

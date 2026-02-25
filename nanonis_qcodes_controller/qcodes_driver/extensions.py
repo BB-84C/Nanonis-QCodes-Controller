@@ -26,6 +26,7 @@ class ResponseFieldSpec:
     name: str
     type: str
     unit: str
+    wire_type: str
     description: str
 
 
@@ -33,37 +34,34 @@ class ResponseFieldSpec:
 class ArgFieldSpec:
     name: str
     type: str
+    unit: str
+    wire_type: str
     required: bool
     description: str
+    default: Any = None
 
 
 @dataclass(frozen=True)
 class ReadCommandSpec:
     command: str
     payload_index: int = 0
-    args: Mapping[str, Any] = field(default_factory=dict)
     description: str = ""
-    docstring_full: str = ""
+    arg_fields: tuple[ArgFieldSpec, ...] = ()
     response_fields: tuple[ResponseFieldSpec, ...] = ()
 
 
 @dataclass(frozen=True)
 class WriteCommandSpec:
     command: str
-    value_arg: str
-    args: Mapping[str, Any] = field(default_factory=dict)
+    value_arg: str = ""
     description: str = ""
-    docstring_full: str = ""
     arg_fields: tuple[ArgFieldSpec, ...] = ()
 
 
 @dataclass(frozen=True)
 class ActionCommandSpec:
     command: str
-    args: Mapping[str, Any] = field(default_factory=dict)
-    arg_types: Mapping[str, ScalarValueType] = field(default_factory=dict)
     description: str = ""
-    docstring_full: str = ""
     arg_fields: tuple[ArgFieldSpec, ...] = ()
 
 
@@ -261,32 +259,19 @@ def _parse_action_spec(*, name: str, mapping: Mapping[str, Any]) -> ActionSpec:
 def _parse_action_command(value: Any, *, context: str) -> ActionCommandSpec:
     mapping = _as_mapping(value, context=context)
     command = _parse_required_string(mapping.get("command"), field_name=f"{context}.command")
-    args_mapping = _as_mapping(mapping.get("args"), context=f"{context}.args")
-    arg_types_mapping = _as_mapping(mapping.get("arg_types"), context=f"{context}.arg_types")
     description = str(mapping.get("description", "")).strip()
-    docstring_full = str(mapping.get("docstring_full", "")).strip()
     arg_fields = _parse_arg_fields(mapping.get("arg_fields"), context=f"{context}.arg_fields")
-
-    parsed_arg_types: dict[str, ScalarValueType] = {}
-    arg_names = sorted({*args_mapping.keys(), *arg_types_mapping.keys()})
-    for arg_name in arg_names:
-        normalized_name = str(arg_name)
-        explicit_type = arg_types_mapping.get(arg_name)
-        if explicit_type is not None:
-            parsed_arg_types[normalized_name] = _parse_scalar_value_type(
-                explicit_type,
-                field_name=f"{context}.arg_types.{normalized_name}",
-            )
-            continue
-
-        parsed_arg_types[normalized_name] = _infer_scalar_value_type(args_mapping.get(arg_name))
+    if not arg_fields:
+        legacy_args = _as_mapping(mapping.get("args", {}), context=f"{context}.args")
+        legacy_arg_types = _as_mapping(mapping.get("arg_types", {}), context=f"{context}.arg_types")
+        arg_fields = _legacy_action_arg_fields(
+            args_mapping=legacy_args,
+            arg_types_mapping=legacy_arg_types,
+        )
 
     return ActionCommandSpec(
         command=command,
-        args={str(key): value for key, value in args_mapping.items()},
-        arg_types=parsed_arg_types,
         description=description,
-        docstring_full=docstring_full,
         arg_fields=arg_fields,
     )
 
@@ -327,9 +312,11 @@ def _parse_read_command(value: Any, *, context: str) -> ReadCommandSpec | None:
     payload_index = int(mapping.get("payload_index", 0))
     if payload_index < 0:
         raise ValueError(f"{context}.payload_index must be non-negative.")
-    args = _as_mapping(mapping.get("args"), context=f"{context}.args")
     description = str(mapping.get("description", "")).strip()
-    docstring_full = str(mapping.get("docstring_full", "")).strip()
+    arg_fields = _parse_arg_fields(mapping.get("arg_fields"), context=f"{context}.arg_fields")
+    if not arg_fields:
+        legacy_args = _as_mapping(mapping.get("args", {}), context=f"{context}.args")
+        arg_fields = _legacy_arg_fields_from_mapping(legacy_args)
     response_fields = _parse_response_fields(
         mapping.get("response_fields"),
         context=f"{context}.response_fields",
@@ -337,9 +324,8 @@ def _parse_read_command(value: Any, *, context: str) -> ReadCommandSpec | None:
     return ReadCommandSpec(
         command=command,
         payload_index=payload_index,
-        args=dict(args),
         description=description,
-        docstring_full=docstring_full,
+        arg_fields=arg_fields,
         response_fields=response_fields,
     )
 
@@ -350,17 +336,23 @@ def _parse_write_command(value: Any, *, context: str) -> WriteCommandSpec | None
 
     mapping = _as_mapping(value, context=context)
     command = _parse_required_string(mapping.get("command"), field_name=f"{context}.command")
-    value_arg = _parse_required_string(mapping.get("value_arg"), field_name=f"{context}.value_arg")
-    args = _as_mapping(mapping.get("args"), context=f"{context}.args")
+    value_arg_raw = mapping.get("value_arg")
     description = str(mapping.get("description", "")).strip()
-    docstring_full = str(mapping.get("docstring_full", "")).strip()
     arg_fields = _parse_arg_fields(mapping.get("arg_fields"), context=f"{context}.arg_fields")
+    value_arg = ""
+    if value_arg_raw not in (None, ""):
+        value_arg = _parse_required_string(value_arg_raw, field_name=f"{context}.value_arg")
+    elif arg_fields:
+        required_names = [field.name for field in arg_fields if field.required]
+        if len(required_names) == 1:
+            value_arg = required_names[0]
+    if not arg_fields:
+        legacy_args = _as_mapping(mapping.get("args", {}), context=f"{context}.args")
+        arg_fields = _legacy_arg_fields_from_mapping(legacy_args, value_arg=value_arg)
     return WriteCommandSpec(
         command=command,
         value_arg=value_arg,
-        args=dict(args),
         description=description,
-        docstring_full=docstring_full,
         arg_fields=arg_fields,
     )
 
@@ -382,6 +374,7 @@ def _parse_response_fields(value: Any, *, context: str) -> tuple[ResponseFieldSp
                 ),
                 type=str(mapping.get("type", "")).strip() or "unknown",
                 unit=str(mapping.get("unit", "")).strip(),
+                wire_type=str(mapping.get("wire_type", "")).strip(),
                 description=str(mapping.get("description", "")).strip(),
             )
         )
@@ -403,14 +396,87 @@ def _parse_arg_fields(value: Any, *, context: str) -> tuple[ArgFieldSpec, ...]:
                     mapping.get("name"), field_name=f"{context}[{index}].name"
                 ),
                 type=str(mapping.get("type", "")).strip() or "unknown",
+                unit=str(mapping.get("unit", "")).strip(),
+                wire_type=str(mapping.get("wire_type", "")).strip(),
                 required=_parse_bool(
                     mapping.get("required", False),
                     field_name=f"{context}[{index}].required",
                 ),
                 description=str(mapping.get("description", "")).strip(),
+                default=mapping.get("default"),
             )
         )
     return tuple(parsed)
+
+
+def _legacy_action_arg_fields(
+    *,
+    args_mapping: Mapping[str, Any],
+    arg_types_mapping: Mapping[str, Any],
+) -> tuple[ArgFieldSpec, ...]:
+    names = [str(name) for name in args_mapping.keys()]
+    for name in arg_types_mapping.keys():
+        normalized = str(name)
+        if normalized not in names:
+            names.append(normalized)
+
+    fields: list[ArgFieldSpec] = []
+    for name in names:
+        value = args_mapping.get(name)
+        explicit = arg_types_mapping.get(name)
+        value_type = (
+            _parse_scalar_value_type(explicit, field_name=f"arg_types.{name}")
+            if explicit is not None
+            else _infer_scalar_value_type(value)
+        )
+        fields.append(
+            ArgFieldSpec(
+                name=name,
+                type=value_type,
+                unit="",
+                wire_type="",
+                required=False,
+                description="",
+                default=value,
+            )
+        )
+    return tuple(fields)
+
+
+def _legacy_arg_fields_from_mapping(
+    args_mapping: Mapping[str, Any],
+    *,
+    value_arg: str | None = None,
+) -> tuple[ArgFieldSpec, ...]:
+    fields: list[ArgFieldSpec] = []
+    ordered_names: list[str] = []
+    if value_arg:
+        ordered_names.append(value_arg)
+    for name in args_mapping.keys():
+        normalized = str(name)
+        if normalized not in ordered_names:
+            ordered_names.append(normalized)
+
+    for name in ordered_names:
+        default = args_mapping.get(name)
+        if default is None and value_arg and name == value_arg:
+            value_type: ScalarValueType = "float"
+            required = True
+        else:
+            value_type = _infer_scalar_value_type(default)
+            required = False
+        fields.append(
+            ArgFieldSpec(
+                name=name,
+                type=value_type,
+                unit="",
+                wire_type="",
+                required=required,
+                description="",
+                default=default,
+            )
+        )
+    return tuple(fields)
 
 
 def _parse_vals(value: Any, *, value_type: ScalarValueType, context: str) -> ValidatorSpec | None:

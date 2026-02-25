@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import ast
 import hashlib
 import json
 import math
@@ -82,13 +83,62 @@ _TRUE_STRINGS = {"1", "true", "yes", "on"}
 _FALSE_STRINGS = {"0", "false", "no", "off"}
 
 
+def _normalize_field_name(name: str) -> str:
+    return "".join(ch.lower() for ch in str(name) if ch.isalnum())
+
+
 def _coerce_action_value(value: Any, *, value_type: str, field_name: str) -> Any:
+    if value_type.startswith("array[") and value_type.endswith("]"):
+        element_type = value_type[6:-1].strip() or "str"
+        if hasattr(value, "tolist"):
+            try:
+                value = value.tolist()  # type: ignore[assignment]
+            except Exception:
+                pass
+        if isinstance(value, str):
+            text = value.strip()
+            if text.startswith(("[", "(")) and text.endswith(("]", ")")):
+                try:
+                    parsed = ast.literal_eval(text)
+                except (ValueError, SyntaxError):
+                    parsed = None
+                if isinstance(parsed, (list, tuple)):
+                    value = parsed
+        if isinstance(value, (list, tuple)):
+            return [
+                _coerce_action_value(item, value_type=element_type, field_name=field_name)
+                for item in value
+            ]
+        text = str(value).strip()
+        if not text:
+            return []
+        parts = [part.strip() for part in text.split(",")]
+        return [
+            _coerce_action_value(part, value_type=element_type, field_name=field_name)
+            for part in parts
+        ]
+    if value_type == "array":
+        if isinstance(value, (list, tuple)):
+            return list(value)
+        text = str(value).strip()
+        if not text:
+            return []
+        return [part.strip() for part in text.split(",")]
     if value_type == "float":
         try:
             return float(value)
         except (TypeError, ValueError):
             return str(value)
     if value_type == "int":
+        if isinstance(value, str):
+            text = value.strip()
+            if text.startswith(("[", "(")) and text.endswith(("]", ")")):
+                try:
+                    parsed = ast.literal_eval(text)
+                except (ValueError, SyntaxError):
+                    parsed = None
+                if isinstance(parsed, (list, tuple)) and len(parsed) == 1:
+                    value = parsed[0]
         try:
             return int(value)
         except (TypeError, ValueError):
@@ -236,12 +286,11 @@ class QcodesNanonisSTM(Instrument):  # type: ignore[misc,unused-ignore]
         plan_only: bool = False,
     ) -> Mapping[str, Any]:
         spec = self.action_spec(action_name)
-        merged_args = dict(spec.action_cmd.args)
-        if args is not None:
-            merged_args.update(dict(args))
+        incoming_args = dict(args) if args is not None else {}
 
-        allowed_args = set(spec.action_cmd.arg_types).union(spec.action_cmd.args)
-        unknown_args = sorted(key for key in merged_args if key not in allowed_args)
+        field_by_name = {arg_field.name: arg_field for arg_field in spec.action_cmd.arg_fields}
+        allowed_args = set(field_by_name)
+        unknown_args = sorted(key for key in incoming_args if key not in allowed_args)
         if unknown_args:
             formatted = ", ".join(unknown_args)
             raise ValueError(
@@ -250,12 +299,22 @@ class QcodesNanonisSTM(Instrument):  # type: ignore[misc,unused-ignore]
             )
 
         typed_args: dict[str, Any] = {}
-        for arg_name, value in merged_args.items():
-            value_type = spec.action_cmd.arg_types.get(arg_name, "str")
-            typed_args[arg_name] = _coerce_action_value(
-                value,
-                value_type=value_type,
-                field_name=f"{spec.name}.{arg_name}",
+        for arg_field in spec.action_cmd.arg_fields:
+            if arg_field.name in incoming_args:
+                raw_value = incoming_args[arg_field.name]
+            elif arg_field.default is not None:
+                raw_value = arg_field.default
+            elif arg_field.required:
+                raise ValueError(
+                    f"Action '{spec.name}' is missing required argument: {arg_field.name}"
+                )
+            else:
+                continue
+
+            typed_args[arg_field.name] = _coerce_action_value(
+                raw_value,
+                value_type=arg_field.type,
+                field_name=f"{spec.name}.{arg_field.name}",
             )
 
         dry_run = False
@@ -332,16 +391,168 @@ class QcodesNanonisSTM(Instrument):  # type: ignore[misc,unused-ignore]
         spec = self.parameter_spec(parameter_name)
         if spec.get_cmd is None:
             raise ValueError(f"Parameter '{spec.name}' is not readable.")
-
-        response = self._call(spec.get_cmd.command, args=spec.get_cmd.args)
-        raw_value = self._extract_payload_value(
-            response,
-            command=spec.get_cmd.command,
-            payload_index=spec.get_cmd.payload_index,
-        )
+        snapshot = self.get_parameter_snapshot(parameter_name)
+        values = snapshot["values"]
+        if values:
+            first_key = next(iter(values))
+            raw_value = values[first_key]
+        else:
+            response = self._call(spec.get_cmd.command, args={})
+            raw_value = self._extract_payload_value(
+                response,
+                command=spec.get_cmd.command,
+                payload_index=spec.get_cmd.payload_index,
+            )
         value = _coerce_scalar_value(raw_value, value_type=spec.value_type)
         self._record_state_transition(state_key=spec.name, value=_state_value(value))
         return value
+
+    def get_parameter_snapshot(self, parameter_name: str) -> Mapping[str, Any]:
+        spec = self.parameter_spec(parameter_name)
+        if spec.get_cmd is None:
+            raise ValueError(f"Parameter '{spec.name}' is not readable.")
+
+        get_args = {
+            field.name: field.default
+            for field in spec.get_cmd.arg_fields
+            if field.default is not None
+        }
+        missing_required = [
+            field.name
+            for field in spec.get_cmd.arg_fields
+            if field.required and field.name not in get_args
+        ]
+        if missing_required:
+            formatted = ", ".join(missing_required)
+            raise ValueError(
+                f"Parameter '{spec.name}' get_cmd missing required arguments without defaults: {formatted}"
+            )
+
+        response = self._call(spec.get_cmd.command, args=get_args)
+        payload = response.get("payload")
+        if not isinstance(payload, list):
+            raise RuntimeError(
+                f"Command '{spec.get_cmd.command}' returned payload type {type(payload).__name__}; expected list."
+            )
+
+        values: dict[str, Any] = {}
+        ordered_values: list[Any] = []
+        if spec.get_cmd.response_fields:
+            for field in spec.get_cmd.response_fields:
+                if field.index < 0 or field.index >= len(payload):
+                    continue
+                coerced = _coerce_action_value(
+                    payload[field.index],
+                    value_type=field.type,
+                    field_name=f"{spec.name}.{field.name}",
+                )
+                values[field.name] = coerced
+                ordered_values.append(coerced)
+        return {
+            "command": spec.get_cmd.command,
+            "args": get_args,
+            "values": values,
+            "ordered_values": ordered_values,
+            "raw_payload": payload,
+        }
+
+    def set_parameter_fields(
+        self,
+        parameter_name: str,
+        *,
+        args: Mapping[str, Any],
+        plan_only: bool = False,
+        interval_s: float | None = None,
+    ) -> Mapping[str, Any]:
+        del interval_s
+        spec = self._require_writable_spec(parameter_name)
+        if spec.set_cmd is None:
+            raise ValueError(f"Parameter '{spec.name}' is not writable.")
+
+        normalized_overrides: dict[str, Any] = {}
+        fields_by_normalized: dict[str, Any] = {
+            _normalize_field_name(field.name): field for field in spec.set_cmd.arg_fields
+        }
+        for key, value in args.items():
+            normalized = _normalize_field_name(str(key))
+            field = fields_by_normalized.get(normalized)
+            if field is None:
+                raise ValueError(f"Unknown argument for parameter '{spec.name}': {key}")
+            normalized_overrides[field.name] = value
+
+        command_args: dict[str, Any] = dict(normalized_overrides)
+        autofilled: dict[str, Any] = {}
+        if spec.get_cmd is not None:
+            snapshot = self.get_parameter_snapshot(spec.name)
+            snapshot_values = snapshot.get("values", {})
+            if isinstance(snapshot_values, dict):
+                by_normalized_snapshot = {
+                    _normalize_field_name(str(name)): value
+                    for name, value in snapshot_values.items()
+                }
+                for field in spec.set_cmd.arg_fields:
+                    if field.name in command_args:
+                        continue
+                    value = by_normalized_snapshot.get(_normalize_field_name(field.name))
+                    if value is None:
+                        continue
+                    command_args[field.name] = value
+                    autofilled[field.name] = value
+
+        for field in spec.set_cmd.arg_fields:
+            if field.name not in command_args and field.default is not None:
+                command_args[field.name] = field.default
+
+        missing_required = [
+            field.name
+            for field in spec.set_cmd.arg_fields
+            if field.required and field.name not in command_args
+        ]
+
+        if missing_required:
+            formatted = ", ".join(missing_required)
+            raise ValueError(
+                f"Parameter '{spec.name}' is missing required set args: {formatted}. "
+                "Provide them with --arg key=value."
+            )
+
+        typed_args: dict[str, Any] = {}
+        for field in spec.set_cmd.arg_fields:
+            if field.name not in command_args:
+                continue
+            typed_args[field.name] = _coerce_action_value(
+                command_args[field.name],
+                value_type=field.type,
+                field_name=f"{spec.name}.{field.name}",
+            )
+
+        self._write_policy.ensure_writes_enabled()
+        dry_run = bool(plan_only or self._write_policy.dry_run)
+        response: Mapping[str, Any] | None = None
+        if not dry_run:
+            response = self._call(spec.set_cmd.command, args=typed_args)
+
+        self._append_write_audit(
+            operation=f"set_fields:{spec.name}",
+            status="dry_run" if dry_run else "applied",
+            dry_run=dry_run,
+            detail="Structured parameter set executed.",
+            metadata={
+                "command": spec.set_cmd.command,
+                "args": _json_safe(typed_args),
+                "autofilled": _json_safe(autofilled),
+            },
+        )
+
+        return {
+            "name": spec.name,
+            "command": spec.set_cmd.command,
+            "args": typed_args,
+            "autofilled": autofilled,
+            "dry_run": dry_run,
+            "applied": not dry_run,
+            "response": response,
+        }
 
     def plan_parameter_single_step(
         self,
@@ -615,7 +826,11 @@ class QcodesNanonisSTM(Instrument):  # type: ignore[misc,unused-ignore]
             raise ValueError(f"Parameter '{spec.name}' is not writable.")
 
         typed_value = _coerce_scalar_value(value, value_type=spec.value_type)
-        command_args = dict(spec.set_cmd.args)
+        command_args = {
+            field.name: field.default
+            for field in spec.set_cmd.arg_fields
+            if field.default is not None and field.name != spec.set_cmd.value_arg
+        }
         if spec.value_type == "bool":
             command_args[spec.set_cmd.value_arg] = int(bool(typed_value))
         elif spec.value_type == "int":
