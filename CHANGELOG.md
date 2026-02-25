@@ -4,6 +4,14 @@ All notable changes to this project are documented in this file.
 
 ## [Unreleased]
 
+## [0.1.8] - 2026-02-25
+
+### Changed
+- Migrated parameter handling to a methods-only schema driven by structured command metadata (`arg_fields`/`response_fields`), removing scalar-oriented parameter keys from generated manifests and CLI capability payloads.
+- Removed scalar loader/public API exports (`ScalarParameterSpec`, `load_scalar_parameter_specs`) from `qcodes_driver` and aligned extension tests with methods-only plus legacy-key compatibility parsing.
+- Updated driver behavior and tests to use the structured methods interface (`get_parameter_snapshot`, `set_parameter_fields`, `execute_action`) as the authoritative contract.
+- Updated CLI contract docs to define `nqctl set <parameter> --arg key=value` as the structured set surface.
+
 ## [0.1.7] - 2026-02-25
 
 ### Added
