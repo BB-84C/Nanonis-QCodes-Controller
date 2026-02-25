@@ -75,6 +75,209 @@ Get the machine-readable execution contract (lean payload):
 nqctl capabilities
 ```
 
+Capabilities item schemas (`nqctl capabilities`):
+
+```json
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://bb-84c.github.io/nqctl/schemas/capabilities-parameter-item.schema.json",
+  "title": "nqctl capabilities parameters.items[*]",
+  "type": "object",
+  "required": [
+    "name",
+    "label",
+    "readable",
+    "writable",
+    "has_ramp",
+    "get_cmd",
+    "set_cmd",
+    "safety"
+  ],
+  "properties": {
+    "name": { "type": "string", "minLength": 1 },
+    "label": { "type": "string" },
+    "readable": { "type": "boolean" },
+    "writable": { "type": "boolean" },
+    "has_ramp": { "type": "boolean" },
+    "get_cmd": {
+      "oneOf": [
+        { "type": "null" },
+        {
+          "type": "object",
+          "required": ["command", "payload_index", "arg_fields", "response_fields"],
+          "properties": {
+            "command": { "type": "string", "minLength": 1 },
+            "payload_index": { "type": "integer", "minimum": 0 },
+            "description": { "type": "string" },
+            "arg_fields": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": [
+                  "name",
+                  "type",
+                  "unit",
+                  "wire_type",
+                  "required",
+                  "description",
+                  "default"
+                ],
+                "properties": {
+                  "name": { "type": "string", "minLength": 1 },
+                  "type": { "type": "string" },
+                  "unit": { "type": "string" },
+                  "wire_type": { "type": "string" },
+                  "required": { "type": "boolean" },
+                  "description": { "type": "string" },
+                  "default": {}
+                },
+                "additionalProperties": false
+              }
+            },
+            "response_fields": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": ["index", "name", "type", "unit", "wire_type", "description"],
+                "properties": {
+                  "index": { "type": "integer", "minimum": 0 },
+                  "name": { "type": "string", "minLength": 1 },
+                  "type": { "type": "string" },
+                  "unit": { "type": "string" },
+                  "wire_type": { "type": "string" },
+                  "description": { "type": "string" }
+                },
+                "additionalProperties": false
+              }
+            }
+          },
+          "additionalProperties": true
+        }
+      ]
+    },
+    "set_cmd": {
+      "oneOf": [
+        { "type": "null" },
+        {
+          "type": "object",
+          "required": ["command", "arg_fields"],
+          "properties": {
+            "command": { "type": "string", "minLength": 1 },
+            "description": { "type": "string" },
+            "arg_fields": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": [
+                  "name",
+                  "type",
+                  "unit",
+                  "wire_type",
+                  "required",
+                  "description",
+                  "default"
+                ],
+                "properties": {
+                  "name": { "type": "string", "minLength": 1 },
+                  "type": { "type": "string" },
+                  "unit": { "type": "string" },
+                  "wire_type": { "type": "string" },
+                  "required": { "type": "boolean" },
+                  "description": { "type": "string" },
+                  "default": {}
+                },
+                "additionalProperties": false
+              }
+            }
+          },
+          "additionalProperties": true
+        }
+      ]
+    },
+    "safety": {
+      "oneOf": [
+        { "type": "null" },
+        {
+          "type": "object",
+          "required": [
+            "min_value",
+            "max_value",
+            "max_step",
+            "max_slew_per_s",
+            "cooldown_s",
+            "ramp_enabled",
+            "ramp_interval_s"
+          ],
+          "properties": {
+            "min_value": { "type": ["number", "null"] },
+            "max_value": { "type": ["number", "null"] },
+            "max_step": { "type": ["number", "null"] },
+            "max_slew_per_s": { "type": ["number", "null"] },
+            "cooldown_s": { "type": ["number", "null"] },
+            "ramp_enabled": { "type": "boolean" },
+            "ramp_interval_s": { "type": ["number", "null"] }
+          },
+          "additionalProperties": false
+        }
+      ]
+    }
+  },
+  "additionalProperties": false
+}
+```
+
+```json
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://bb-84c.github.io/nqctl/schemas/capabilities-action-command-item.schema.json",
+  "title": "nqctl capabilities action_commands.items[*]",
+  "type": "object",
+  "required": ["name", "action_cmd", "safety_mode"],
+  "properties": {
+    "name": { "type": "string", "minLength": 1 },
+    "action_cmd": {
+      "type": "object",
+      "required": ["command", "arg_fields"],
+      "properties": {
+        "command": { "type": "string", "minLength": 1 },
+        "description": { "type": "string" },
+        "arg_fields": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "name",
+              "type",
+              "unit",
+              "wire_type",
+              "required",
+              "description",
+              "default"
+            ],
+            "properties": {
+              "name": { "type": "string", "minLength": 1 },
+              "type": { "type": "string" },
+              "unit": { "type": "string" },
+              "wire_type": { "type": "string" },
+              "required": { "type": "boolean" },
+              "description": { "type": "string" },
+              "default": {}
+            },
+            "additionalProperties": false
+          }
+        }
+      },
+      "additionalProperties": true
+    },
+    "safety_mode": {
+      "type": "string",
+      "enum": ["alwaysAllowed", "guarded", "blocked"]
+    }
+  },
+  "additionalProperties": false
+}
+```
+
 Show the legacy full payload (old capabilities surface):
 
 ```powershell
