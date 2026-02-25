@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import Mapping
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Literal, cast
 
@@ -12,11 +12,9 @@ from nanonis_qcodes_controller.config.default_files import resolve_packaged_defa
 DEFAULT_PARAMETERS_FILE = Path("config/parameters.yaml")
 
 ScalarValueType = Literal["float", "int", "bool", "str"]
-ValidatorKind = Literal["numbers", "ints", "bool", "enum", "none"]
 ActionSafetyMode = Literal["alwaysAllowed", "guarded", "blocked"]
 
 _ALLOWED_VALUE_TYPES: frozenset[str] = frozenset({"float", "int", "bool", "str"})
-_ALLOWED_VALIDATOR_KINDS: frozenset[str] = frozenset({"numbers", "ints", "bool", "enum", "none"})
 _ALLOWED_ACTION_SAFETY_MODES: frozenset[str] = frozenset({"alwaysAllowed", "guarded", "blocked"})
 
 
@@ -73,14 +71,6 @@ class ActionSpec:
 
 
 @dataclass(frozen=True)
-class ValidatorSpec:
-    kind: ValidatorKind
-    min_value: float | None = None
-    max_value: float | None = None
-    choices: tuple[Any, ...] = ()
-
-
-@dataclass(frozen=True)
 class SafetySpec:
     min_value: float | None
     max_value: float | None
@@ -95,13 +85,9 @@ class SafetySpec:
 class ParameterSpec:
     name: str
     label: str
-    unit: str
-    value_type: ScalarValueType
     get_cmd: ReadCommandSpec | None
     set_cmd: WriteCommandSpec | None
-    vals: ValidatorSpec | None
     safety: SafetySpec | None
-    snapshot_value: bool = True
     description: str = ""
 
     @property
@@ -194,17 +180,7 @@ def _parse_parameter_spec(
     defaults: Mapping[str, Any],
 ) -> ParameterSpec:
     label = str(mapping.get("label", name)).strip() or name
-    unit = str(mapping.get("unit", "")).strip()
     description = str(mapping.get("description", "")).strip()
-
-    raw_value_type = mapping.get("value_type", mapping.get("type", "float"))
-    value_type_text = str(raw_value_type).strip().lower()
-    if value_type_text not in _ALLOWED_VALUE_TYPES:
-        allowed = ", ".join(sorted(_ALLOWED_VALUE_TYPES))
-        raise ValueError(
-            f"parameters.{name}.value_type must be one of: {allowed}. Received: {raw_value_type}"
-        )
-    value_type = cast(ScalarValueType, value_type_text)
 
     get_cmd = _parse_read_command(mapping.get("get_cmd"), context=f"parameters.{name}.get_cmd")
     set_cmd = _parse_write_command(mapping.get("set_cmd"), context=f"parameters.{name}.set_cmd")
@@ -212,20 +188,11 @@ def _parse_parameter_spec(
     if get_cmd is None and set_cmd is None:
         raise ValueError(f"Parameter '{name}' must define at least one of get_cmd or set_cmd.")
 
-    vals = _parse_vals(
-        mapping.get("vals"), value_type=value_type, context=f"parameters.{name}.vals"
-    )
     safety = _parse_safety(
         mapping.get("safety"),
-        vals=vals,
         defaults=defaults,
         context=f"parameters.{name}.safety",
         writable=set_cmd is not None,
-    )
-
-    snapshot_value = _parse_bool(
-        mapping.get("snapshot_value", defaults.get("snapshot_value", True)),
-        field_name=f"parameters.{name}.snapshot_value",
     )
 
     if set_cmd is not None and safety is None:
@@ -234,14 +201,10 @@ def _parse_parameter_spec(
     return ParameterSpec(
         name=name,
         label=label,
-        unit=unit,
         description=description,
-        value_type=value_type,
         get_cmd=get_cmd,
         set_cmd=set_cmd,
-        vals=vals,
         safety=safety,
-        snapshot_value=snapshot_value,
     )
 
 
@@ -479,44 +442,9 @@ def _legacy_arg_fields_from_mapping(
     return tuple(fields)
 
 
-def _parse_vals(value: Any, *, value_type: ScalarValueType, context: str) -> ValidatorSpec | None:
-    if value is None:
-        if value_type == "bool":
-            return ValidatorSpec(kind="bool")
-        return None
-    if value is False:
-        return None
-
-    mapping = _as_mapping(value, context=context)
-    kind_raw = mapping.get("kind", _default_validator_kind(value_type))
-    kind = str(kind_raw).strip().lower()
-    if kind not in _ALLOWED_VALIDATOR_KINDS:
-        allowed = ", ".join(sorted(_ALLOWED_VALIDATOR_KINDS))
-        raise ValueError(f"{context}.kind must be one of: {allowed}. Received: {kind_raw}")
-
-    min_value = None if mapping.get("min") is None else float(mapping["min"])
-    max_value = None if mapping.get("max") is None else float(mapping["max"])
-    if min_value is not None and max_value is not None and max_value < min_value:
-        raise ValueError(f"{context}: max must be >= min.")
-
-    choices_raw = mapping.get("choices", ())
-    if isinstance(choices_raw, (list, tuple)):
-        choices = tuple(choices_raw)
-    else:
-        raise ValueError(f"{context}.choices must be a list when provided.")
-
-    return ValidatorSpec(
-        kind=cast(ValidatorKind, kind),
-        min_value=min_value,
-        max_value=max_value,
-        choices=choices,
-    )
-
-
 def _parse_safety(
     value: Any,
     *,
-    vals: ValidatorSpec | None,
     defaults: Mapping[str, Any],
     context: str,
     writable: bool,
@@ -531,8 +459,8 @@ def _parse_safety(
     if not writable and not mapping:
         return None
 
-    min_default = vals.min_value if vals is not None else None
-    max_default = vals.max_value if vals is not None else None
+    min_default = None
+    max_default = None
     max_step_default = None
 
     min_value_raw = mapping.get("min", min_default)
@@ -589,16 +517,6 @@ def _parse_safety(
     )
 
 
-def _default_validator_kind(value_type: ScalarValueType) -> ValidatorKind:
-    if value_type == "float":
-        return "numbers"
-    if value_type == "int":
-        return "ints"
-    if value_type == "bool":
-        return "bool"
-    return "none"
-
-
 def _parse_required_string(value: Any, *, field_name: str) -> str:
     text = "" if value is None else str(value).strip()
     if not text:
@@ -627,70 +545,3 @@ def _parse_bool(value: Any, *, field_name: str) -> bool:
         return False
 
     raise ValueError(f"Invalid boolean value for {field_name}: {value}")
-
-
-@dataclass(frozen=True)
-class ScalarParameterSpec:
-    name: str
-    command: str
-    value_type: ScalarValueType = "float"
-    unit: str = ""
-    label: str | None = None
-    payload_index: int = 0
-    args: Mapping[str, Any] = field(default_factory=dict)
-    snapshot_value: bool = True
-
-
-def load_scalar_parameter_specs(parameter_file: str | Path) -> tuple[ScalarParameterSpec, ...]:
-    parameter_path = Path(parameter_file).expanduser()
-    if not parameter_path.exists():
-        raise ValueError(f"Parameter file does not exist: {parameter_path}")
-
-    with parameter_path.open("r", encoding="utf-8") as handle:
-        loaded = yaml.safe_load(handle)
-
-    if loaded is None:
-        return ()
-
-    root = _as_mapping(loaded, context="root")
-    parameters_raw = root.get("parameters", [])
-    if not isinstance(parameters_raw, list):
-        raise ValueError("Parameter file field 'parameters' must be a list.")
-
-    specs: list[ScalarParameterSpec] = []
-    for index, entry in enumerate(parameters_raw):
-        context = f"parameters[{index}]"
-        mapping = _as_mapping(entry, context=context)
-
-        raw_value_type = mapping.get("value_type", mapping.get("type", "float"))
-        value_type_text = str(raw_value_type).strip().lower()
-        if value_type_text not in _ALLOWED_VALUE_TYPES:
-            allowed = ", ".join(sorted(_ALLOWED_VALUE_TYPES))
-            raise ValueError(
-                f"{context}.value_type must be one of: {allowed}. Received: {raw_value_type}"
-            )
-
-        payload_index = int(mapping.get("payload_index", 0))
-        if payload_index < 0:
-            raise ValueError(f"{context}.payload_index must be non-negative.")
-
-        args = _as_mapping(mapping.get("args"), context=f"{context}.args")
-        specs.append(
-            ScalarParameterSpec(
-                name=_parse_required_string(mapping.get("name"), field_name=f"{context}.name"),
-                command=_parse_required_string(
-                    mapping.get("command"), field_name=f"{context}.command"
-                ),
-                value_type=cast(ScalarValueType, value_type_text),
-                unit=str(mapping.get("unit", "")).strip(),
-                label=(None if mapping.get("label") is None else str(mapping.get("label")).strip()),
-                payload_index=payload_index,
-                args=dict(args),
-                snapshot_value=_parse_bool(
-                    mapping.get("snapshot_value", True),
-                    field_name=f"{context}.snapshot_value",
-                ),
-            )
-        )
-
-    return tuple(specs)

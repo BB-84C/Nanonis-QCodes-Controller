@@ -619,7 +619,6 @@ def _cmd_get(args: argparse.Namespace) -> int:
         args, auto_connect=True, include_parameters=(parameter_name,)
     ) as instrument_ctx:
         instrument, journal = instrument_ctx
-        spec = instrument.parameter_spec(parameter_name)
         snapshot = instrument.get_parameter_snapshot(parameter_name)
         values = snapshot.get("values", {})
         if len(values) == 1:
@@ -630,7 +629,6 @@ def _cmd_get(args: argparse.Namespace) -> int:
             "parameter": parameter_name,
             "value": _json_safe(value),
             "fields": _json_safe(values),
-            "unit": spec.unit,
             "timestamp_utc": _now_utc_iso(),
         }
         if journal is not None:
@@ -842,7 +840,8 @@ def _cmd_parameters_validate(args: argparse.Namespace) -> int:
                 "name": spec.name,
                 "readable": spec.readable,
                 "writable": spec.writable,
-                "value_type": spec.value_type,
+                "has_get_cmd": spec.get_cmd is not None,
+                "has_set_cmd": spec.set_cmd is not None,
             }
             for spec in specs
         ],
@@ -1033,8 +1032,11 @@ def _cmd_trajectory_monitor_list_signals(args: argparse.Namespace) -> int:
         {
             "name": spec.name,
             "label": spec.label,
-            "unit": spec.unit,
-            "value_type": spec.value_type,
+            "response_fields": (
+                []
+                if spec.get_cmd is None
+                else [asdict(field) for field in spec.get_cmd.response_fields]
+            ),
         }
         for spec in specs
         if spec.readable
@@ -1051,9 +1053,23 @@ def _cmd_trajectory_monitor_list_specs(args: argparse.Namespace) -> int:
         {
             "name": spec.name,
             "label": spec.label,
-            "unit": spec.unit,
-            "value_type": spec.value_type,
-            "vals": None if spec.vals is None else asdict(spec.vals),
+            "get_cmd": (
+                None
+                if spec.get_cmd is None
+                else {
+                    "command": spec.get_cmd.command,
+                    "arg_fields": [asdict(field) for field in spec.get_cmd.arg_fields],
+                    "response_fields": [asdict(field) for field in spec.get_cmd.response_fields],
+                }
+            ),
+            "set_cmd": (
+                None
+                if spec.set_cmd is None
+                else {
+                    "command": spec.set_cmd.command,
+                    "arg_fields": [asdict(field) for field in spec.set_cmd.arg_fields],
+                }
+            ),
         }
         for spec in specs
         if spec.readable
@@ -1274,10 +1290,8 @@ def _collect_observables(instrument: Any) -> list[dict[str, Any]]:
             {
                 "name": spec.name,
                 "label": spec.label,
-                "unit": spec.unit,
                 "readable": spec.readable,
                 "writable": spec.writable,
-                "value_type": spec.value_type,
                 "has_ramp": bool(spec.safety is not None and spec.safety.ramp_enabled),
             }
         )
@@ -1318,15 +1332,6 @@ def _collect_parameter_capabilities(instrument: Any) -> list[dict[str, Any]]:
             if set_description is not None:
                 set_cmd["description"] = set_description
 
-        vals = None
-        if spec.vals is not None:
-            vals = {
-                "kind": spec.vals.kind,
-                "min_value": spec.vals.min_value,
-                "max_value": spec.vals.max_value,
-                "choices": list(spec.vals.choices),
-            }
-
         safety = None
         if spec.safety is not None:
             safety = {
@@ -1342,15 +1347,11 @@ def _collect_parameter_capabilities(instrument: Any) -> list[dict[str, Any]]:
         capability: dict[str, Any] = {
             "label": spec.label,
             "name": spec.name,
-            "unit": spec.unit,
-            "value_type": spec.value_type,
-            "snapshot_value": spec.snapshot_value,
             "readable": bool(spec.readable),
             "writable": bool(spec.writable),
             "has_ramp": bool(spec.safety is not None and spec.safety.ramp_enabled),
             "get_cmd": get_cmd,
             "set_cmd": set_cmd,
-            "vals": vals,
             "safety": safety,
         }
 

@@ -5,14 +5,14 @@ Expose a small, stable command surface that orchestration agents can call direct
 
 ## Core commands
 - `nqctl capabilities`: returns parameters/action-commands/actions/policy summary,
-  including rich `parameters.items[*]` metadata (`get_cmd`, `set_cmd`, `vals`,
+  including rich `parameters.items[*]` metadata (`get_cmd`, `set_cmd`,
   `safety`) and `action_commands.items[*]` metadata (`action_cmd`, `safety_mode`).
   Descriptions are exposed on command blocks when present.
 - `nqctl observables list`: returns readable and writable parameter metadata.
 - `nqctl actions list`: returns supported action descriptors.
 - `nqctl act <action_name> --arg <key=value>`: invoke one manifest action command.
 - `nqctl get <parameter>`: reads one parameter value.
-- `nqctl set <parameter> <value>`: guarded strict single-step write.
+- `nqctl set <parameter> --arg <key=value>`: guarded strict write using structured argument fields.
 - `nqctl ramp <parameter> <start> <end> <step> --interval-s <sec>`: guarded explicit ramp.
 - `nqctl policy show`: returns effective write policy and enablement guidance.
 

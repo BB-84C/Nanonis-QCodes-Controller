@@ -12,7 +12,6 @@ from pathlib import Path
 from typing import Any
 
 from qcodes.instrument import Instrument
-from qcodes.validators import Bool, Enum, Ints, Numbers
 
 from nanonis_qcodes_controller.client import NanonisClient, build_client_from_settings
 from nanonis_qcodes_controller.client.base import NanonisHealth
@@ -32,7 +31,6 @@ from .extensions import (
     ActionSpec,
     ParameterSpec,
     SafetySpec,
-    ValidatorSpec,
     load_action_specs,
     load_parameter_specs,
 )
@@ -395,7 +393,7 @@ class QcodesNanonisSTM(Instrument):  # type: ignore[misc,unused-ignore]
         values = snapshot["values"]
         if values:
             first_key = next(iter(values))
-            raw_value = values[first_key]
+            value = values[first_key]
         else:
             response = self._call(spec.get_cmd.command, args={})
             raw_value = self._extract_payload_value(
@@ -403,7 +401,7 @@ class QcodesNanonisSTM(Instrument):  # type: ignore[misc,unused-ignore]
                 command=spec.get_cmd.command,
                 payload_index=spec.get_cmd.payload_index,
             )
-        value = _coerce_scalar_value(raw_value, value_type=spec.value_type)
+            value = raw_value
         self._record_state_transition(state_key=spec.name, value=_state_value(value))
         return value
 
@@ -765,32 +763,9 @@ class QcodesNanonisSTM(Instrument):  # type: ignore[misc,unused-ignore]
         return timed_out, file_path
 
     def _register_parameters(self) -> None:
-        for spec in self.parameter_specs():
-            parameter_kwargs: dict[str, Any] = {
-                "name": spec.name,
-                "label": spec.label,
-                "unit": spec.unit,
-                "get_cmd": (
-                    (lambda name=spec.name: self.get_parameter_value(name))
-                    if spec.readable
-                    else False
-                ),
-                "set_cmd": (
-                    (
-                        lambda value, name=spec.name: self.set_parameter_single_step(
-                            name, float(value)
-                        )
-                    )
-                    if spec.writable
-                    else False
-                ),
-                "snapshot_value": spec.snapshot_value,
-            }
-            validator = _validator_for_spec(spec.vals, value_type=spec.value_type)
-            if validator is not None:
-                parameter_kwargs["vals"] = validator
-
-            self.add_parameter(**parameter_kwargs)
+        # Methods-only interface: command access is exposed via
+        # get_parameter_snapshot / set_parameter_fields / execute_action.
+        return None
 
     def _call(self, command: str, *, args: Mapping[str, Any] | None = None) -> Mapping[str, Any]:
         call_start = time.perf_counter()
@@ -824,23 +799,12 @@ class QcodesNanonisSTM(Instrument):  # type: ignore[misc,unused-ignore]
     def _send_parameter_value(self, spec: ParameterSpec, value: float) -> None:
         if spec.set_cmd is None:
             raise ValueError(f"Parameter '{spec.name}' is not writable.")
-
-        typed_value = _coerce_scalar_value(value, value_type=spec.value_type)
-        command_args = {
-            field.name: field.default
-            for field in spec.set_cmd.arg_fields
-            if field.default is not None and field.name != spec.set_cmd.value_arg
-        }
-        if spec.value_type == "bool":
-            command_args[spec.set_cmd.value_arg] = int(bool(typed_value))
-        elif spec.value_type == "int":
-            command_args[spec.set_cmd.value_arg] = int(typed_value)
-        elif spec.value_type == "float":
-            command_args[spec.set_cmd.value_arg] = float(typed_value)
-        else:
-            command_args[spec.set_cmd.value_arg] = str(typed_value)
-
-        _ = self._call(spec.set_cmd.command, args=command_args)
+        required_fields = [field.name for field in spec.set_cmd.arg_fields if field.required]
+        if len(required_fields) != 1:
+            raise ValueError(
+                f"Parameter '{spec.name}' does not define exactly one required set field for scalar writes."
+            )
+        _ = self.set_parameter_fields(spec.name, args={required_fields[0]: value}, plan_only=False)
 
     def _run_guarded_scalar_write(
         self,
@@ -1098,53 +1062,3 @@ def _json_safe(value: Any) -> Any:
     if isinstance(value, (list, tuple)):
         return [_json_safe(item) for item in value]
     return str(value)
-
-
-def _coerce_scalar_value(value: Any, *, value_type: str) -> Any:
-    if value_type == "float":
-        return float(value)
-    if value_type == "int":
-        return int(value)
-    if value_type == "bool":
-        return bool(value)
-    if value_type == "str":
-        return str(value)
-    raise ValueError(f"Unsupported scalar value type: {value_type}")
-
-
-def _validator_for_spec(vals: ValidatorSpec | None, *, value_type: str) -> Any | None:
-    if vals is None:
-        if value_type == "float":
-            return Numbers()
-        if value_type == "int":
-            return Ints()
-        if value_type == "bool":
-            return Bool()
-        return None
-
-    if vals.kind == "numbers":
-        if vals.min_value is None and vals.max_value is None:
-            return Numbers()
-        if vals.min_value is None:
-            assert vals.max_value is not None
-            max_value = float(vals.max_value)
-            return Numbers(max_value=max_value)
-        if vals.max_value is None:
-            return Numbers(min_value=float(vals.min_value))
-        return Numbers(min_value=float(vals.min_value), max_value=float(vals.max_value))
-    if vals.kind == "ints":
-        min_int = None if vals.min_value is None else int(vals.min_value)
-        max_int = None if vals.max_value is None else int(vals.max_value)
-        if min_int is None and max_int is None:
-            return Ints()
-        if min_int is None:
-            assert max_int is not None
-            return Ints(max_value=max_int)
-        if max_int is None:
-            return Ints(min_value=min_int)
-        return Ints(min_value=min_int, max_value=max_int)
-    if vals.kind == "bool":
-        return Bool()
-    if vals.kind == "enum":
-        return Enum(*vals.choices)
-    return None

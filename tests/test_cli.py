@@ -17,7 +17,6 @@ from nanonis_qcodes_controller.qcodes_driver.extensions import (
     ReadCommandSpec,
     ResponseFieldSpec,
     SafetySpec,
-    ValidatorSpec,
     WriteCommandSpec,
 )
 
@@ -149,8 +148,6 @@ def test_capabilities_includes_parameter_specs_for_agents(monkeypatch) -> None:
     spec = ParameterSpec(
         name="bias_v",
         label="Bias",
-        unit="V",
-        value_type="float",
         get_cmd=ReadCommandSpec(
             command="Bias.Get",
             payload_index=0,
@@ -202,7 +199,6 @@ def test_capabilities_includes_parameter_specs_for_agents(monkeypatch) -> None:
                 ),
             ),
         ),
-        vals=ValidatorSpec(kind="numbers", min_value=-10.0, max_value=10.0),
         safety=SafetySpec(min_value=-10.0, max_value=10.0, max_step=1.0, ramp_enabled=True),
         description="Tip-sample bias voltage.",
     )
@@ -288,7 +284,10 @@ def test_capabilities_includes_parameter_specs_for_agents(monkeypatch) -> None:
     assert "value_arg" not in parameter["set_cmd"]
     assert parameter["set_cmd"]["description"] == "Write configured bias voltage."
     assert parameter["set_cmd"]["arg_fields"][0]["name"] == "channel"
-    assert parameter["vals"]["kind"] == "numbers"
+    assert "vals" not in parameter
+    assert "unit" not in parameter
+    assert "value_type" not in parameter
+    assert "snapshot_value" not in parameter
     actions_payload = payload["action_commands"]
     assert isinstance(actions_payload, dict)
     assert actions_payload["count"] == 1
@@ -305,8 +304,6 @@ def test_capabilities_drops_top_level_description_and_empty_nested_fields(monkey
     spec = ParameterSpec(
         name="zspectr_retractsecond",
         label="Zspectr Retractsecond",
-        unit="",
-        value_type="int",
         get_cmd=ReadCommandSpec(
             command="ZSpectr_RetractSecondGet",
             payload_index=0,
@@ -331,7 +328,6 @@ def test_capabilities_drops_top_level_description_and_empty_nested_fields(monkey
                 ),
             ),
         ),
-        vals=ValidatorSpec(kind="ints"),
         safety=SafetySpec(min_value=None, max_value=None, max_step=None, ramp_enabled=True),
         description="",
     )
@@ -398,11 +394,8 @@ def test_showall_returns_legacy_full_payload(monkeypatch) -> None:
     spec = ParameterSpec(
         name="bias_v",
         label="Bias",
-        unit="V",
-        value_type="float",
         get_cmd=ReadCommandSpec(command="Bias_Get", payload_index=0, description="Read bias."),
         set_cmd=None,
-        vals=None,
         safety=None,
     )
 

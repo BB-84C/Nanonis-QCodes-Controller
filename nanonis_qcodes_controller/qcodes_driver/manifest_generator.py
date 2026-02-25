@@ -345,7 +345,6 @@ def build_unified_manifest(
             action["safety"] = {"mode": "guarded"}
 
     defaults = {
-        "snapshot_value": bool(curated_defaults.get("snapshot_value", True)),
         "ramp_default_interval_s": float(curated_defaults.get("ramp_default_interval_s", 0.05)),
     }
 
@@ -353,6 +352,11 @@ def build_unified_manifest(
     action_description_count = 0
     writable_count = 0
     for parameter in merged_parameters.values():
+        _ = parameter.pop("unit", None)
+        _ = parameter.pop("type", None)
+        _ = parameter.pop("value_type", None)
+        _ = parameter.pop("vals", None)
+        _ = parameter.pop("snapshot_value", None)
         get_cmd = parameter.get("get_cmd")
         set_cmd = parameter.get("set_cmd")
         if (
@@ -506,11 +510,7 @@ def _build_generated_parameter_entry(
     get_arg_docs = _parse_argument_docs(get_info.doc) if get_info is not None else {}
     set_arg_docs = _parse_argument_docs(set_info.doc) if set_info is not None else {}
 
-    inferred_type = _infer_parameter_type(
-        get_info=get_info, set_info=set_info, set_arg_docs=set_arg_docs
-    )
     label = parameter_name.replace("_", " ").strip().title()
-    unit = _infer_parameter_unit(get_info=get_info, set_info=set_info, set_arg_docs=set_arg_docs)
 
     get_cmd: dict[str, Any] | bool
     if get_info is None:
@@ -570,11 +570,8 @@ def _build_generated_parameter_entry(
 
     entry: dict[str, Any] = {
         "label": label,
-        "unit": unit,
-        "type": inferred_type,
         "get_cmd": get_cmd,
         "set_cmd": set_cmd,
-        "vals": _default_vals_for_type(inferred_type),
     }
 
     if set_cmd is not False:

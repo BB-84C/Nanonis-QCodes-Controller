@@ -1,10 +1,9 @@
 version: 1
 defaults:
-  snapshot_value: true
   ramp_default_interval_s: 0.05
 meta:
   generated_by: scripts/generate_parameters_manifest.py
-  generated_at_utc: '2026-02-25T09:09:08Z'
+  generated_at_utc: '2026-02-25T19:23:50Z'
   source_package: nanonis-spm/1.0.9
   methods_seen: 667
   get_set_commands_imported: 551
@@ -17,8 +16,6 @@ meta:
 parameters:
   aprfgen_freq:
     label: Aprfgen Freq
-    unit: Hz
-    type: float
     get_cmd:
       command: APRFGen_FreqGet
       payload_index: 0
@@ -50,8 +47,6 @@ parameters:
         required: true
         default: null
         description: Frequency (Hz) (float32)
-    vals:
-      kind: numbers
     safety:
       min: null
       max: null
@@ -62,8 +57,6 @@ parameters:
       ramp_interval_s: null
   aprfgen_freqswplimits:
     label: Aprfgen Freqswplimits
-    unit: ''
-    type: float
     get_cmd:
       command: APRFGen_FreqSwpLimitsGet
       payload_index: 0
@@ -100,8 +93,6 @@ parameters:
         required: true
         default: null
         description: Upper limit (float32) defines the upper limit of the sweep range
-    vals:
-      kind: numbers
     safety:
       min: null
       max: null
@@ -112,8 +103,6 @@ parameters:
       ramp_interval_s: null
   aprfgen_freqswpprops:
     label: Aprfgen Freqswpprops
-    unit: ''
-    type: int
     get_cmd:
       command: APRFGen_FreqSwpPropsGet
       payload_index: 0
@@ -230,8 +219,6 @@ parameters:
           Off (delay) Time selection. In automatic mode, Off Time is configured such
           that the transients between sweep points are blanked and do not appear at
           the RF output, where 0_no change, 1_On, 2_Off
-    vals:
-      kind: ints
     safety:
       min: null
       max: null
@@ -242,8 +229,6 @@ parameters:
       ramp_interval_s: null
   aprfgen_listswpprops:
     label: Aprfgen Listswpprops
-    unit: s
-    type: int
     get_cmd:
       command: APRFGen_ListSwpPropsGet
       payload_index: 0
@@ -349,8 +334,6 @@ parameters:
           Off (delay) Time selection. In automatic mode, Off Time is configured such
           that the transients between sweep points are blanked and do not appear at
           the RF output, where 0_no change, 1_On, 2_Off
-    vals:
-      kind: ints
     safety:
       min: null
       max: null
@@ -361,8 +344,6 @@ parameters:
       ramp_interval_s: null
   aprfgen_power:
     label: Aprfgen Power
-    unit: dBm
-    type: float
     get_cmd:
       command: APRFGen_PowerGet
       payload_index: 0
@@ -394,8 +375,6 @@ parameters:
         required: true
         default: null
         description: Power (dBm) (float32)
-    vals:
-      kind: numbers
     safety:
       min: null
       max: null
@@ -406,8 +385,6 @@ parameters:
       ramp_interval_s: null
   aprfgen_powerswplimits:
     label: Aprfgen Powerswplimits
-    unit: ''
-    type: float
     get_cmd:
       command: APRFGen_PowerSwpLimitsGet
       payload_index: 0
@@ -444,8 +421,6 @@ parameters:
         required: true
         default: null
         description: Upper limit (float32) defines the upper limit of the sweep range
-    vals:
-      kind: numbers
     safety:
       min: null
       max: null
@@ -456,8 +431,6 @@ parameters:
       ramp_interval_s: null
   aprfgen_powerswpprops:
     label: Aprfgen Powerswpprops
-    unit: s
-    type: float
     get_cmd:
       command: APRFGen_PowerSwpPropsGet
       payload_index: 0
@@ -560,8 +533,6 @@ parameters:
           Off (delay) Time selection. In automatic mode, Off Time is configured such
           that the transients between sweep points are blanked and do not appear at
           the RF output, where 0_no change, 1_On, 2_Off
-    vals:
-      kind: numbers
     safety:
       min: null
       max: null
@@ -572,8 +543,6 @@ parameters:
       ramp_interval_s: null
   aprfgen_rfoutonoff:
     label: Aprfgen Rfoutonoff
-    unit: _0
-    type: int
     get_cmd:
       command: APRFGen_RFOutOnOffGet
       payload_index: 0
@@ -599,8 +568,6 @@ parameters:
         default: null
         description: RF Output (unsigned int32) switches the RF Output Off (_0) or
           On (_1)
-    vals:
-      kind: ints
     safety:
       min: null
       max: null
@@ -611,8 +578,6 @@ parameters:
       ramp_interval_s: null
   aprfgen_trigprops:
     label: Aprfgen Trigprops
-    unit: s
-    type: int
     get_cmd:
       command: APRFGen_TrigPropsGet
       payload_index: 0
@@ -722,8 +687,6 @@ parameters:
         required: false
         default: 0
         description: Mode (unsigned int16) where 0_no change, 1_Single Shot, 2_Continuous
-    vals:
-      kind: ints
     safety:
       min: null
       max: null
@@ -734,8 +697,6 @@ parameters:
       ramp_interval_s: null
   atomtrack_ctrl:
     label: Atomtrack Ctrl
-    unit: _0
-    type: int
     get_cmd: false
     set_cmd:
       command: AtomTrack_CtrlSet
@@ -758,8 +719,6 @@ parameters:
         default: null
         description: Status (unsigned int16) switches the selected control Off (_0)
           or On (_1)
-    vals:
-      kind: ints
     safety:
       min: null
       max: null
@@ -770,8 +729,6 @@ parameters:
       ramp_interval_s: null
   atomtrack_props:
     label: Atomtrack Props
-    unit: deg
-    type: float
     get_cmd:
       command: AtomTrack_PropsGet
       payload_index: 0
@@ -853,8 +810,6 @@ parameters:
           the controller, the position is averaged over this time delay. The averaged
           position is then applied. This leads to reproducible positions when switching
           off the Atom Tracking controller
-    vals:
-      kind: numbers
     safety:
       min: null
       max: null
@@ -865,8 +820,6 @@ parameters:
       ramp_interval_s: null
   atomtrack_status:
     label: Atomtrack Status
-    unit: ''
-    type: int
     get_cmd:
       command: AtomTrack_StatusGet
       payload_index: 0
@@ -890,12 +843,8 @@ parameters:
         description: Status (unsigned int16) returns the status of the selected control,
           where 0 means Off and 1 means On
     set_cmd: false
-    vals:
-      kind: ints
   autoapproach_onoff:
     label: Autoapproach Onoff
-    unit: _0
-    type: int
     get_cmd:
       command: AutoApproach_OnOffGet
       payload_index: 0
@@ -921,8 +870,6 @@ parameters:
         default: null
         description: On/Off (unsigned int16) starts the auto-approach procedure (_1)
           or stops it (_0)
-    vals:
-      kind: ints
     safety:
       min: null
       max: null
@@ -933,8 +880,6 @@ parameters:
       ramp_interval_s: null
   beamdefl_horconfig:
     label: Beamdefl Horconfig
-    unit: ''
-    type: int
     get_cmd:
       command: BeamDefl_HorConfigGet
       payload_index: 0
@@ -1009,8 +954,6 @@ parameters:
         required: true
         default: null
         description: Offset (float32)
-    vals:
-      kind: ints
     safety:
       min: null
       max: null
@@ -1021,8 +964,6 @@ parameters:
       ramp_interval_s: null
   beamdefl_intconfig:
     label: Beamdefl Intconfig
-    unit: ''
-    type: int
     get_cmd:
       command: BeamDefl_IntConfigGet
       payload_index: 0
@@ -1097,8 +1038,6 @@ parameters:
         required: true
         default: null
         description: Offset (float32)
-    vals:
-      kind: ints
     safety:
       min: null
       max: null
@@ -1109,8 +1048,6 @@ parameters:
       ramp_interval_s: null
   beamdefl_verconfig:
     label: Beamdefl Verconfig
-    unit: ''
-    type: int
     get_cmd:
       command: BeamDefl_VerConfigGet
       payload_index: 0
@@ -1185,8 +1122,6 @@ parameters:
         required: true
         default: null
         description: Offset (float32)
-    vals:
-      kind: ints
     safety:
       min: null
       max: null
@@ -1197,8 +1132,6 @@ parameters:
       ramp_interval_s: null
   bias:
     label: Bias
-    unit: V
-    type: float
     get_cmd:
       command: Bias_Get
       payload_index: 0
@@ -1222,8 +1155,6 @@ parameters:
         required: true
         default: null
         description: Bias value (V) (float32)
-    vals:
-      kind: numbers
     safety:
       min: null
       max: null
@@ -1234,8 +1165,6 @@ parameters:
       ramp_interval_s: null
   bias_calibr:
     label: Bias Calibr
-    unit: ''
-    type: float
     get_cmd:
       command: Bias_CalibrGet
       payload_index: 0
@@ -1274,8 +1203,6 @@ parameters:
         required: true
         default: null
         description: Offset (float32)
-    vals:
-      kind: numbers
     safety:
       min: null
       max: null
@@ -1286,8 +1213,6 @@ parameters:
       ramp_interval_s: null
   bias_range:
     label: Bias Range
-    unit: ''
-    type: int
     get_cmd:
       command: Bias_RangeGet
       payload_index: 0
@@ -1335,8 +1260,6 @@ parameters:
         default: null
         description: Bias range index (unsigned int16) is the index out of the list
           of ranges which can be retrieved by the function <i>Bias.RangeGet</i>.
-    vals:
-      kind: ints
     safety:
       min: null
       max: null
@@ -1347,8 +1270,6 @@ parameters:
       ramp_interval_s: null
   bias_v:
     label: Bias
-    unit: V
-    type: float
     get_cmd:
       command: Bias_Get
       payload_index: 0
@@ -1372,10 +1293,6 @@ parameters:
         required: true
         default: null
         description: Bias value (V) (float32)
-    vals:
-      kind: numbers
-      min: -5.0
-      max: 5.0
     safety:
       min: -5.0
       max: 5.0
@@ -1386,8 +1303,6 @@ parameters:
       ramp_interval_s: 0.05
   biasspectr_advprops:
     label: Biasspectr Advprops
-    unit: ''
-    type: int
     get_cmd:
       command: BiasSpectr_AdvPropsGet
       payload_index: 0
@@ -1474,8 +1389,6 @@ parameters:
           if the Sweep Mode is MLS and the flag to configure the Lock-In per segment
           in the Multiline segment editor is set. 0 means no change, 1 means On, and
           2 means Off
-    vals:
-      kind: ints
     safety:
       min: null
       max: null
@@ -1486,8 +1399,6 @@ parameters:
       ramp_interval_s: null
   biasspectr_altzctrl:
     label: Biasspectr Altzctrl
-    unit: s
-    type: int
     get_cmd:
       command: BiasSpectr_AltZCtrlGet
       payload_index: 0
@@ -1551,8 +1462,6 @@ parameters:
         required: true
         default: null
         description: Settling time (s) (float32)
-    vals:
-      kind: ints
     safety:
       min: null
       max: null
@@ -1563,8 +1472,6 @@ parameters:
       ramp_interval_s: null
   biasspectr_chs:
     label: Biasspectr Chs
-    unit: ''
-    type: int
     get_cmd:
       command: BiasSpectr_ChsGet
       payload_index: 0
@@ -1625,8 +1532,6 @@ parameters:
           the Signals Manager. To get the signal name and its corresponding index
           in the list of the 128 available signals in the Nanonis Controller, use
           the <i>Signals.InSlotsGet</i> function
-    vals:
-      kind: ints
     safety:
       min: null
       max: null
@@ -1637,8 +1542,6 @@ parameters:
       ramp_interval_s: null
   biasspectr_digsync:
     label: Biasspectr Digsync
-    unit: ''
-    type: int
     get_cmd:
       command: BiasSpectr_DigSyncGet
       payload_index: 0
@@ -1673,8 +1576,6 @@ parameters:
         required: true
         default: null
         description: ''
-    vals:
-      kind: ints
     safety:
       min: null
       max: null
@@ -1685,8 +1586,6 @@ parameters:
       ramp_interval_s: null
   biasspectr_limits:
     label: Biasspectr Limits
-    unit: V
-    type: float
     get_cmd:
       command: BiasSpectr_LimitsGet
       payload_index: 0
@@ -1723,8 +1622,6 @@ parameters:
         required: true
         default: null
         description: End value (V) (float32) is the ending value of the sweep
-    vals:
-      kind: numbers
     safety:
       min: null
       max: null
@@ -1735,8 +1632,6 @@ parameters:
       ramp_interval_s: null
   biasspectr_mlslockinperseg:
     label: Biasspectr Mlslockinperseg
-    unit: ''
-    type: int
     get_cmd:
       command: BiasSpectr_MLSLockinPerSegGet
       payload_index: 0
@@ -1768,8 +1663,6 @@ parameters:
         default: null
         description: Lock-In per segment (unsigned int32) where 0 means Off, 1 means
           On
-    vals:
-      kind: ints
     safety:
       min: null
       max: null
@@ -1780,8 +1673,6 @@ parameters:
       ramp_interval_s: null
   biasspectr_mlsmode:
     label: Biasspectr Mlsmode
-    unit: ''
-    type: int
     get_cmd:
       command: BiasSpectr_MLSModeGet
       payload_index: 0
@@ -1815,8 +1706,6 @@ parameters:
         default: null
         description: Sweep mode (string) is <i>Linear</i>  in Linear mode or <i>MLS</i>
           in MultiSegment mode
-    vals:
-      kind: ints
     safety:
       min: null
       max: null
@@ -1827,8 +1716,6 @@ parameters:
       ramp_interval_s: null
   biasspectr_mlsvals:
     label: Biasspectr Mlsvals
-    unit: s
-    type: int
     get_cmd:
       command: BiasSpectr_MLSValsGet
       payload_index: 0
@@ -1968,8 +1855,6 @@ parameters:
           will run during the segment. This is true only if the global Lock-In per
           Segment flag is enabled. Otherwise, the Lock-In is set globally according
           to the flag in the Advanced section of Bias spectroscopy
-    vals:
-      kind: ints
     safety:
       min: null
       max: null
@@ -1980,8 +1865,6 @@ parameters:
       ramp_interval_s: null
   biasspectr_props:
     label: Biasspectr Props
-    unit: m
-    type: int
     get_cmd:
       command: BiasSpectr_PropsGet
       payload_index: 0
@@ -2150,8 +2033,6 @@ parameters:
         description: Show save dialog (unsigned int16) selects whether to show the
           save dialog box once the sweep is done (_1). This flag is off when _2, and
           0 means no change
-    vals:
-      kind: ints
     safety:
       min: null
       max: null
@@ -2162,8 +2043,6 @@ parameters:
       ramp_interval_s: null
   biasspectr_pulseseqsync:
     label: Biasspectr Pulseseqsync
-    unit: ''
-    type: int
     get_cmd:
       command: BiasSpectr_PulseSeqSyncGet
       payload_index: 0
@@ -2208,8 +2087,6 @@ parameters:
         required: true
         default: null
         description: ''
-    vals:
-      kind: ints
     safety:
       min: null
       max: null
@@ -2220,8 +2097,6 @@ parameters:
       ramp_interval_s: null
   biasspectr_status:
     label: Biasspectr Status
-    unit: ''
-    type: int
     get_cmd:
       command: BiasSpectr_StatusGet
       payload_index: 0
@@ -2241,12 +2116,8 @@ parameters:
         wire_type: ''
         description: Error described in the Response message>Body section
     set_cmd: false
-    vals:
-      kind: ints
   biasspectr_timing:
     label: Biasspectr Timing
-    unit: s
-    type: float
     get_cmd:
       command: BiasSpectr_TimingGet
       payload_index: 0
@@ -2361,8 +2232,6 @@ parameters:
         required: true
         default: null
         description: Z control time (s) (float32)
-    vals:
-      kind: numbers
     safety:
       min: null
       max: null
@@ -2373,8 +2242,6 @@ parameters:
       ramp_interval_s: null
   biasspectr_ttlsync:
     label: Biasspectr Ttlsync
-    unit: s
-    type: int
     get_cmd:
       command: BiasSpectr_TTLSyncGet
       payload_index: 0
@@ -2453,8 +2320,6 @@ parameters:
         default: 0.0
         description: On duration (s) (float32) defines how long the TTL line should
           be activated before resetting
-    vals:
-      kind: ints
     safety:
       min: null
       max: null
@@ -2465,8 +2330,6 @@ parameters:
       ramp_interval_s: null
   biasspectr_zoffrevert:
     label: Biasspectr Zoffrevert
-    unit: ''
-    type: int
     get_cmd:
       command: BiasSpectr_ZOffRevertGet
       payload_index: 0
@@ -2498,8 +2361,6 @@ parameters:
         required: true
         default: null
         description: ''
-    vals:
-      kind: ints
     safety:
       min: null
       max: null
@@ -2510,8 +2371,6 @@ parameters:
       ramp_interval_s: null
   biasswp_limits:
     label: Biasswp Limits
-    unit: ''
-    type: float
     get_cmd:
       command: BiasSwp_LimitsGet
       payload_index: 0
@@ -2548,8 +2407,6 @@ parameters:
         required: true
         default: null
         description: Upper limit (float32) defines the upper limit of the sweep range
-    vals:
-      kind: numbers
     safety:
       min: null
       max: null
@@ -2560,8 +2417,6 @@ parameters:
       ramp_interval_s: null
   biasswp_props:
     label: Biasswp Props
-    unit: ''
-    type: int
     get_cmd: false
     set_cmd:
       command: BiasSwp_PropsSet
@@ -2598,8 +2453,6 @@ parameters:
         default: null
         description: Save dialog box (unsigned int16) defines if the save dialog box
           shows up or not, where 0_no change, 1_On, 2_Off
-    vals:
-      kind: ints
     safety:
       min: null
       max: null
@@ -2610,8 +2463,6 @@ parameters:
       ramp_interval_s: null
   cpdcomp_data:
     label: Cpdcomp Data
-    unit: ''
-    type: int
     get_cmd:
       command: CPDComp_DataGet
       payload_index: 0
@@ -2694,12 +2545,8 @@ parameters:
         wire_type: d
         description: b coefficient  (float64)
     set_cmd: false
-    vals:
-      kind: ints
   cpdcomp_params:
     label: Cpdcomp Params
-    unit: Hz
-    type: float
     get_cmd:
       command: CPDComp_ParamsGet
       payload_index: 0
@@ -2757,8 +2604,6 @@ parameters:
         default: 0
         description: Averaging  (int) is used to average the last specified number
           of results to calculate the CPD. 0 means no change
-    vals:
-      kind: numbers
     safety:
       min: null
       max: null
@@ -2769,8 +2614,6 @@ parameters:
       ramp_interval_s: null
   current:
     label: Current
-    unit: A
-    type: float
     get_cmd:
       command: Current_Get
       payload_index: 0
@@ -2784,12 +2627,8 @@ parameters:
         wire_type: f
         description: Current value (A) (float32)
     set_cmd: false
-    vals:
-      kind: numbers
   current_100:
     label: Current 100
-    unit: ''
-    type: float
     get_cmd:
       command: Current_100Get
       payload_index: 0
@@ -2803,12 +2642,8 @@ parameters:
         wire_type: f
         description: ''
     set_cmd: false
-    vals:
-      kind: numbers
   current_a:
     label: Tunnel Current
-    unit: A
-    type: float
     get_cmd:
       command: Current_Get
       payload_index: 0
@@ -2822,12 +2657,8 @@ parameters:
         description: Current value (A) (float32)
       arg_fields: []
     set_cmd: false
-    vals:
-      kind: numbers
   current_beem:
     label: Current Beem
-    unit: A
-    type: float
     get_cmd:
       command: Current_BEEMGet
       payload_index: 0
@@ -2842,12 +2673,8 @@ parameters:
         wire_type: f
         description: Current BEEM value (A) (float32)
     set_cmd: false
-    vals:
-      kind: numbers
   current_calibr:
     label: Current Calibr
-    unit: ''
-    type: float
     get_cmd:
       command: Current_CalibrGet
       payload_index: 0
@@ -2904,8 +2731,6 @@ parameters:
         required: true
         default: null
         description: Offset (float64)
-    vals:
-      kind: numbers
     safety:
       min: null
       max: null
@@ -2916,8 +2741,6 @@ parameters:
       ramp_interval_s: null
   current_gain:
     label: Current Gain
-    unit: ''
-    type: int
     get_cmd: false
     set_cmd:
       command: Current_GainSet
@@ -2938,8 +2761,6 @@ parameters:
         required: true
         default: null
         description: ''
-    vals:
-      kind: ints
     safety:
       min: null
       max: null
@@ -2950,8 +2771,6 @@ parameters:
       ramp_interval_s: null
   current_gains:
     label: Current Gains
-    unit: ''
-    type: int
     get_cmd:
       command: Current_GainsGet
       payload_index: 0
@@ -3012,12 +2831,8 @@ parameters:
         wire_type: i
         description: Filter index (int) is the index out of the list of filters.
     set_cmd: false
-    vals:
-      kind: ints
   datalog_chs:
     label: Datalog Chs
-    unit: ''
-    type: int
     get_cmd:
       command: DataLog_ChsGet
       payload_index: 0
@@ -3056,8 +2871,6 @@ parameters:
           the Signals Manager. To get the signal name and its corresponding index
           in the list of the 128 available signals in the Nanonis Controller, use
           the <i>Signals.InSlotsGet</i> function
-    vals:
-      kind: ints
     safety:
       min: null
       max: null
@@ -3068,8 +2881,6 @@ parameters:
       ramp_interval_s: null
   datalog_props:
     label: Datalog Props
-    unit: ''
-    type: int
     get_cmd:
       command: DataLog_PropsGet
       payload_index: 0
@@ -3215,8 +3026,6 @@ parameters:
         description: List of modules (1D array string) sets the modules names whose
           parameters will be saved in the header of the files. The size of each string
           item should come right before it as integer 32
-    vals:
-      kind: ints
     safety:
       min: null
       max: null
@@ -3227,8 +3036,6 @@ parameters:
       ramp_interval_s: null
   datalog_status:
     label: Datalog Status
-    unit: ''
-    type: int
     get_cmd:
       command: DataLog_StatusGet
       payload_index: 0
@@ -3306,12 +3113,8 @@ parameters:
           already saved into file. This parameter updates while running the acquisition,
           every time a file is saved
     set_cmd: false
-    vals:
-      kind: ints
   diglines_outstatus:
     label: Diglines Outstatus
-    unit: ''
-    type: int
     get_cmd: false
     set_cmd:
       command: DigLines_OutStatusSet
@@ -3341,8 +3144,6 @@ parameters:
         default: null
         description: Status (unsigned int32) sets whether the output is active or
           inactive, where 0_Inactive, 1_Active
-    vals:
-      kind: ints
     safety:
       min: null
       max: null
@@ -3353,8 +3154,6 @@ parameters:
       ramp_interval_s: null
   diglines_props:
     label: Diglines Props
-    unit: ''
-    type: int
     get_cmd: false
     set_cmd:
       command: DigLines_PropsSet
@@ -3391,8 +3190,6 @@ parameters:
         required: true
         default: null
         description: Polarity (unsigned int32), where 0_Low active, 1_High active
-    vals:
-      kind: ints
     safety:
       min: null
       max: null
@@ -3403,8 +3200,6 @@ parameters:
       ramp_interval_s: null
   diglines_ttlval:
     label: Diglines Ttlval
-    unit: ''
-    type: int
     get_cmd:
       command: DigLines_TTLValGet
       payload_index: 0
@@ -3434,12 +3229,8 @@ parameters:
         description: TTL voltages (1D array unsigned int32) sets whether the output
           is active or inactive, where 0_Inactive, 1_Active
     set_cmd: false
-    vals:
-      kind: ints
   folme_oversampl:
     label: Folme Oversampl
-    unit: ''
-    type: int
     get_cmd:
       command: FolMe_OversamplGet
       payload_index: 0
@@ -3471,8 +3262,6 @@ parameters:
         required: true
         default: null
         description: Oversampling (int)
-    vals:
-      kind: ints
     safety:
       min: null
       max: null
@@ -3483,8 +3272,6 @@ parameters:
       ramp_interval_s: null
   folme_psexp:
     label: Folme Psexp
-    unit: ''
-    type: int
     get_cmd:
       command: FolMe_PSExpGet
       payload_index: 0
@@ -3532,8 +3319,6 @@ parameters:
         default: null
         description: Point & Shoot experiment (unsigned int16) returns the selected
           Point & Shoot experiment
-    vals:
-      kind: ints
     safety:
       min: null
       max: null
@@ -3544,8 +3329,6 @@ parameters:
       ramp_interval_s: null
   folme_psonoff:
     label: Folme Psonoff
-    unit: _1
-    type: int
     get_cmd:
       command: FolMe_PSOnOffGet
       payload_index: 0
@@ -3571,8 +3354,6 @@ parameters:
         default: null
         description: Point & Shoot status (unsigned int32) enables (_1) or disables
           (_0) Point & Shoot
-    vals:
-      kind: ints
     safety:
       min: null
       max: null
@@ -3583,8 +3364,6 @@ parameters:
       ramp_interval_s: null
   folme_psprops:
     label: Folme Psprops
-    unit: _1
-    type: int
     get_cmd:
       command: FolMe_PSPropsGet
       payload_index: 0
@@ -3684,8 +3463,6 @@ parameters:
         default: null
         description: Pre-measure delay (s) (float32) is the time to wait on each point
           before performing the experiment
-    vals:
-      kind: ints
     safety:
       min: null
       max: null
@@ -3696,8 +3473,6 @@ parameters:
       ramp_interval_s: null
   folme_speed:
     label: Folme Speed
-    unit: m/s
-    type: float
     get_cmd:
       command: FolMe_SpeedGet
       payload_index: 0
@@ -3736,8 +3511,6 @@ parameters:
         default: 0
         description: Custom speed (unsigned int32) sets whether custom speed setting
           is used for Follow Me mode (_1) or if scan speed is used (_0)
-    vals:
-      kind: numbers
     safety:
       min: null
       max: null
@@ -3748,8 +3521,6 @@ parameters:
       ramp_interval_s: null
   folme_xypos:
     label: Folme Xypos
-    unit: m
-    type: float
     get_cmd:
       command: FolMe_XYPosGet
       payload_index: 0
@@ -3811,8 +3582,6 @@ parameters:
         description: Wait end of move (unsigned int32) selects whether the function
           immediately (_0) or if it waits until the target is reached or the movement
           is stopped (_1)
-    vals:
-      kind: numbers
     safety:
       min: null
       max: null
@@ -3823,8 +3592,6 @@ parameters:
       ramp_interval_s: null
   fungen1ch_idle:
     label: Fungen1Ch Idle
-    unit: ''
-    type: float
     get_cmd:
       command: FunGen1Ch_IdleGet
       payload_index: 0
@@ -3852,8 +3619,6 @@ parameters:
         required: true
         default: null
         description: Idle value (float32)
-    vals:
-      kind: numbers
     safety:
       min: null
       max: null
@@ -3864,8 +3629,6 @@ parameters:
       ramp_interval_s: null
   fungen1ch_props:
     label: Fungen1Ch Props
-    unit: Percent
-    type: float
     get_cmd:
       command: FunGen1Ch_PropsGet
       payload_index: 0
@@ -3943,8 +3706,6 @@ parameters:
         description: Direction (unsigned int16) switches between forward and backward
           waveform. This will invert the waveform along the x axis (reverse the time).
           0 means no change, 1 means Backward, and 2 means Forward
-    vals:
-      kind: numbers
     safety:
       min: null
       max: null
@@ -3955,8 +3716,6 @@ parameters:
       ramp_interval_s: null
   fungen1ch_status:
     label: Fungen1Ch Status
-    unit: _1
-    type: int
     get_cmd:
       command: FunGen1Ch_StatusGet
       payload_index: 0
@@ -3978,12 +3737,8 @@ parameters:
         wire_type: i
         description: Periods left (int) is the number of periods left to generate
     set_cmd: false
-    vals:
-      kind: ints
   fungen2ch_idle:
     label: Fungen2Ch Idle
-    unit: ''
-    type: float
     get_cmd:
       command: FunGen2Ch_IdleGet
       payload_index: 0
@@ -4027,8 +3782,6 @@ parameters:
         required: true
         default: null
         description: Idle value (float32)
-    vals:
-      kind: numbers
     safety:
       min: null
       max: null
@@ -4039,8 +3792,6 @@ parameters:
       ramp_interval_s: null
   fungen2ch_onoff:
     label: Fungen2Ch Onoff
-    unit: _0
-    type: int
     get_cmd:
       command: FunGen2Ch_OnOffGet
       payload_index: 0
@@ -4083,8 +3834,6 @@ parameters:
         required: true
         default: null
         description: Status (unsigned int32) switches the channel Off (_0) or On(_1)
-    vals:
-      kind: ints
     safety:
       min: null
       max: null
@@ -4095,8 +3844,6 @@ parameters:
       ramp_interval_s: null
   fungen2ch_props:
     label: Fungen2Ch Props
-    unit: Percent
-    type: float
     get_cmd:
       command: FunGen2Ch_PropsGet
       payload_index: 0
@@ -4213,8 +3960,6 @@ parameters:
         description: Add/Zero (unsigned int16) means that when Zero (_2), the waveform
           is generated on Channel 1 around zero. When Add (_1), adds the waveform
           to the current Idle/DC value. If value_0, there is no change
-    vals:
-      kind: numbers
     safety:
       min: null
       max: null
@@ -4225,8 +3970,6 @@ parameters:
       ramp_interval_s: null
   fungen2ch_signal:
     label: Fungen2Ch Signal
-    unit: ''
-    type: int
     get_cmd:
       command: FunGen2Ch_SignalGet
       payload_index: 0
@@ -4270,8 +4013,6 @@ parameters:
         default: null
         description: 'Signal index (int) where the possible values are: 0 for the
           Fast AO, 1 for AO1, 2 for AO2, 3 for AO3 and so on'
-    vals:
-      kind: ints
     safety:
       min: null
       max: null
@@ -4282,8 +4023,6 @@ parameters:
       ramp_interval_s: null
   fungen2ch_status:
     label: Fungen2Ch Status
-    unit: _1
-    type: int
     get_cmd:
       command: FunGen2Ch_StatusGet
       payload_index: 0
@@ -4305,12 +4044,8 @@ parameters:
         wire_type: i
         description: Periods left (int) is the number of periods left to generate
     set_cmd: false
-    vals:
-      kind: ints
   fungen2ch_waveform:
     label: Fungen2Ch Waveform
-    unit: ''
-    type: int
     get_cmd:
       command: FunGen2Ch_WaveformGet
       payload_index: 0
@@ -4358,8 +4093,6 @@ parameters:
         required: true
         default: null
         description: Shape (unsigned int16)
-    vals:
-      kind: ints
     safety:
       min: null
       max: null
@@ -4370,8 +4103,6 @@ parameters:
       ramp_interval_s: null
   genpictrl_aoprops:
     label: Genpictrl Aoprops
-    unit: ''
-    type: int
     get_cmd:
       command: GenPICtrl_AOPropsGet
       payload_index: 0
@@ -4479,8 +4210,6 @@ parameters:
         required: true
         default: null
         description: Offset in physical units (float32)
-    vals:
-      kind: ints
     safety:
       min: null
       max: null
@@ -4491,8 +4220,6 @@ parameters:
       ramp_interval_s: null
   genpictrl_aoval:
     label: Genpictrl Aoval
-    unit: ''
-    type: float
     get_cmd:
       command: GenPICtrl_AOValGet
       payload_index: 0
@@ -4518,8 +4245,6 @@ parameters:
         required: true
         default: null
         description: Output value (float32)
-    vals:
-      kind: numbers
     safety:
       min: null
       max: null
@@ -4530,8 +4255,6 @@ parameters:
       ramp_interval_s: null
   genpictrl_demodch:
     label: Genpictrl Demodch
-    unit: ''
-    type: int
     get_cmd:
       command: GenPICtrl_DemodChGet
       payload_index: 0
@@ -4567,8 +4290,6 @@ parameters:
         default: null
         description: AC mode (unsigned int16) sets the AC parameter. 0 means no change,
           1 means AC is On, and 2 means AC is Off
-    vals:
-      kind: ints
     safety:
       min: null
       max: null
@@ -4579,8 +4300,6 @@ parameters:
       ramp_interval_s: null
   genpictrl_modch:
     label: Genpictrl Modch
-    unit: ''
-    type: int
     get_cmd:
       command: GenPICtrl_ModChGet
       payload_index: 0
@@ -4609,8 +4328,6 @@ parameters:
         default: null
         description: Output index (int) sets the output index to be used, which could
           be any value from 1 to the number of available outputs
-    vals:
-      kind: ints
     safety:
       min: null
       max: null
@@ -4621,8 +4338,6 @@ parameters:
       ramp_interval_s: null
   genpictrl_onoff:
     label: Genpictrl Onoff
-    unit: _0
-    type: int
     get_cmd:
       command: GenPICtrl_OnOffGet
       payload_index: 0
@@ -4648,8 +4363,6 @@ parameters:
         default: null
         description: Controller status (unsigned int32) switches the controller Off
           (_0) or On (_1)
-    vals:
-      kind: ints
     safety:
       min: null
       max: null
@@ -4660,8 +4373,6 @@ parameters:
       ramp_interval_s: null
   genpictrl_props:
     label: Genpictrl Props
-    unit: ''
-    type: float
     get_cmd:
       command: GenPICtrl_PropsGet
       payload_index: 0
@@ -4725,8 +4436,6 @@ parameters:
         default: 0
         description: Slope (unsigned int16) where 0 means no change, 1 means Positive,
           and 2 means Negative
-    vals:
-      kind: numbers
     safety:
       min: null
       max: null
@@ -4737,8 +4446,6 @@ parameters:
       ramp_interval_s: null
   genswp_acqchs:
     label: Genswp Acqchs
-    unit: ''
-    type: int
     get_cmd:
       command: GenSwp_AcqChsGet
       payload_index: 0
@@ -4803,8 +4510,6 @@ parameters:
         default: ''
         description: Channel names (1D array string) is an array of channel names
           strings, where each string comes prepended by its size in bytes
-    vals:
-      kind: ints
     safety:
       min: null
       max: null
@@ -4815,8 +4520,6 @@ parameters:
       ramp_interval_s: null
   genswp_limits:
     label: Genswp Limits
-    unit: ''
-    type: float
     get_cmd:
       command: GenSwp_LimitsGet
       payload_index: 0
@@ -4853,8 +4556,6 @@ parameters:
         required: true
         default: null
         description: Upper limit (float32) defines the upper limit of the sweep range
-    vals:
-      kind: numbers
     safety:
       min: null
       max: null
@@ -4865,8 +4566,6 @@ parameters:
       ramp_interval_s: null
   genswp_props:
     label: Genswp Props
-    unit: ms
-    type: float
     get_cmd:
       command: GenSwp_PropsGet
       payload_index: 0
@@ -4973,8 +4672,6 @@ parameters:
         required: true
         default: null
         description: Settling time (ms) (float32)
-    vals:
-      kind: numbers
     safety:
       min: null
       max: null
@@ -4985,8 +4682,6 @@ parameters:
       ramp_interval_s: null
   genswp_swpsignal:
     label: Genswp Swpsignal
-    unit: ''
-    type: int
     get_cmd:
       command: GenSwp_SwpSignalGet
       payload_index: 0
@@ -5019,8 +4714,6 @@ parameters:
         default: null
         description: Sweep channel name (string) is the name of the signal selected
           for the sweep channel
-    vals:
-      kind: ints
     safety:
       min: null
       max: null
@@ -5031,8 +4724,6 @@ parameters:
       ramp_interval_s: null
   genswp_swpsignallist:
     label: Genswp Swpsignallist
-    unit: ''
-    type: float
     get_cmd:
       command: GenSwp_SwpSignalListGet
       payload_index: 0
@@ -5059,12 +4750,8 @@ parameters:
         wire_type: '*+c'
         description: ''
     set_cmd: false
-    vals:
-      kind: numbers
   hsswp_acqchs:
     label: Hsswp Acqchs
-    unit: ''
-    type: float
     get_cmd:
       command: HSSwp_AcqChsGet
       payload_index: 0
@@ -5124,8 +4811,6 @@ parameters:
         required: true
         default: null
         description: ''
-    vals:
-      kind: numbers
     safety:
       min: null
       max: null
@@ -5136,8 +4821,6 @@ parameters:
       ramp_interval_s: null
   hsswp_autoreverse:
     label: Hsswp Autoreverse
-    unit: ''
-    type: float
     get_cmd:
       command: HSSwp_AutoReverseGet
       payload_index: 0
@@ -5254,8 +4937,6 @@ parameters:
         required: true
         default: null
         description: ''
-    vals:
-      kind: numbers
     safety:
       min: null
       max: null
@@ -5266,8 +4947,6 @@ parameters:
       ramp_interval_s: null
   hsswp_endsettl:
     label: Hsswp Endsettl
-    unit: ''
-    type: float
     get_cmd:
       command: HSSwp_EndSettlGet
       payload_index: 0
@@ -5291,8 +4970,6 @@ parameters:
         required: true
         default: null
         description: ''
-    vals:
-      kind: numbers
     safety:
       min: null
       max: null
@@ -5303,8 +4980,6 @@ parameters:
       ramp_interval_s: null
   hsswp_numsweeps:
     label: Hsswp Numsweeps
-    unit: ''
-    type: float
     get_cmd:
       command: HSSwp_NumSweepsGet
       payload_index: 0
@@ -5341,8 +5016,6 @@ parameters:
         required: true
         default: null
         description: ''
-    vals:
-      kind: numbers
     safety:
       min: null
       max: null
@@ -5353,8 +5026,6 @@ parameters:
       ramp_interval_s: null
   hsswp_resetsignals:
     label: Hsswp Resetsignals
-    unit: ''
-    type: float
     get_cmd:
       command: HSSwp_ResetSignalsGet
       payload_index: 0
@@ -5380,8 +5051,6 @@ parameters:
         required: true
         default: null
         description: ''
-    vals:
-      kind: numbers
     safety:
       min: null
       max: null
@@ -5392,8 +5061,6 @@ parameters:
       ramp_interval_s: null
   hsswp_savebasename:
     label: Hsswp Savebasename
-    unit: ''
-    type: float
     get_cmd:
       command: HSSwp_SaveBasenameGet
       payload_index: 0
@@ -5436,8 +5103,6 @@ parameters:
         required: true
         default: null
         description: ''
-    vals:
-      kind: numbers
     safety:
       min: null
       max: null
@@ -5448,8 +5113,6 @@ parameters:
       ramp_interval_s: null
   hsswp_savedata:
     label: Hsswp Savedata
-    unit: ''
-    type: float
     get_cmd:
       command: HSSwp_SaveDataGet
       payload_index: 0
@@ -5475,8 +5138,6 @@ parameters:
         required: true
         default: null
         description: ''
-    vals:
-      kind: numbers
     safety:
       min: null
       max: null
@@ -5487,8 +5148,6 @@ parameters:
       ramp_interval_s: null
   hsswp_saveoptions:
     label: Hsswp Saveoptions
-    unit: ''
-    type: float
     get_cmd:
       command: HSSwp_SaveOptionsGet
       payload_index: 0
@@ -5543,8 +5202,6 @@ parameters:
         required: true
         default: null
         description: ''
-    vals:
-      kind: numbers
     safety:
       min: null
       max: null
@@ -5555,8 +5212,6 @@ parameters:
       ramp_interval_s: null
   hsswp_status:
     label: Hsswp Status
-    unit: ''
-    type: int
     get_cmd:
       command: HSSwp_StatusGet
       payload_index: 0
@@ -5570,12 +5225,8 @@ parameters:
         wire_type: I
         description: ''
     set_cmd: false
-    vals:
-      kind: ints
   hsswp_swpchbwddelay:
     label: Hsswp Swpchbwddelay
-    unit: ''
-    type: float
     get_cmd:
       command: HSSwp_SwpChBwdDelayGet
       payload_index: 0
@@ -5601,8 +5252,6 @@ parameters:
         required: true
         default: null
         description: ''
-    vals:
-      kind: numbers
     safety:
       min: null
       max: null
@@ -5613,8 +5262,6 @@ parameters:
       ramp_interval_s: null
   hsswp_swpchbwdsw:
     label: Hsswp Swpchbwdsw
-    unit: ''
-    type: float
     get_cmd:
       command: HSSwp_SwpChBwdSwGet
       payload_index: 0
@@ -5640,8 +5287,6 @@ parameters:
         required: true
         default: null
         description: ''
-    vals:
-      kind: numbers
     safety:
       min: null
       max: null
@@ -5652,8 +5297,6 @@ parameters:
       ramp_interval_s: null
   hsswp_swpchlimits:
     label: Hsswp Swpchlimits
-    unit: ''
-    type: float
     get_cmd:
       command: HSSwp_SwpChLimitsGet
       payload_index: 0
@@ -5703,8 +5346,6 @@ parameters:
         required: true
         default: null
         description: ''
-    vals:
-      kind: numbers
     safety:
       min: null
       max: null
@@ -5715,8 +5356,6 @@ parameters:
       ramp_interval_s: null
   hsswp_swpchnumpts:
     label: Hsswp Swpchnumpts
-    unit: ''
-    type: float
     get_cmd:
       command: HSSwp_SwpChNumPtsGet
       payload_index: 0
@@ -5742,8 +5381,6 @@ parameters:
         required: true
         default: null
         description: ''
-    vals:
-      kind: numbers
     safety:
       min: null
       max: null
@@ -5754,8 +5391,6 @@ parameters:
       ramp_interval_s: null
   hsswp_swpchsiglist:
     label: Hsswp Swpchsiglist
-    unit: ''
-    type: float
     get_cmd:
       command: HSSwp_SwpChSigListGet
       payload_index: 0
@@ -5776,12 +5411,8 @@ parameters:
         wire_type: +*i
         description: ''
     set_cmd: false
-    vals:
-      kind: numbers
   hsswp_swpchsignal:
     label: Hsswp Swpchsignal
-    unit: ''
-    type: float
     get_cmd:
       command: HSSwp_SwpChSignalGet
       payload_index: 0
@@ -5818,8 +5449,6 @@ parameters:
         required: true
         default: null
         description: ''
-    vals:
-      kind: numbers
     safety:
       min: null
       max: null
@@ -5830,8 +5459,6 @@ parameters:
       ramp_interval_s: null
   hsswp_swpchtiming:
     label: Hsswp Swpchtiming
-    unit: ''
-    type: float
     get_cmd:
       command: HSSwp_SwpChTimingGet
       payload_index: 0
@@ -5896,8 +5523,6 @@ parameters:
         required: true
         default: null
         description: ''
-    vals:
-      kind: numbers
     safety:
       min: null
       max: null
@@ -5908,8 +5533,6 @@ parameters:
       ramp_interval_s: null
   hsswp_zctrloff:
     label: Hsswp Zctrloff
-    unit: ''
-    type: float
     get_cmd:
       command: HSSwp_ZCtrlOffGet
       payload_index: 0
@@ -5987,8 +5610,6 @@ parameters:
         required: true
         default: null
         description: ''
-    vals:
-      kind: numbers
     safety:
       min: null
       max: null
@@ -5999,8 +5620,6 @@ parameters:
       ramp_interval_s: null
   interf_ctrlonoff:
     label: Interf Ctrlonoff
-    unit: _0
-    type: int
     get_cmd:
       command: Interf_CtrlOnOffGet
       payload_index: 0
@@ -6026,8 +5645,6 @@ parameters:
         default: null
         description: Status (unsigned int32) switches the interferometer controller
           Off (_0) or On (_1)
-    vals:
-      kind: ints
     safety:
       min: null
       max: null
@@ -6038,8 +5655,6 @@ parameters:
       ramp_interval_s: null
   interf_ctrlprops:
     label: Interf Ctrlprops
-    unit: ''
-    type: float
     get_cmd:
       command: Interf_CtrlPropsGet
       payload_index: 0
@@ -6091,8 +5706,6 @@ parameters:
         default: 0
         description: Sign (unsigned int32) sets the sign of the controller. If 0,
           means negative, and if 1 means positive
-    vals:
-      kind: numbers
     safety:
       min: null
       max: null
@@ -6103,8 +5716,6 @@ parameters:
       ramp_interval_s: null
   interf_val:
     label: Interf Val
-    unit: ''
-    type: float
     get_cmd:
       command: Interf_ValGet
       payload_index: 0
@@ -6118,12 +5729,8 @@ parameters:
         wire_type: f
         description: Interferometer value (float32)
     set_cmd: false
-    vals:
-      kind: numbers
   interf_wpiezo:
     label: Interf Wpiezo
-    unit: ''
-    type: float
     get_cmd:
       command: Interf_WPiezoGet
       payload_index: 0
@@ -6148,8 +5755,6 @@ parameters:
         required: true
         default: null
         description: W-piezo (float32)
-    vals:
-      kind: numbers
     safety:
       min: null
       max: null
@@ -6160,8 +5765,6 @@ parameters:
       ramp_interval_s: null
   kelvinctrl_amp:
     label: Kelvinctrl Amp
-    unit: ''
-    type: float
     get_cmd:
       command: KelvinCtrl_AmpGet
       payload_index: 0
@@ -6176,12 +5779,8 @@ parameters:
         wire_type: f
         description: Amplitude  (float32)
     set_cmd: false
-    vals:
-      kind: numbers
   kelvinctrl_biaslimits:
     label: Kelvinctrl Biaslimits
-    unit: V
-    type: float
     get_cmd:
       command: KelvinCtrl_BiasLimitsGet
       payload_index: 0
@@ -6219,8 +5818,6 @@ parameters:
         required: true
         default: null
         description: Bias low limit (V)  (float32)
-    vals:
-      kind: numbers
     safety:
       min: null
       max: null
@@ -6231,8 +5828,6 @@ parameters:
       ramp_interval_s: null
   kelvinctrl_ctrlonoff:
     label: Kelvinctrl Ctrlonoff
-    unit: ''
-    type: int
     get_cmd:
       command: KelvinCtrl_CtrlOnOffGet
       payload_index: 0
@@ -6256,8 +5851,6 @@ parameters:
         required: true
         default: null
         description: Control On/Off  (unsigned int32) where 0_Off and 1_On
-    vals:
-      kind: ints
     safety:
       min: null
       max: null
@@ -6268,8 +5861,6 @@ parameters:
       ramp_interval_s: null
   kelvinctrl_ctrlsignal:
     label: Kelvinctrl Ctrlsignal
-    unit: ''
-    type: int
     get_cmd:
       command: KelvinCtrl_CtrlSignalGet
       payload_index: 0
@@ -6294,8 +5885,6 @@ parameters:
         required: true
         default: null
         description: Demodulated/Control signal index  (int)
-    vals:
-      kind: ints
     safety:
       min: null
       max: null
@@ -6306,8 +5895,6 @@ parameters:
       ramp_interval_s: null
   kelvinctrl_gain:
     label: Kelvinctrl Gain
-    unit: s
-    type: float
     get_cmd:
       command: KelvinCtrl_GainGet
       payload_index: 0
@@ -6357,8 +5944,6 @@ parameters:
         required: false
         default: 0
         description: Slope  (unsigned int16) where 0_no change, 1_Positive, 2_Negative
-    vals:
-      kind: numbers
     safety:
       min: null
       max: null
@@ -6369,8 +5954,6 @@ parameters:
       ramp_interval_s: null
   kelvinctrl_modonoff:
     label: Kelvinctrl Modonoff
-    unit: ''
-    type: int
     get_cmd:
       command: KelvinCtrl_ModOnOffGet
       payload_index: 0
@@ -6408,8 +5991,6 @@ parameters:
         required: true
         default: null
         description: Modulation On/Off  (unsigned int16) where 0_Off and 1_On
-    vals:
-      kind: ints
     safety:
       min: null
       max: null
@@ -6420,8 +6001,6 @@ parameters:
       ramp_interval_s: null
   kelvinctrl_modparams:
     label: Kelvinctrl Modparams
-    unit: Hz
-    type: float
     get_cmd:
       command: KelvinCtrl_ModParamsGet
       payload_index: 0
@@ -6471,8 +6050,6 @@ parameters:
         required: true
         default: null
         description: Phase (deg)  (float32)
-    vals:
-      kind: numbers
     safety:
       min: null
       max: null
@@ -6483,8 +6060,6 @@ parameters:
       ramp_interval_s: null
   kelvinctrl_setpnt:
     label: Kelvinctrl Setpnt
-    unit: ''
-    type: float
     get_cmd:
       command: KelvinCtrl_SetpntGet
       payload_index: 0
@@ -6508,8 +6083,6 @@ parameters:
         required: true
         default: null
         description: Setpoint  (float32)
-    vals:
-      kind: numbers
     safety:
       min: null
       max: null
@@ -6520,8 +6093,6 @@ parameters:
       ramp_interval_s: null
   laser_onoff:
     label: Laser Onoff
-    unit: _0
-    type: int
     get_cmd:
       command: Laser_OnOffGet
       payload_index: 0
@@ -6546,8 +6117,6 @@ parameters:
         required: true
         default: null
         description: Status (unsigned int32) switches the laser Off (_0) or On (_1)
-    vals:
-      kind: ints
     safety:
       min: null
       max: null
@@ -6558,8 +6127,6 @@ parameters:
       ramp_interval_s: null
   laser_power:
     label: Laser Power
-    unit: ''
-    type: float
     get_cmd:
       command: Laser_PowerGet
       payload_index: 0
@@ -6573,12 +6140,8 @@ parameters:
         wire_type: f
         description: Laser power (float32)
     set_cmd: false
-    vals:
-      kind: numbers
   laser_props:
     label: Laser Props
-    unit: ''
-    type: float
     get_cmd:
       command: Laser_PropsGet
       payload_index: 0
@@ -6602,8 +6165,6 @@ parameters:
         required: true
         default: null
         description: Laser Setpoint (float32)
-    vals:
-      kind: numbers
     safety:
       min: null
       max: null
@@ -6614,8 +6175,6 @@ parameters:
       ramp_interval_s: null
   lockin_demod_phase_deg:
     label: Lock-In Demod Phase
-    unit: deg
-    type: float
     get_cmd:
       command: LockIn_DemodPhasGet
       payload_index: 0
@@ -6638,12 +6197,8 @@ parameters:
         description: Demodulator number (int) is the number that specifies which demodulator
           to use. It starts from number 1 (_Demodulator 1)
     set_cmd: false
-    vals:
-      kind: numbers
   lockin_demodharmonic:
     label: Lockin Demodharmonic
-    unit: ''
-    type: int
     get_cmd:
       command: LockIn_DemodHarmonicGet
       payload_index: 0
@@ -6691,8 +6246,6 @@ parameters:
         default: null
         description: Harmonic  (int) is the harmonic of the specified Lock-In demodulator.
           Valid values start from 1 (_base frequency)
-    vals:
-      kind: ints
     safety:
       min: null
       max: null
@@ -6703,8 +6256,6 @@ parameters:
       ramp_interval_s: null
   lockin_demodhpfilter:
     label: Lockin Demodhpfilter
-    unit: Hz
-    type: int
     get_cmd:
       command: LockIn_DemodHPFilterGet
       payload_index: 0
@@ -6769,8 +6320,6 @@ parameters:
         default: null
         description: HP Filter Cutoff Frequency (Hz) (float32) is the high-pass filter
           cutoff frequency in Hz, where 0 _ no change.
-    vals:
-      kind: ints
     safety:
       min: null
       max: null
@@ -6781,8 +6330,6 @@ parameters:
       ramp_interval_s: null
   lockin_demodlpfilter:
     label: Lockin Demodlpfilter
-    unit: Hz
-    type: int
     get_cmd:
       command: LockIn_DemodLPFilterGet
       payload_index: 0
@@ -6847,8 +6394,6 @@ parameters:
         default: null
         description: LP Filter Cutoff Frequency (Hz) (float32) is the low-pass filter
           cutoff frequency in Hz, where 0 _ no change.
-    vals:
-      kind: ints
     safety:
       min: null
       max: null
@@ -6859,8 +6404,6 @@ parameters:
       ramp_interval_s: null
   lockin_demodphas:
     label: Lockin Demodphas
-    unit: deg
-    type: float
     get_cmd:
       command: LockIn_DemodPhasGet
       payload_index: 0
@@ -6902,8 +6445,6 @@ parameters:
         default: null
         description: Phase (deg)  (float32) is the reference phase of the specified
           Lock-In demodulator
-    vals:
-      kind: numbers
     safety:
       min: null
       max: null
@@ -6914,8 +6455,6 @@ parameters:
       ramp_interval_s: null
   lockin_demodphasreg:
     label: Lockin Demodphasreg
-    unit: ''
-    type: int
     get_cmd:
       command: LockIn_DemodPhasRegGet
       payload_index: 0
@@ -6963,8 +6502,6 @@ parameters:
         default: null
         description: Phase Register Index (int) is the index of the phase register
           of the specified Lock-In demodulator. Valid values are index 1 to 8.
-    vals:
-      kind: ints
     safety:
       min: null
       max: null
@@ -6975,8 +6512,6 @@ parameters:
       ramp_interval_s: null
   lockin_demodrtsignals:
     label: Lockin Demodrtsignals
-    unit: ''
-    type: int
     get_cmd:
       command: LockIn_DemodRTSignalsGet
       payload_index: 0
@@ -7022,8 +6557,6 @@ parameters:
         description: RT Signals  (unsigned int32) sets which signals from the specified
           demodulator should be available on the Real-time system. 0 sets the available
           RT Signals to X/Y, 1 sets them to R/phi.
-    vals:
-      kind: ints
     safety:
       min: null
       max: null
@@ -7034,8 +6567,6 @@ parameters:
       ramp_interval_s: null
   lockin_demodsignal:
     label: Lockin Demodsignal
-    unit: ''
-    type: int
     get_cmd:
       command: LockIn_DemodSignalGet
       payload_index: 0
@@ -7079,8 +6610,6 @@ parameters:
         description: Demodulator Signal Index (int) is the signal index out of the
           list of 128 signals available in the software. To get a list of the available
           signals, use the <i>Signals.NamesGet</i> function.
-    vals:
-      kind: ints
     safety:
       min: null
       max: null
@@ -7091,8 +6620,6 @@ parameters:
       ramp_interval_s: null
   lockin_demodsyncfilter:
     label: Lockin Demodsyncfilter
-    unit: ''
-    type: int
     get_cmd:
       command: LockIn_DemodSyncFilterGet
       payload_index: 0
@@ -7144,8 +6671,6 @@ parameters:
         default: null
         description: Sync Filter  (unsigned int32) switches the synchronous filter
           of the specified demodulator on or off, where 0_Off and 1_On
-    vals:
-      kind: ints
     safety:
       min: null
       max: null
@@ -7156,8 +6681,6 @@ parameters:
       ramp_interval_s: null
   lockin_mod_amplitude_v:
     label: Lock-In Mod Amplitude
-    unit: V
-    type: float
     get_cmd:
       command: LockIn_ModAmpGet
       payload_index: 0
@@ -7180,12 +6703,8 @@ parameters:
         description: Modulator number (int) is the number that specifies which modulator
           to use. It starts from number 1 (_Modulator 1)
     set_cmd: false
-    vals:
-      kind: numbers
   lockin_mod_enabled:
     label: Lock-In Mod Enabled
-    unit: ''
-    type: bool
     get_cmd:
       command: LockIn_ModOnOffGet
       payload_index: 0
@@ -7208,12 +6727,8 @@ parameters:
         description: Modulator number (int) is the number that specifies which modulator
           to use. It starts from number 1 (_Modulator 1)
     set_cmd: false
-    vals:
-      kind: bool
   lockin_modamp:
     label: Lockin Modamp
-    unit: ''
-    type: float
     get_cmd:
       command: LockIn_ModAmpGet
       payload_index: 0
@@ -7255,8 +6770,6 @@ parameters:
         default: null
         description: Amplitude  (float32) is the modulation amplitude of the specified
           Lock-In modulator
-    vals:
-      kind: numbers
     safety:
       min: null
       max: null
@@ -7267,8 +6780,6 @@ parameters:
       ramp_interval_s: null
   lockin_modharmonic:
     label: Lockin Modharmonic
-    unit: ''
-    type: int
     get_cmd:
       command: LockIn_ModHarmonicGet
       payload_index: 0
@@ -7314,8 +6825,6 @@ parameters:
         default: null
         description: Harmonic  (int) is the harmonic of the specified Lock-In modulator.
           Valid values start from 1 (_base frequency)
-    vals:
-      kind: ints
     safety:
       min: null
       max: null
@@ -7326,8 +6835,6 @@ parameters:
       ramp_interval_s: null
   lockin_modonoff:
     label: Lockin Modonoff
-    unit: ''
-    type: bool
     get_cmd:
       command: LockIn_ModOnOffGet
       payload_index: 0
@@ -7369,8 +6876,6 @@ parameters:
         default: null
         description: Lock-In On/Off (unsigned int32) turns the specified modulator
           on or off, where 0_Off and 1_On
-    vals:
-      kind: bool
     safety:
       min: null
       max: null
@@ -7381,8 +6886,6 @@ parameters:
       ramp_interval_s: null
   lockin_modphas:
     label: Lockin Modphas
-    unit: deg
-    type: float
     get_cmd:
       command: LockIn_ModPhasGet
       payload_index: 0
@@ -7424,8 +6927,6 @@ parameters:
         default: null
         description: Phase (deg)  (float32) is the modulation phase offset of the
           specified Lock-In modulator
-    vals:
-      kind: numbers
     safety:
       min: null
       max: null
@@ -7436,8 +6937,6 @@ parameters:
       ramp_interval_s: null
   lockin_modphasfreq:
     label: Lockin Modphasfreq
-    unit: Hz
-    type: float
     get_cmd:
       command: LockIn_ModPhasFreqGet
       payload_index: 0
@@ -7485,8 +6984,6 @@ parameters:
         default: null
         description: Frequency (Hz)  (float64) is the frequency of the specified Lock-In
           phase register
-    vals:
-      kind: numbers
     safety:
       min: null
       max: null
@@ -7497,8 +6994,6 @@ parameters:
       ramp_interval_s: null
   lockin_modphasreg:
     label: Lockin Modphasreg
-    unit: ''
-    type: int
     get_cmd:
       command: LockIn_ModPhasRegGet
       payload_index: 0
@@ -7547,8 +7042,6 @@ parameters:
         default: null
         description: Phase Register Index (int) is the index of the phase register
           of the specified Lock-In modulator. Valid values are index 1 to 8.
-    vals:
-      kind: ints
     safety:
       min: null
       max: null
@@ -7559,8 +7052,6 @@ parameters:
       ramp_interval_s: null
   lockin_modsignal:
     label: Lockin Modsignal
-    unit: ''
-    type: int
     get_cmd:
       command: LockIn_ModSignalGet
       payload_index: 0
@@ -7604,8 +7095,6 @@ parameters:
         description: Modulator Signal Index (int) is the signal index out of the list
           of 128 signals available in the software. To get a list of the available
           signals, use the <i>Signals.NamesGet</i> function.
-    vals:
-      kind: ints
     safety:
       min: null
       max: null
@@ -7616,8 +7105,6 @@ parameters:
       ramp_interval_s: null
   lockinfreqswp_limits:
     label: Lockinfreqswp Limits
-    unit: Hz
-    type: float
     get_cmd:
       command: LockInFreqSwp_LimitsGet
       payload_index: 0
@@ -7656,8 +7143,6 @@ parameters:
         default: null
         description: Upper limit (Hz) (float32) sets the lower frequency limit in
           Hz
-    vals:
-      kind: numbers
     safety:
       min: null
       max: null
@@ -7668,8 +7153,6 @@ parameters:
       ramp_interval_s: null
   lockinfreqswp_props:
     label: Lockinfreqswp Props
-    unit: s
-    type: int
     get_cmd:
       command: LockInFreqSwp_PropsGet
       payload_index: 0
@@ -7809,8 +7292,6 @@ parameters:
         required: false
         default: ''
         description: Basename (string) is the basename of the saved files
-    vals:
-      kind: ints
     safety:
       min: null
       max: null
@@ -7821,8 +7302,6 @@ parameters:
       ramp_interval_s: null
   lockinfreqswp_signal:
     label: Lockinfreqswp Signal
-    unit: ''
-    type: int
     get_cmd:
       command: LockInFreqSwp_SignalGet
       payload_index: 0
@@ -7848,8 +7327,6 @@ parameters:
         default: null
         description: Sweep signal index (int) sets the sweep signal index out of the
           list of sweep signals to use, where -1 means no signal selected
-    vals:
-      kind: ints
     safety:
       min: null
       max: null
@@ -7860,8 +7337,6 @@ parameters:
       ramp_interval_s: null
   marks_lines:
     label: Marks Lines
-    unit: ''
-    type: int
     get_cmd:
       command: Marks_LinesGet
       payload_index: 0
@@ -7918,12 +7393,8 @@ parameters:
         description: Visible (1D array unsigned int32) returns if each line is visible
           (_1) or invisible (_0) in the scan frame
     set_cmd: false
-    vals:
-      kind: ints
   marks_linesvisible:
     label: Marks Linesvisible
-    unit: _0
-    type: int
     get_cmd: false
     set_cmd:
       command: Marks_LinesVisibleSet
@@ -7947,8 +7418,6 @@ parameters:
         default: null
         description: Show/hide (unsigned int16) defines if the line should be visible
           (_0) or invisible (_1)
-    vals:
-      kind: ints
     safety:
       min: null
       max: null
@@ -7959,8 +7428,6 @@ parameters:
       ramp_interval_s: null
   marks_points:
     label: Marks Points
-    unit: ''
-    type: int
     get_cmd:
       command: Marks_PointsGet
       payload_index: 0
@@ -8018,12 +7485,8 @@ parameters:
         description: Visible (1D array unsigned int32) returns if each point is visible
           (_1) or invisible (_0) in the scan frame
     set_cmd: false
-    vals:
-      kind: ints
   marks_pointsvisible:
     label: Marks Pointsvisible
-    unit: _0
-    type: int
     get_cmd: false
     set_cmd:
       command: Marks_PointsVisibleSet
@@ -8047,8 +7510,6 @@ parameters:
         default: null
         description: Show/hide (unsigned int16) defines if the point should be visible
           (_0) or invisible (_1)
-    vals:
-      kind: ints
     safety:
       min: null
       max: null
@@ -8059,8 +7520,6 @@ parameters:
       ramp_interval_s: null
   mcva5_contstateupdate:
     label: Mcva5 Contstateupdate
-    unit: ''
-    type: float
     get_cmd:
       command: MCVA5_ContStateUpdateGet
       payload_index: 0
@@ -8100,8 +7559,6 @@ parameters:
         required: true
         default: null
         description: ''
-    vals:
-      kind: numbers
     safety:
       min: null
       max: null
@@ -8112,8 +7569,6 @@ parameters:
       ramp_interval_s: null
   mcva5_conttempupdate:
     label: Mcva5 Conttempupdate
-    unit: ''
-    type: float
     get_cmd:
       command: MCVA5_ContTempUpdateGet
       payload_index: 0
@@ -8153,8 +7608,6 @@ parameters:
         required: true
         default: null
         description: ''
-    vals:
-      kind: numbers
     safety:
       min: null
       max: null
@@ -8165,8 +7618,6 @@ parameters:
       ramp_interval_s: null
   mcva5_coupling:
     label: Mcva5 Coupling
-    unit: ''
-    type: float
     get_cmd:
       command: MCVA5_CouplingGet
       payload_index: 0
@@ -8220,8 +7671,6 @@ parameters:
         required: true
         default: null
         description: ''
-    vals:
-      kind: numbers
     safety:
       min: null
       max: null
@@ -8232,8 +7681,6 @@ parameters:
       ramp_interval_s: null
   mcva5_gain:
     label: Mcva5 Gain
-    unit: ''
-    type: float
     get_cmd:
       command: MCVA5_GainGet
       payload_index: 0
@@ -8286,8 +7733,6 @@ parameters:
         required: true
         default: null
         description: ''
-    vals:
-      kind: numbers
     safety:
       min: null
       max: null
@@ -8298,8 +7743,6 @@ parameters:
       ramp_interval_s: null
   mcva5_inputmode:
     label: Mcva5 Inputmode
-    unit: ''
-    type: float
     get_cmd:
       command: MCVA5_InputModeGet
       payload_index: 0
@@ -8353,8 +7796,6 @@ parameters:
         required: true
         default: null
         description: ''
-    vals:
-      kind: numbers
     safety:
       min: null
       max: null
@@ -8365,8 +7806,6 @@ parameters:
       ramp_interval_s: null
   mcva5_userin:
     label: Mcva5 Userin
-    unit: ''
-    type: float
     get_cmd:
       command: MCVA5_UserInGet
       payload_index: 0
@@ -8420,8 +7859,6 @@ parameters:
         required: true
         default: null
         description: ''
-    vals:
-      kind: numbers
     safety:
       min: null
       max: null
@@ -8432,8 +7869,6 @@ parameters:
       ramp_interval_s: null
   motor_freqamp:
     label: Motor Freqamp
-    unit: Hz
-    type: float
     get_cmd:
       command: Motor_FreqAmpGet
       payload_index: 0
@@ -8490,8 +7925,6 @@ parameters:
         default: 1
         description: Axis (unsigned int16) defines which axis these parameters will
           be applied to. 0 means All, 1 means X, 2 means Y, 3 means Z
-    vals:
-      kind: numbers
     safety:
       min: null
       max: null
@@ -8502,8 +7935,6 @@ parameters:
       ramp_interval_s: null
   motor_pos:
     label: Motor Pos
-    unit: m
-    type: float
     get_cmd:
       command: Motor_PosGet
       payload_index: 0
@@ -8548,12 +7979,8 @@ parameters:
         wire_type: d
         description: Z(m) (float64) is the Z position in meters
     set_cmd: false
-    vals:
-      kind: numbers
   motor_stepcounter:
     label: Motor Stepcounter
-    unit: ''
-    type: int
     get_cmd:
       command: Motor_StepCounterGet
       payload_index: 0
@@ -8606,12 +8033,8 @@ parameters:
         wire_type: i
         description: Step counter Z (int)
     set_cmd: false
-    vals:
-      kind: ints
   mprobebias:
     label: Mprobebias
-    unit: ''
-    type: float
     get_cmd:
       command: MProbeBias_Get
       payload_index: 0
@@ -8649,8 +8072,6 @@ parameters:
         required: true
         default: null
         description: ''
-    vals:
-      kind: numbers
     safety:
       min: null
       max: null
@@ -8661,8 +8082,6 @@ parameters:
       ramp_interval_s: null
   mprobebias_calibr:
     label: Mprobebias Calibr
-    unit: ''
-    type: float
     get_cmd:
       command: MProbeBias_CalibrGet
       payload_index: 0
@@ -8713,8 +8132,6 @@ parameters:
         required: true
         default: null
         description: ''
-    vals:
-      kind: numbers
     safety:
       min: null
       max: null
@@ -8725,8 +8142,6 @@ parameters:
       ramp_interval_s: null
   mprobebias_range:
     label: Mprobebias Range
-    unit: ''
-    type: float
     get_cmd:
       command: MProbeBias_RangeGet
       payload_index: 0
@@ -8764,8 +8179,6 @@ parameters:
         required: true
         default: null
         description: ''
-    vals:
-      kind: numbers
     safety:
       min: null
       max: null
@@ -8776,8 +8189,6 @@ parameters:
       ramp_interval_s: null
   mprobecurrent:
     label: Mprobecurrent
-    unit: ''
-    type: float
     get_cmd:
       command: MProbeCurrent_Get
       payload_index: 0
@@ -8798,12 +8209,8 @@ parameters:
         wire_type: f
         description: ''
     set_cmd: false
-    vals:
-      kind: numbers
   mprobecurrent_calibr:
     label: Mprobecurrent Calibr
-    unit: ''
-    type: float
     get_cmd:
       command: MProbeCurrent_CalibrGet
       payload_index: 0
@@ -8870,8 +8277,6 @@ parameters:
         required: true
         default: null
         description: ''
-    vals:
-      kind: numbers
     safety:
       min: null
       max: null
@@ -8882,8 +8287,6 @@ parameters:
       ramp_interval_s: null
   mprobecurrent_gain:
     label: Mprobecurrent Gain
-    unit: ''
-    type: float
     get_cmd: false
     set_cmd:
       command: MProbeCurrent_GainSet
@@ -8910,8 +8313,6 @@ parameters:
         required: false
         default: 0.0
         description: ''
-    vals:
-      kind: numbers
     safety:
       min: null
       max: null
@@ -8922,8 +8323,6 @@ parameters:
       ramp_interval_s: null
   mprobecurrent_gains:
     label: Mprobecurrent Gains
-    unit: ''
-    type: float
     get_cmd:
       command: MProbeCurrent_GainsGet
       payload_index: 0
@@ -8990,12 +8389,8 @@ parameters:
         wire_type: i
         description: ''
     set_cmd: false
-    vals:
-      kind: numbers
   mprobescanner_activescanner:
     label: Mprobescanner Activescanner
-    unit: ''
-    type: float
     get_cmd:
       command: MProbeScanner_ActiveScannerGet
       payload_index: 0
@@ -9009,12 +8404,8 @@ parameters:
         wire_type: i
         description: ''
     set_cmd: false
-    vals:
-      kind: numbers
   mprobescanner_calibr:
     label: Mprobescanner Calibr
-    unit: ''
-    type: float
     get_cmd:
       command: MProbeScanner_CalibrGet
       payload_index: 0
@@ -9098,8 +8489,6 @@ parameters:
         required: true
         default: null
         description: ''
-    vals:
-      kind: numbers
     safety:
       min: null
       max: null
@@ -9110,8 +8499,6 @@ parameters:
       ramp_interval_s: null
   mprobescanner_speed:
     label: Mprobescanner Speed
-    unit: ''
-    type: float
     get_cmd:
       command: MProbeScanner_SpeedGet
       payload_index: 0
@@ -9151,8 +8538,6 @@ parameters:
         required: true
         default: null
         description: ''
-    vals:
-      kind: numbers
     safety:
       min: null
       max: null
@@ -9163,8 +8548,6 @@ parameters:
       ramp_interval_s: null
   mprobescanner_xypos:
     label: Mprobescanner Xypos
-    unit: ''
-    type: float
     get_cmd:
       command: MProbeScanner_XYPosGet
       payload_index: 0
@@ -9215,8 +8598,6 @@ parameters:
         required: true
         default: null
         description: ''
-    vals:
-      kind: numbers
     safety:
       min: null
       max: null
@@ -9227,8 +8608,6 @@ parameters:
       ramp_interval_s: null
   mprobezctrl_gain:
     label: Mprobezctrl Gain
-    unit: ''
-    type: float
     get_cmd:
       command: MProbeZCtrl_GainGet
       payload_index: 0
@@ -9279,8 +8658,6 @@ parameters:
         required: true
         default: null
         description: ''
-    vals:
-      kind: numbers
     safety:
       min: null
       max: null
@@ -9291,8 +8668,6 @@ parameters:
       ramp_interval_s: null
   mprobezctrl_homeprops:
     label: Mprobezctrl Homeprops
-    unit: ''
-    type: float
     get_cmd:
       command: MProbeZCtrl_HomePropsGet
       payload_index: 0
@@ -9347,8 +8722,6 @@ parameters:
         required: true
         default: null
         description: ''
-    vals:
-      kind: numbers
     safety:
       min: null
       max: null
@@ -9359,8 +8732,6 @@ parameters:
       ramp_interval_s: null
   mprobezctrl_limits:
     label: Mprobezctrl Limits
-    unit: ''
-    type: float
     get_cmd:
       command: MProbeZCtrl_LimitsGet
       payload_index: 0
@@ -9411,8 +8782,6 @@ parameters:
         required: true
         default: null
         description: ''
-    vals:
-      kind: numbers
     safety:
       min: null
       max: null
@@ -9423,8 +8792,6 @@ parameters:
       ramp_interval_s: null
   mprobezctrl_onoff:
     label: Mprobezctrl Onoff
-    unit: ''
-    type: bool
     get_cmd:
       command: MProbeZCtrl_OnOffGet
       payload_index: 0
@@ -9467,8 +8834,6 @@ parameters:
         required: true
         default: null
         description: ''
-    vals:
-      kind: bool
     safety:
       min: null
       max: null
@@ -9479,8 +8844,6 @@ parameters:
       ramp_interval_s: null
   mprobezctrl_setpnt:
     label: Mprobezctrl Setpnt
-    unit: ''
-    type: float
     get_cmd:
       command: MProbeZCtrl_SetpntGet
       payload_index: 0
@@ -9518,8 +8881,6 @@ parameters:
         required: true
         default: null
         description: ''
-    vals:
-      kind: numbers
     safety:
       min: null
       max: null
@@ -9530,8 +8891,6 @@ parameters:
       ramp_interval_s: null
   mprobezctrl_zpos:
     label: Mprobezctrl Zpos
-    unit: ''
-    type: float
     get_cmd:
       command: MProbeZCtrl_ZPosGet
       payload_index: 0
@@ -9569,8 +8928,6 @@ parameters:
         required: true
         default: null
         description: ''
-    vals:
-      kind: numbers
     safety:
       min: null
       max: null
@@ -9581,8 +8938,6 @@ parameters:
       ramp_interval_s: null
   ocsync_angles:
     label: Ocsync Angles
-    unit: deg
-    type: float
     get_cmd:
       command: OCSync_AnglesGet
       payload_index: 0
@@ -9653,8 +9008,6 @@ parameters:
         required: true
         default: null
         description: Channel 3 off angle (deg) (float32)
-    vals:
-      kind: numbers
     safety:
       min: null
       max: null
@@ -9665,8 +9018,6 @@ parameters:
       ramp_interval_s: null
   ocsync_linkangles:
     label: Ocsync Linkangles
-    unit: ''
-    type: int
     get_cmd:
       command: OCSync_LinkAnglesGet
       payload_index: 0
@@ -9715,8 +9066,6 @@ parameters:
         default: null
         description: Link angles Channel 2 (unsigned int32), where 0_no change, 1_Link
           Angles, and 2_Unlink angles
-    vals:
-      kind: ints
     safety:
       min: null
       max: null
@@ -9727,8 +9076,6 @@ parameters:
       ramp_interval_s: null
   osci1t_ch:
     label: Osci1T Ch
-    unit: ''
-    type: int
     get_cmd:
       command: Osci1T_ChGet
       payload_index: 0
@@ -9761,8 +9108,6 @@ parameters:
           assigned to the 24 slots in the Signals Manager. To get the signal name
           and its corresponding index in the list of the 128 available signals in
           the Nanonis Controller, use the <i>Signals.InSlotsGet</i> function
-    vals:
-      kind: ints
     safety:
       min: null
       max: null
@@ -9773,8 +9118,6 @@ parameters:
       ramp_interval_s: null
   osci1t_data:
     label: Osci1T Data
-    unit: ''
-    type: float
     get_cmd:
       command: Osci1T_DataGet
       payload_index: 0
@@ -9815,12 +9158,8 @@ parameters:
         wire_type: '*d'
         description: Data Y (1D array float64) is the data acquired in the oscilloscope
     set_cmd: false
-    vals:
-      kind: numbers
   osci1t_timebase:
     label: Osci1T Timebase
-    unit: ''
-    type: int
     get_cmd:
       command: Osci1T_TimebaseGet
       payload_index: 0
@@ -9862,8 +9201,6 @@ parameters:
         required: true
         default: null
         description: Timebase index (int)
-    vals:
-      kind: ints
     safety:
       min: null
       max: null
@@ -9874,8 +9211,6 @@ parameters:
       ramp_interval_s: null
   osci1t_trig:
     label: Osci1T Trig
-    unit: "level \u2013 hysteresis"
-    type: int
     get_cmd:
       command: Osci1T_TrigGet
       payload_index: 0
@@ -10001,8 +9336,6 @@ parameters:
           \ below (level \u2013 hysteresis) before a trigger level crossing is detected.\
           \ For a falling edge trigger slope, the signal must pass above (level +\
           \ hysteresis) before a trigger level crossing is detected"
-    vals:
-      kind: ints
     safety:
       min: null
       max: null
@@ -10013,8 +9346,6 @@ parameters:
       ramp_interval_s: null
   osci2t_ch:
     label: Osci2T Ch
-    unit: ''
-    type: int
     get_cmd:
       command: Osci2T_ChGet
       payload_index: 0
@@ -10060,8 +9391,6 @@ parameters:
         required: true
         default: null
         description: ''
-    vals:
-      kind: ints
     safety:
       min: null
       max: null
@@ -10072,8 +9401,6 @@ parameters:
       ramp_interval_s: null
   osci2t_data:
     label: Osci2T Data
-    unit: ''
-    type: float
     get_cmd:
       command: Osci2T_DataGet
       payload_index: 0
@@ -10126,12 +9453,8 @@ parameters:
         wire_type: '*d'
         description: ''
     set_cmd: false
-    vals:
-      kind: numbers
   osci2t_oversampl:
     label: Osci2T Oversampl
-    unit: ''
-    type: float
     get_cmd:
       command: Osci2T_OversamplGet
       payload_index: 0
@@ -10155,8 +9478,6 @@ parameters:
         required: true
         default: null
         description: ''
-    vals:
-      kind: numbers
     safety:
       min: null
       max: null
@@ -10167,8 +9488,6 @@ parameters:
       ramp_interval_s: null
   osci2t_timebase:
     label: Osci2T Timebase
-    unit: ''
-    type: int
     get_cmd:
       command: Osci2T_TimebaseGet
       payload_index: 0
@@ -10210,8 +9529,6 @@ parameters:
         required: true
         default: null
         description: Timebase index (int)
-    vals:
-      kind: ints
     safety:
       min: null
       max: null
@@ -10222,8 +9539,6 @@ parameters:
       ramp_interval_s: null
   osci2t_trig:
     label: Osci2T Trig
-    unit: ''
-    type: int
     get_cmd:
       command: Osci2T_TrigGet
       payload_index: 0
@@ -10364,8 +9679,6 @@ parameters:
         required: true
         default: null
         description: ''
-    vals:
-      kind: ints
     safety:
       min: null
       max: null
@@ -10376,8 +9689,6 @@ parameters:
       ramp_interval_s: null
   oscihr_calibrmode:
     label: Oscihr Calibrmode
-    unit: ''
-    type: int
     get_cmd:
       command: OsciHR_CalibrModeGet
       payload_index: 0
@@ -10427,8 +9738,6 @@ parameters:
         default: null
         description: Calibration mode (unsigned int16), where 0_Raw values and 1_Calibrated
           values
-    vals:
-      kind: ints
     safety:
       min: null
       max: null
@@ -10439,8 +9748,6 @@ parameters:
       ramp_interval_s: null
   oscihr_ch:
     label: Oscihr Ch
-    unit: ''
-    type: int
     get_cmd:
       command: OsciHR_ChGet
       payload_index: 0
@@ -10487,8 +9794,6 @@ parameters:
         default: null
         description: Signal index (int) sets the signal to be measured, where index
           could be any value from 0 to 15
-    vals:
-      kind: ints
     safety:
       min: null
       max: null
@@ -10499,8 +9804,6 @@ parameters:
       ramp_interval_s: null
   oscihr_oscidata:
     label: Oscihr Oscidata
-    unit: ''
-    type: int
     get_cmd:
       command: OsciHR_OsciDataGet
       payload_index: 0
@@ -10573,12 +9876,8 @@ parameters:
         description: Timeout (unsigned int32) is 0 when no timeout occurred, and 1
           when a timeout occurred
     set_cmd: false
-    vals:
-      kind: ints
   oscihr_oversampl:
     label: Oscihr Oversampl
-    unit: ''
-    type: int
     get_cmd:
       command: OsciHR_OversamplGet
       payload_index: 0
@@ -10607,8 +9906,6 @@ parameters:
         default: null
         description: Oversampling index (int) sets the oversampling index, where index
           could be any value from 0 to 10
-    vals:
-      kind: ints
     safety:
       min: null
       max: null
@@ -10619,8 +9916,6 @@ parameters:
       ramp_interval_s: null
   oscihr_pretrig:
     label: Oscihr Pretrig
-    unit: s
-    type: int
     get_cmd:
       command: OsciHR_PreTrigGet
       payload_index: 0
@@ -10655,8 +9950,6 @@ parameters:
         required: true
         default: null
         description: Pre-Trigger (s) (float64)
-    vals:
-      kind: ints
     safety:
       min: null
       max: null
@@ -10667,8 +9960,6 @@ parameters:
       ramp_interval_s: null
   oscihr_psdavrgcount:
     label: Oscihr Psdavrgcount
-    unit: ''
-    type: int
     get_cmd:
       command: OsciHR_PSDAvrgCountGet
       payload_index: 0
@@ -10694,8 +9985,6 @@ parameters:
         required: true
         default: null
         description: PSD averaging count (int)
-    vals:
-      kind: ints
     safety:
       min: null
       max: null
@@ -10706,8 +9995,6 @@ parameters:
       ramp_interval_s: null
   oscihr_psdavrgtype:
     label: Oscihr Psdavrgtype
-    unit: ''
-    type: int
     get_cmd:
       command: OsciHR_PSDAvrgTypeGet
       payload_index: 0
@@ -10733,8 +10020,6 @@ parameters:
         default: null
         description: PSD averaging type (unsigned int16), where 0_None, 1_Vector,
           2_RMS, 3_Peak hold
-    vals:
-      kind: ints
     safety:
       min: null
       max: null
@@ -10745,8 +10030,6 @@ parameters:
       ramp_interval_s: null
   oscihr_psddata:
     label: Oscihr Psddata
-    unit: ''
-    type: float
     get_cmd:
       command: OsciHR_PSDDataGet
       payload_index: 0
@@ -10803,12 +10086,8 @@ parameters:
         description: Timeout (unsigned int32) is 0 when no timeout occurred, and 1
           when a timeout occurred
     set_cmd: false
-    vals:
-      kind: numbers
   oscihr_psdweight:
     label: Oscihr Psdweight
-    unit: ''
-    type: int
     get_cmd:
       command: OsciHR_PSDWeightGet
       payload_index: 0
@@ -10838,8 +10117,6 @@ parameters:
           averaging combines Count spectral records with equal weighting and then
           stops, whereas 1_Exponential means that the averaging process is continuous
           and new spectral data have a higher weighting than older ones
-    vals:
-      kind: ints
     safety:
       min: null
       max: null
@@ -10850,8 +10127,6 @@ parameters:
       ramp_interval_s: null
   oscihr_psdwindow:
     label: Oscihr Psdwindow
-    unit: ''
-    type: int
     get_cmd:
       command: OsciHR_PSDWindowGet
       payload_index: 0
@@ -10879,8 +10154,6 @@ parameters:
         description: PSD window type (unsigned int16) is the window function applied
           to the timed signal before calculating the power spectral density, where
           0_None, 1_Hanning, 2_Hamming, etc
-    vals:
-      kind: ints
     safety:
       min: null
       max: null
@@ -10891,8 +10164,6 @@ parameters:
       ramp_interval_s: null
   oscihr_samples:
     label: Oscihr Samples
-    unit: ''
-    type: int
     get_cmd:
       command: OsciHR_SamplesGet
       payload_index: 0
@@ -10918,8 +10189,6 @@ parameters:
         required: true
         default: null
         description: Number of samples (int)
-    vals:
-      kind: ints
     safety:
       min: null
       max: null
@@ -10930,8 +10199,6 @@ parameters:
       ramp_interval_s: null
   oscihr_trigarmmode:
     label: Oscihr Trigarmmode
-    unit: ''
-    type: int
     get_cmd:
       command: OsciHR_TrigArmModeGet
       payload_index: 0
@@ -10959,8 +10226,6 @@ parameters:
         description: Trigger arming mode (unsigned int16), where 0_Single shot means
           recording the next available data and stopping acquisition. and 1_Continuous
           means recording every available data and automatically re-triggers the acquisition
-    vals:
-      kind: ints
     safety:
       min: null
       max: null
@@ -10971,8 +10236,6 @@ parameters:
       ramp_interval_s: null
   oscihr_trigdigch:
     label: Oscihr Trigdigch
-    unit: ''
-    type: int
     get_cmd:
       command: OsciHR_TrigDigChGet
       payload_index: 0
@@ -11006,8 +10269,6 @@ parameters:
           B lines are indexes 8 to 15, Low Speed Port C lines are indexes 16 to 23,
           Low Speed Port D lines are indexes 24 to 31, and High Speed Port lines are
           indexes 32 to 35
-    vals:
-      kind: ints
     safety:
       min: null
       max: null
@@ -11018,8 +10279,6 @@ parameters:
       ramp_interval_s: null
   oscihr_trigdigslope:
     label: Oscihr Trigdigslope
-    unit: ''
-    type: int
     get_cmd:
       command: OsciHR_TrigDigSlopeGet
       payload_index: 0
@@ -11043,8 +10302,6 @@ parameters:
         required: true
         default: null
         description: Digital trigger slope (unsigned int16), where 0_Rising and 1_Falling
-    vals:
-      kind: ints
     safety:
       min: null
       max: null
@@ -11055,8 +10312,6 @@ parameters:
       ramp_interval_s: null
   oscihr_triglevch:
     label: Oscihr Triglevch
-    unit: ''
-    type: int
     get_cmd:
       command: OsciHR_TrigLevChGet
       payload_index: 0
@@ -11083,8 +10338,6 @@ parameters:
         required: true
         default: null
         description: Level trigger channel index (int)
-    vals:
-      kind: ints
     safety:
       min: null
       max: null
@@ -11095,8 +10348,6 @@ parameters:
       ramp_interval_s: null
   oscihr_triglevhyst:
     label: Oscihr Triglevhyst
-    unit: ''
-    type: float
     get_cmd:
       command: OsciHR_TrigLevHystGet
       payload_index: 0
@@ -11120,8 +10371,6 @@ parameters:
         required: true
         default: null
         description: Level trigger Hysteresis (float64)
-    vals:
-      kind: numbers
     safety:
       min: null
       max: null
@@ -11132,8 +10381,6 @@ parameters:
       ramp_interval_s: null
   oscihr_triglevslope:
     label: Oscihr Triglevslope
-    unit: ''
-    type: int
     get_cmd:
       command: OsciHR_TrigLevSlopeGet
       payload_index: 0
@@ -11157,8 +10404,6 @@ parameters:
         required: true
         default: null
         description: Level trigger slope (unsigned int16), where 0_Rising and 1_Falling
-    vals:
-      kind: ints
     safety:
       min: null
       max: null
@@ -11169,8 +10414,6 @@ parameters:
       ramp_interval_s: null
   oscihr_triglevval:
     label: Oscihr Triglevval
-    unit: ''
-    type: float
     get_cmd:
       command: OsciHR_TrigLevValGet
       payload_index: 0
@@ -11194,8 +10437,6 @@ parameters:
         required: true
         default: null
         description: Level trigger value (float64)
-    vals:
-      kind: numbers
     safety:
       min: null
       max: null
@@ -11206,8 +10447,6 @@ parameters:
       ramp_interval_s: null
   oscihr_trigmode:
     label: Oscihr Trigmode
-    unit: ''
-    type: int
     get_cmd:
       command: OsciHR_TrigModeGet
       payload_index: 0
@@ -11237,8 +10476,6 @@ parameters:
           data (1MS/s), and 2_Digital where the trigger detection on the LS-DIO channels
           is performed at 500kS/s. Trigger detection on the HS-DIO channels is performed
           at 10MS/s
-    vals:
-      kind: ints
     safety:
       min: null
       max: null
@@ -11249,8 +10486,6 @@ parameters:
       ramp_interval_s: null
   pattern_cloud:
     label: Pattern Cloud
-    unit: m
-    type: int
     get_cmd:
       command: Pattern_CloudGet
       payload_index: 0
@@ -11313,8 +10548,6 @@ parameters:
         default: null
         description: Y coordinates (m) (1D array float32) is a 1D array of the Y coordinates
           of the points defining the cloud. Prepend the array size as int.
-    vals:
-      kind: ints
     safety:
       min: null
       max: null
@@ -11325,8 +10558,6 @@ parameters:
       ramp_interval_s: null
   pattern_expstatus:
     label: Pattern Expstatus
-    unit: _1
-    type: int
     get_cmd:
       command: Pattern_ExpStatusGet
       payload_index: 0
@@ -11341,12 +10572,8 @@ parameters:
         description: Status (unsigned int32) indicates if the experiment is running
           (_1) or not (_0)
     set_cmd: false
-    vals:
-      kind: ints
   pattern_grid:
     label: Pattern Grid
-    unit: deg
-    type: int
     get_cmd:
       command: Pattern_GridGet
       payload_index: 0
@@ -11472,8 +10699,6 @@ parameters:
         required: true
         default: null
         description: Angle (deg) (float32) is the rotation angle of the grid
-    vals:
-      kind: ints
     safety:
       min: null
       max: null
@@ -11484,8 +10709,6 @@ parameters:
       ramp_interval_s: null
   pattern_line:
     label: Pattern Line
-    unit: m
-    type: int
     get_cmd:
       command: Pattern_LineGet
       payload_index: 0
@@ -11587,8 +10810,6 @@ parameters:
         default: null
         description: Line Point 2 Y (m) (float32) is the Y coordinate of one of the
           two points that define the line
-    vals:
-      kind: ints
     safety:
       min: null
       max: null
@@ -11599,8 +10820,6 @@ parameters:
       ramp_interval_s: null
   pattern_props:
     label: Pattern Props
-    unit: ''
-    type: int
     get_cmd:
       command: Pattern_PropsGet
       payload_index: 0
@@ -11713,8 +10932,6 @@ parameters:
         default: 1
         description: Save scan channels (unsigned int32) sets if the scan channels
           are saved into the grid experiment file. 0 means Off, and 1 means On
-    vals:
-      kind: ints
     safety:
       min: null
       max: null
@@ -11725,8 +10942,6 @@ parameters:
       ramp_interval_s: null
   pictrl_ctrlch:
     label: Pictrl Ctrlch
-    unit: ''
-    type: float
     get_cmd:
       command: PICtrl_CtrlChGet
       payload_index: 0
@@ -11794,8 +11009,6 @@ parameters:
         required: true
         default: null
         description: ''
-    vals:
-      kind: numbers
     safety:
       min: null
       max: null
@@ -11806,8 +11019,6 @@ parameters:
       ramp_interval_s: null
   pictrl_ctrlchprops:
     label: Pictrl Ctrlchprops
-    unit: ''
-    type: float
     get_cmd:
       command: PICtrl_CtrlChPropsGet
       payload_index: 0
@@ -11858,8 +11069,6 @@ parameters:
         required: true
         default: null
         description: ''
-    vals:
-      kind: numbers
     safety:
       min: null
       max: null
@@ -11870,8 +11079,6 @@ parameters:
       ramp_interval_s: null
   pictrl_inputch:
     label: Pictrl Inputch
-    unit: ''
-    type: float
     get_cmd:
       command: PICtrl_InputChGet
       payload_index: 0
@@ -11939,8 +11146,6 @@ parameters:
         required: true
         default: null
         description: ''
-    vals:
-      kind: numbers
     safety:
       min: null
       max: null
@@ -11951,8 +11156,6 @@ parameters:
       ramp_interval_s: null
   pictrl_onoff:
     label: Pictrl Onoff
-    unit: ''
-    type: bool
     get_cmd:
       command: PICtrl_OnOffGet
       payload_index: 0
@@ -11990,8 +11193,6 @@ parameters:
         required: true
         default: null
         description: ''
-    vals:
-      kind: bool
     safety:
       min: null
       max: null
@@ -12002,8 +11203,6 @@ parameters:
       ramp_interval_s: null
   pictrl_props:
     label: Pictrl Props
-    unit: ''
-    type: float
     get_cmd:
       command: PICtrl_PropsGet
       payload_index: 0
@@ -12080,8 +11279,6 @@ parameters:
         required: false
         default: 0.0
         description: ''
-    vals:
-      kind: numbers
     safety:
       min: null
       max: null
@@ -12092,8 +11289,6 @@ parameters:
       ramp_interval_s: null
   piezo_calibr:
     label: Piezo Calibr
-    unit: m/V
-    type: float
     get_cmd:
       command: Piezo_CalibrGet
       payload_index: 0
@@ -12121,12 +11316,8 @@ parameters:
         wire_type: f
         description: Calibration Z (m/V) (float32)
     set_cmd: false
-    vals:
-      kind: numbers
   piezo_driftcomp:
     label: Piezo Driftcomp
-    unit: ''
-    type: int
     get_cmd:
       command: Piezo_DriftCompGet
       payload_index: 0
@@ -12237,8 +11428,6 @@ parameters:
         required: true
         default: null
         description: ''
-    vals:
-      kind: ints
     safety:
       min: null
       max: null
@@ -12249,8 +11438,6 @@ parameters:
       ramp_interval_s: null
   piezo_hvainfo:
     label: Piezo Hvainfo
-    unit: ''
-    type: float
     get_cmd:
       command: Piezo_HVAInfoGet
       payload_index: 0
@@ -12301,12 +11488,8 @@ parameters:
         wire_type: I
         description: AUX enabled status (unsigned int32)
     set_cmd: false
-    vals:
-      kind: numbers
   piezo_hvastatusled:
     label: Piezo Hvastatusled
-    unit: ''
-    type: int
     get_cmd:
       command: Piezo_HVAStatusLEDGet
       payload_index: 0
@@ -12338,12 +11521,8 @@ parameters:
         wire_type: I
         description: Output connector status (unsigned int32)
     set_cmd: false
-    vals:
-      kind: ints
   piezo_hystonoff:
     label: Piezo Hystonoff
-    unit: ''
-    type: bool
     get_cmd:
       command: Piezo_HystOnOffGet
       payload_index: 0
@@ -12369,8 +11548,6 @@ parameters:
         required: true
         default: null
         description: ''
-    vals:
-      kind: bool
     safety:
       min: null
       max: null
@@ -12381,8 +11558,6 @@ parameters:
       ramp_interval_s: null
   piezo_hystvals:
     label: Piezo Hystvals
-    unit: ''
-    type: float
     get_cmd:
       command: Piezo_HystValsGet
       payload_index: 0
@@ -12499,8 +11674,6 @@ parameters:
         required: true
         default: null
         description: ''
-    vals:
-      kind: numbers
     safety:
       min: null
       max: null
@@ -12511,8 +11684,6 @@ parameters:
       ramp_interval_s: null
   piezo_range:
     label: Piezo Range
-    unit: m
-    type: float
     get_cmd:
       command: Piezo_RangeGet
       payload_index: 0
@@ -12563,8 +11734,6 @@ parameters:
         required: true
         default: null
         description: Range Z (m) (float32)
-    vals:
-      kind: numbers
     safety:
       min: null
       max: null
@@ -12575,8 +11744,6 @@ parameters:
       ramp_interval_s: null
   piezo_sens:
     label: Piezo Sens
-    unit: m/V
-    type: float
     get_cmd:
       command: Piezo_SensGet
       payload_index: 0
@@ -12628,8 +11795,6 @@ parameters:
         required: true
         default: null
         description: Calibration Z (m/V) (float32)
-    vals:
-      kind: numbers
     safety:
       min: null
       max: null
@@ -12640,8 +11805,6 @@ parameters:
       ramp_interval_s: null
   piezo_tilt:
     label: Piezo Tilt
-    unit: deg
-    type: float
     get_cmd:
       command: Piezo_TiltGet
       payload_index: 0
@@ -12682,8 +11845,6 @@ parameters:
         default: null
         description: Tilt Y (deg) (float32) sets by which angle to correct the tilt
           in the Y direction
-    vals:
-      kind: numbers
     safety:
       min: null
       max: null
@@ -12694,8 +11855,6 @@ parameters:
       ramp_interval_s: null
   piezo_xyzlimits:
     label: Piezo Xyzlimits
-    unit: ''
-    type: float
     get_cmd:
       command: Piezo_XYZLimitsGet
       payload_index: 0
@@ -12797,8 +11956,6 @@ parameters:
         required: true
         default: null
         description: ''
-    vals:
-      kind: numbers
     safety:
       min: null
       max: null
@@ -12809,8 +11966,6 @@ parameters:
       ramp_interval_s: null
   pll_addonoff:
     label: Pll Addonoff
-    unit: ''
-    type: int
     get_cmd:
       command: PLL_AddOnOffGet
       payload_index: 0
@@ -12850,8 +12005,6 @@ parameters:
         required: true
         default: null
         description: Add (unsigned int32) where 0 is Off and 1 is On
-    vals:
-      kind: ints
     safety:
       min: null
       max: null
@@ -12862,8 +12015,6 @@ parameters:
       ramp_interval_s: null
   pll_ampctrlbandwidth:
     label: Pll Ampctrlbandwidth
-    unit: Hz
-    type: float
     get_cmd:
       command: PLL_AmpCtrlBandwidthGet
       payload_index: 0
@@ -12911,8 +12062,6 @@ parameters:
         required: true
         default: null
         description: Bandwidth (Hz) (float32)
-    vals:
-      kind: numbers
     safety:
       min: null
       max: null
@@ -12923,8 +12072,6 @@ parameters:
       ramp_interval_s: null
   pll_ampctrlgain:
     label: Pll Ampctrlgain
-    unit: V/m
-    type: float
     get_cmd:
       command: PLL_AmpCtrlGainGet
       payload_index: 0
@@ -12983,8 +12130,6 @@ parameters:
         required: true
         default: null
         description: Time constant (s) (float32)
-    vals:
-      kind: numbers
     safety:
       min: null
       max: null
@@ -12995,8 +12140,6 @@ parameters:
       ramp_interval_s: null
   pll_ampctrlonoff:
     label: Pll Ampctrlonoff
-    unit: ''
-    type: int
     get_cmd:
       command: PLL_AmpCtrlOnOffGet
       payload_index: 0
@@ -13036,8 +12179,6 @@ parameters:
         required: true
         default: null
         description: Status (unsigned int32) where 0 is Off and 1 is On
-    vals:
-      kind: ints
     safety:
       min: null
       max: null
@@ -13048,8 +12189,6 @@ parameters:
       ramp_interval_s: null
   pll_ampctrlsetpnt:
     label: Pll Ampctrlsetpnt
-    unit: m
-    type: float
     get_cmd:
       command: PLL_AmpCtrlSetpntGet
       payload_index: 0
@@ -13089,8 +12228,6 @@ parameters:
         required: true
         default: null
         description: Setpoint (m) (float32)
-    vals:
-      kind: numbers
     safety:
       min: null
       max: null
@@ -13101,8 +12238,6 @@ parameters:
       ramp_interval_s: null
   pll_centerfreq:
     label: Pll Centerfreq
-    unit: Hz
-    type: float
     get_cmd:
       command: PLL_CenterFreqGet
       payload_index: 0
@@ -13142,8 +12277,6 @@ parameters:
         required: true
         default: null
         description: Center frequency (Hz) (float64)
-    vals:
-      kind: numbers
     safety:
       min: null
       max: null
@@ -13154,8 +12287,6 @@ parameters:
       ramp_interval_s: null
   pll_demodfilter:
     label: Pll Demodfilter
-    unit: ''
-    type: int
     get_cmd:
       command: PLL_DemodFilterGet
       payload_index: 0
@@ -13197,8 +12328,6 @@ parameters:
         required: true
         default: null
         description: Filter order  (unsigned int16)
-    vals:
-      kind: ints
     safety:
       min: null
       max: null
@@ -13209,8 +12338,6 @@ parameters:
       ramp_interval_s: null
   pll_demodharmonic:
     label: Pll Demodharmonic
-    unit: ''
-    type: int
     get_cmd:
       command: PLL_DemodHarmonicGet
       payload_index: 0
@@ -13254,8 +12381,6 @@ parameters:
         required: true
         default: null
         description: Harmonic  (unsigned int16)
-    vals:
-      kind: ints
     safety:
       min: null
       max: null
@@ -13266,8 +12391,6 @@ parameters:
       ramp_interval_s: null
   pll_demodinput:
     label: Pll Demodinput
-    unit: ''
-    type: int
     get_cmd:
       command: PLL_DemodInputGet
       payload_index: 0
@@ -13321,8 +12444,6 @@ parameters:
         default: null
         description: Frequency generator (unsigned int16), where value 0 means no
           change
-    vals:
-      kind: ints
     safety:
       min: null
       max: null
@@ -13333,8 +12454,6 @@ parameters:
       ramp_interval_s: null
   pll_demodphasref:
     label: Pll Demodphasref
-    unit: deg
-    type: float
     get_cmd:
       command: PLL_DemodPhasRefGet
       payload_index: 0
@@ -13374,8 +12493,6 @@ parameters:
         required: true
         default: null
         description: Phase reference (deg)  (float32)
-    vals:
-      kind: numbers
     safety:
       min: null
       max: null
@@ -13386,8 +12503,6 @@ parameters:
       ramp_interval_s: null
   pll_excitation:
     label: Pll Excitation
-    unit: V
-    type: float
     get_cmd:
       command: PLL_ExcitationGet
       payload_index: 0
@@ -13430,8 +12545,6 @@ parameters:
         required: true
         default: null
         description: Excitation value (V) (float32)
-    vals:
-      kind: numbers
     safety:
       min: null
       max: null
@@ -13442,8 +12555,6 @@ parameters:
       ramp_interval_s: null
   pll_excrange:
     label: Pll Excrange
-    unit: ''
-    type: int
     get_cmd:
       command: PLL_ExcRangeGet
       payload_index: 0
@@ -13485,8 +12596,6 @@ parameters:
         default: null
         description: Output range (unsigned int16) where 0 is 10V, 1 is 1V, 2 is 0.1V,
           3 is 0.01V, and 4 is 0.001V
-    vals:
-      kind: ints
     safety:
       min: null
       max: null
@@ -13497,8 +12606,6 @@ parameters:
       ramp_interval_s: null
   pll_freqexcoverwrite:
     label: Pll Freqexcoverwrite
-    unit: ''
-    type: int
     get_cmd:
       command: PLL_FreqExcOverwriteGet
       payload_index: 0
@@ -13561,8 +12668,6 @@ parameters:
         default: null
         description: Frequency overwrite signal index (int), where value -2 means
           no change
-    vals:
-      kind: ints
     safety:
       min: null
       max: null
@@ -13573,8 +12678,6 @@ parameters:
       ramp_interval_s: null
   pll_freqrange:
     label: Pll Freqrange
-    unit: Hz
-    type: float
     get_cmd:
       command: PLL_FreqRangeGet
       payload_index: 0
@@ -13614,8 +12717,6 @@ parameters:
         required: true
         default: null
         description: Frequency range (Hz) (float32)
-    vals:
-      kind: numbers
     safety:
       min: null
       max: null
@@ -13626,8 +12727,6 @@ parameters:
       ramp_interval_s: null
   pll_freqshift:
     label: Pll Freqshift
-    unit: Hz
-    type: float
     get_cmd:
       command: PLL_FreqShiftGet
       payload_index: 0
@@ -13667,8 +12766,6 @@ parameters:
         required: true
         default: null
         description: Frequency shift (Hz) (float32)
-    vals:
-      kind: numbers
     safety:
       min: null
       max: null
@@ -13679,8 +12776,6 @@ parameters:
       ramp_interval_s: null
   pll_inpcalibr:
     label: Pll Inpcalibr
-    unit: m/V
-    type: float
     get_cmd:
       command: PLL_InpCalibrGet
       payload_index: 0
@@ -13720,8 +12815,6 @@ parameters:
         required: true
         default: null
         description: Calibration (m/V) (float32)
-    vals:
-      kind: numbers
     safety:
       min: null
       max: null
@@ -13732,8 +12825,6 @@ parameters:
       ramp_interval_s: null
   pll_inpprops:
     label: Pll Inpprops
-    unit: ''
-    type: int
     get_cmd:
       command: PLL_InpPropsGet
       payload_index: 0
@@ -13786,8 +12877,6 @@ parameters:
         required: true
         default: null
         description: 1/10 divider (unsigned int16) where 0 is Off and 1 is On
-    vals:
-      kind: ints
     safety:
       min: null
       max: null
@@ -13798,8 +12887,6 @@ parameters:
       ramp_interval_s: null
   pll_inprange:
     label: Pll Inprange
-    unit: m
-    type: float
     get_cmd:
       command: PLL_InpRangeGet
       payload_index: 0
@@ -13839,8 +12926,6 @@ parameters:
         required: true
         default: null
         description: Input range (m) (float32)
-    vals:
-      kind: numbers
     safety:
       min: null
       max: null
@@ -13851,8 +12936,6 @@ parameters:
       ramp_interval_s: null
   pll_outonoff:
     label: Pll Outonoff
-    unit: ''
-    type: int
     get_cmd:
       command: PLL_OutOnOffGet
       payload_index: 0
@@ -13892,8 +12975,6 @@ parameters:
         required: true
         default: null
         description: PLL output (unsigned int32) where 0 is Off and 1 is On
-    vals:
-      kind: ints
     safety:
       min: null
       max: null
@@ -13904,8 +12985,6 @@ parameters:
       ramp_interval_s: null
   pll_phasctrlbandwidth:
     label: Pll Phasctrlbandwidth
-    unit: Hz
-    type: float
     get_cmd:
       command: PLL_PhasCtrlBandwidthGet
       payload_index: 0
@@ -13951,8 +13030,6 @@ parameters:
         required: true
         default: null
         description: Bandwidth (Hz) (float32)
-    vals:
-      kind: numbers
     safety:
       min: null
       max: null
@@ -13963,8 +13040,6 @@ parameters:
       ramp_interval_s: null
   pll_phasctrlgain:
     label: Pll Phasctrlgain
-    unit: Hz/deg
-    type: float
     get_cmd:
       command: PLL_PhasCtrlGainGet
       payload_index: 0
@@ -14017,8 +13092,6 @@ parameters:
         required: true
         default: null
         description: Time constant (s) (float32)
-    vals:
-      kind: numbers
     safety:
       min: null
       max: null
@@ -14029,8 +13102,6 @@ parameters:
       ramp_interval_s: null
   pll_phasctrlonoff:
     label: Pll Phasctrlonoff
-    unit: ''
-    type: int
     get_cmd:
       command: PLL_PhasCtrlOnOffGet
       payload_index: 0
@@ -14070,8 +13141,6 @@ parameters:
         required: true
         default: null
         description: Status (unsigned int32) where 0 is Off and 1 is On
-    vals:
-      kind: ints
     safety:
       min: null
       max: null
@@ -14082,8 +13151,6 @@ parameters:
       ramp_interval_s: null
   pllfreqswp_params:
     label: Pllfreqswp Params
-    unit: s
-    type: int
     get_cmd:
       command: PLLFreqSwp_ParamsGet
       payload_index: 0
@@ -14157,8 +13224,6 @@ parameters:
         default: null
         description: Settling time (s) (float32) is the time to wait after setting
           the frequency shift to the start position
-    vals:
-      kind: ints
     safety:
       min: null
       max: null
@@ -14169,8 +13234,6 @@ parameters:
       ramp_interval_s: null
   pllsignalanlzr_ch:
     label: Pllsignalanlzr Ch
-    unit: ''
-    type: int
     get_cmd:
       command: PLLSignalAnlzr_ChGet
       payload_index: 0
@@ -14194,8 +13257,6 @@ parameters:
         required: true
         default: null
         description: Channel index (int)
-    vals:
-      kind: ints
     safety:
       min: null
       max: null
@@ -14206,8 +13267,6 @@ parameters:
       ramp_interval_s: null
   pllsignalanlzr_fftdata:
     label: Pllsignalanlzr Fftdata
-    unit: ''
-    type: float
     get_cmd:
       command: PLLSignalAnlzr_FFTDataGet
       payload_index: 0
@@ -14241,12 +13300,8 @@ parameters:
         description: Data Y (1D array float64) is the data acquired in the spectrum
           section
     set_cmd: false
-    vals:
-      kind: numbers
   pllsignalanlzr_fftprops:
     label: Pllsignalanlzr Fftprops
-    unit: ''
-    type: int
     get_cmd:
       command: PLLSignalAnlzr_FFTPropsGet
       payload_index: 0
@@ -14330,8 +13385,6 @@ parameters:
           \ the averaging process is continuous and new spectral data have a higher\
           \ weighting than older ones. If weighting mode is Linear, the averaging\_\
           combines\_count spectral records with equal weighting and then stops"
-    vals:
-      kind: ints
     safety:
       min: null
       max: null
@@ -14342,8 +13395,6 @@ parameters:
       ramp_interval_s: null
   pllsignalanlzr_oscidata:
     label: Pllsignalanlzr Oscidata
-    unit: ''
-    type: float
     get_cmd:
       command: PLLSignalAnlzr_OsciDataGet
       payload_index: 0
@@ -14375,12 +13426,8 @@ parameters:
         wire_type: '*+d'
         description: Data Y (1D array float64) is the data acquired in the oscilloscope
     set_cmd: false
-    vals:
-      kind: numbers
   pllsignalanlzr_timebase:
     label: Pllsignalanlzr Timebase
-    unit: ''
-    type: int
     get_cmd:
       command: PLLSignalAnlzr_TimebaseGet
       payload_index: 0
@@ -14445,8 +13492,6 @@ parameters:
         description: Update rate (int) is the graph update rate, where 1 corresponds
           to the fastest rate and higher values reduce update speed, TCP traffic and
           CPU load. Value -1 means no change
-    vals:
-      kind: ints
     safety:
       min: null
       max: null
@@ -14457,8 +13502,6 @@ parameters:
       ramp_interval_s: null
   pllsignalanlzr_trig:
     label: Pllsignalanlzr Trig
-    unit: _2
-    type: int
     get_cmd:
       command: PLLSignalAnlzr_TrigGet
       payload_index: 0
@@ -14579,8 +13622,6 @@ parameters:
         default: 0
         description: Arming mode (unsigned int16) sets whether the trigger is automatically
           (_2) or manually rearmed (_1). Value 0 means no change
-    vals:
-      kind: ints
     safety:
       min: null
       max: null
@@ -14591,8 +13632,6 @@ parameters:
       ramp_interval_s: null
   pllzoomfft_ch:
     label: Pllzoomfft Ch
-    unit: ''
-    type: int
     get_cmd:
       command: PLLZoomFFT_ChGet
       payload_index: 0
@@ -14618,8 +13657,6 @@ parameters:
         required: true
         default: null
         description: Channel index (int)
-    vals:
-      kind: ints
     safety:
       min: null
       max: null
@@ -14630,8 +13667,6 @@ parameters:
       ramp_interval_s: null
   pllzoomfft_data:
     label: Pllzoomfft Data
-    unit: ''
-    type: float
     get_cmd:
       command: PLLZoomFFT_DataGet
       payload_index: 0
@@ -14664,12 +13699,8 @@ parameters:
         wire_type: '*d'
         description: Data Y (1D array float64) is the acquired data
     set_cmd: false
-    vals:
-      kind: numbers
   pllzoomfft_props:
     label: Pllzoomfft Props
-    unit: ''
-    type: int
     get_cmd:
       command: PLLZoomFFT_PropsGet
       payload_index: 0
@@ -14751,8 +13782,6 @@ parameters:
           \ the averaging process is continuous and new spectral data have a higher\
           \ weighting than older ones. If weighting mode is Linear, the averaging\_\
           combines\_count spectral records with equal weighting and then stops"
-    vals:
-      kind: ints
     safety:
       min: null
       max: null
@@ -14763,8 +13792,6 @@ parameters:
       ramp_interval_s: null
   safetip_onoff:
     label: Safetip Onoff
-    unit: _0
-    type: int
     get_cmd:
       command: SafeTip_OnOffGet
       payload_index: 0
@@ -14790,8 +13817,6 @@ parameters:
         default: null
         description: Safe Tip status (unsigned int16) sets if the Safe Tip is On (_1)
           or Off (_2), or if it does not change (_0)
-    vals:
-      kind: ints
     safety:
       min: null
       max: null
@@ -14802,8 +13827,6 @@ parameters:
       ramp_interval_s: null
   safetip_props:
     label: Safetip Props
-    unit: ''
-    type: int
     get_cmd:
       command: SafeTip_PropsGet
       payload_index: 0
@@ -14863,8 +13886,6 @@ parameters:
         default: null
         description: Threshold (float32) defines the condition to trigger the Safe
           Tip
-    vals:
-      kind: ints
     safety:
       min: null
       max: null
@@ -14875,8 +13896,6 @@ parameters:
       ramp_interval_s: null
   safetip_signal:
     label: Safetip Signal
-    unit: ''
-    type: float
     get_cmd:
       command: SafeTip_SignalGet
       payload_index: 0
@@ -14890,12 +13909,8 @@ parameters:
         wire_type: f
         description: Signal value (float32)
     set_cmd: false
-    vals:
-      kind: numbers
   scan_buffer:
     label: Scan Buffer
-    unit: ''
-    type: int
     get_cmd:
       command: Scan_BufferGet
       payload_index: 0
@@ -14966,8 +13981,6 @@ parameters:
           is active and the number of lines is set to 0 or left unconnected, the number
           of lines will automatically coerce to keep the scan resolution ratio according
           to the new number of pixels.
-    vals:
-      kind: ints
     safety:
       min: null
       max: null
@@ -14978,8 +13991,6 @@ parameters:
       ramp_interval_s: null
   scan_frame:
     label: Scan Frame
-    unit: m
-    type: float
     get_cmd:
       command: Scan_FrameGet
       payload_index: 0
@@ -15057,8 +14068,6 @@ parameters:
         default: null
         description: Angle (deg) (float32) is the angle of the scan frame (positive
           angle means clockwise rotation)
-    vals:
-      kind: numbers
     safety:
       min: null
       max: null
@@ -15069,8 +14078,6 @@ parameters:
       ramp_interval_s: null
   scan_frame_angle_deg:
     label: Scan Frame Angle
-    unit: deg
-    type: float
     get_cmd:
       command: Scan_FrameGet
       payload_index: 4
@@ -15109,12 +14116,8 @@ parameters:
           angle means clockwise rotation)
       arg_fields: []
     set_cmd: false
-    vals:
-      kind: numbers
   scan_frame_center_x_m:
     label: Scan Frame Center X
-    unit: m
-    type: float
     get_cmd:
       command: Scan_FrameGet
       payload_index: 0
@@ -15153,12 +14156,8 @@ parameters:
           angle means clockwise rotation)
       arg_fields: []
     set_cmd: false
-    vals:
-      kind: numbers
   scan_frame_center_y_m:
     label: Scan Frame Center Y
-    unit: m
-    type: float
     get_cmd:
       command: Scan_FrameGet
       payload_index: 1
@@ -15197,12 +14196,8 @@ parameters:
           angle means clockwise rotation)
       arg_fields: []
     set_cmd: false
-    vals:
-      kind: numbers
   scan_frame_height_m:
     label: Scan Frame Height
-    unit: m
-    type: float
     get_cmd:
       command: Scan_FrameGet
       payload_index: 3
@@ -15241,12 +14236,8 @@ parameters:
           angle means clockwise rotation)
       arg_fields: []
     set_cmd: false
-    vals:
-      kind: numbers
   scan_frame_width_m:
     label: Scan Frame Width
-    unit: m
-    type: float
     get_cmd:
       command: Scan_FrameGet
       payload_index: 2
@@ -15285,12 +14276,8 @@ parameters:
           angle means clockwise rotation)
       arg_fields: []
     set_cmd: false
-    vals:
-      kind: numbers
   scan_props:
     label: Scan Props
-    unit: ''
-    type: int
     get_cmd:
       command: Scan_PropsGet
       payload_index: 0
@@ -15489,8 +14476,6 @@ parameters:
           the paste behavior when a frame has been completed. "All" pastes all the
           future images. "Next" only pastes the next frame. 0 means no change, 1 is
           All, 2 is Next, and 3 sets this feature Off
-    vals:
-      kind: ints
     safety:
       min: null
       max: null
@@ -15501,8 +14486,6 @@ parameters:
       ramp_interval_s: null
   scan_speed:
     label: Scan Speed
-    unit: m/s
-    type: float
     get_cmd:
       command: Scan_SpeedGet
       payload_index: 0
@@ -15597,8 +14580,6 @@ parameters:
         default: 0.0
         description: Speed ratio (float32) defines the backward tip speed related
           to the forward speed
-    vals:
-      kind: numbers
     safety:
       min: null
       max: null
@@ -15609,8 +14590,6 @@ parameters:
       ramp_interval_s: null
   scan_status:
     label: Scan Status
-    unit: ''
-    type: int
     get_cmd:
       command: Scan_StatusGet
       payload_index: 0
@@ -15625,12 +14604,8 @@ parameters:
         description: Scan status (unsigned int32) means that if it is 1, scan is running.
           If 0, scan is not running
     set_cmd: false
-    vals:
-      kind: ints
   scan_status_code:
     label: Scan Status Code
-    unit: ''
-    type: int
     get_cmd:
       command: Scan_StatusGet
       payload_index: 0
@@ -15645,12 +14620,8 @@ parameters:
           If 0, scan is not running
       arg_fields: []
     set_cmd: false
-    vals:
-      kind: ints
   scan_xypos:
     label: Scan Xypos
-    unit: ''
-    type: float
     get_cmd:
       command: Scan_XYPosGet
       payload_index: 0
@@ -15677,12 +14648,8 @@ parameters:
         wire_type: f
         description: ''
     set_cmd: false
-    vals:
-      kind: numbers
   script_chs:
     label: Script Chs
-    unit: ''
-    type: int
     get_cmd:
       command: Script_ChsGet
       payload_index: 0
@@ -15739,8 +14706,6 @@ parameters:
           the Signals Manager. To get the signal name and its corresponding index
           in the list of the 128 available signals in the Nanonis Controller, use
           the <i>Signals.InSlotsGet</i> function
-    vals:
-      kind: ints
     safety:
       min: null
       max: null
@@ -15751,8 +14716,6 @@ parameters:
       ramp_interval_s: null
   script_data:
     label: Script Data
-    unit: ''
-    type: int
     get_cmd:
       command: Script_DataGet
       payload_index: 0
@@ -15798,12 +14761,8 @@ parameters:
         wire_type: 2f
         description: Data (2D array float32) returns the script data
     set_cmd: false
-    vals:
-      kind: ints
   signalchart_chs:
     label: Signalchart Chs
-    unit: ''
-    type: int
     get_cmd:
       command: SignalChart_ChsGet
       payload_index: 0
@@ -15852,8 +14811,6 @@ parameters:
         description: Channel  B  index (int) sets the channel B, where the index is
           comprised between 0 and 23, and it corresponds to the list of signals assigned
           to the 24 slots in the Signals Manager.
-    vals:
-      kind: ints
     safety:
       min: null
       max: null
@@ -15864,8 +14821,6 @@ parameters:
       ramp_interval_s: null
   signals_addrt:
     label: Signals Addrt
-    unit: ''
-    type: int
     get_cmd:
       command: Signals_AddRTGet
       payload_index: 0
@@ -15951,8 +14906,6 @@ parameters:
         default: null
         description: Additional RT signal 2 (int) is the index of the RT signal assigned
           to the Internal 24 signal
-    vals:
-      kind: ints
     safety:
       min: null
       max: null
@@ -15963,8 +14916,6 @@ parameters:
       ramp_interval_s: null
   signals_calibr:
     label: Signals Calibr
-    unit: ''
-    type: float
     get_cmd:
       command: Signals_CalibrGet
       payload_index: 0
@@ -15991,12 +14942,8 @@ parameters:
         wire_type: f
         description: Offset in physical units (float32)
     set_cmd: false
-    vals:
-      kind: numbers
   signals_count:
     label: Signals Count
-    unit: ''
-    type: int
     get_cmd:
       command: Signals_NamesGet
       payload_index: 1
@@ -16028,12 +14975,8 @@ parameters:
           strings, where each string comes prepended by its size in bytes
       arg_fields: []
     set_cmd: false
-    vals:
-      kind: ints
   signals_measnames:
     label: Signals Measnames
-    unit: ''
-    type: int
     get_cmd:
       command: Signals_MeasNamesGet
       payload_index: 0
@@ -16069,12 +15012,8 @@ parameters:
         description: Measurement channels list (1D array string) returns an array
           of names, where each array element is preceded by its size in bytes
     set_cmd: false
-    vals:
-      kind: ints
   signals_names:
     label: Signals Names
-    unit: ''
-    type: int
     get_cmd:
       command: Signals_NamesGet
       payload_index: 0
@@ -16106,12 +15045,8 @@ parameters:
         description: Signals names (1D array string) returns an array of signals names
           strings, where each string comes prepended by its size in bytes
     set_cmd: false
-    vals:
-      kind: ints
   signals_range:
     label: Signals Range
-    unit: ''
-    type: float
     get_cmd:
       command: Signals_RangeGet
       payload_index: 0
@@ -16138,12 +15073,8 @@ parameters:
         wire_type: f
         description: Minimum limit (float32)
     set_cmd: false
-    vals:
-      kind: numbers
   signals_table_size_bytes:
     label: Signals Table Size
-    unit: B
-    type: int
     get_cmd:
       command: Signals_NamesGet
       payload_index: 0
@@ -16175,12 +15106,8 @@ parameters:
           strings, where each string comes prepended by its size in bytes
       arg_fields: []
     set_cmd: false
-    vals:
-      kind: ints
   signals_val:
     label: Signals Val
-    unit: ''
-    type: float
     get_cmd:
       command: Signals_ValGet
       payload_index: 0
@@ -16227,12 +15154,8 @@ parameters:
         description: Signal value (float32) is the value of the selected signal in
           physical units
     set_cmd: false
-    vals:
-      kind: numbers
   signals_vals:
     label: Signals Vals
-    unit: ''
-    type: int
     get_cmd:
       command: Signals_ValsGet
       payload_index: 0
@@ -16275,12 +15198,8 @@ parameters:
         description: Signals values (1D array float32) returns the values of the selected
           signals in physical units
     set_cmd: false
-    vals:
-      kind: ints
   spectrumanlzr_accoupling:
     label: Spectrumanlzr Accoupling
-    unit: _0
-    type: int
     get_cmd:
       command: SpectrumAnlzr_ACCouplingGet
       payload_index: 0
@@ -16328,8 +15247,6 @@ parameters:
         default: null
         description: AC coupling (unsigned int32) switches the AC coupling Off (_0)
           or On (_1)
-    vals:
-      kind: ints
     safety:
       min: null
       max: null
@@ -16340,8 +15257,6 @@ parameters:
       ramp_interval_s: null
   spectrumanlzr_averag:
     label: Spectrumanlzr Averag
-    unit: ''
-    type: int
     get_cmd:
       command: SpectrumAnlzr_AveragGet
       payload_index: 0
@@ -16421,8 +15336,6 @@ parameters:
           \ process is continuous and new spectral data have a higher weighting than\
           \ older ones. If weighting mode is Linear, the averaging\_combines\_count\
           \ spectral records with equal weighting and then stops"
-    vals:
-      kind: ints
     safety:
       min: null
       max: null
@@ -16433,8 +15346,6 @@ parameters:
       ramp_interval_s: null
   spectrumanlzr_bandrms:
     label: Spectrumanlzr Bandrms
-    unit: ''
-    type: float
     get_cmd:
       command: SpectrumAnlzr_BandRMSGet
       payload_index: 0
@@ -16471,12 +15382,8 @@ parameters:
         wire_type: d
         description: Maximum frequency (Hz) (float64)
     set_cmd: false
-    vals:
-      kind: numbers
   spectrumanlzr_ch:
     label: Spectrumanlzr Ch
-    unit: ''
-    type: int
     get_cmd:
       command: SpectrumAnlzr_ChGet
       payload_index: 0
@@ -16527,8 +15434,6 @@ parameters:
           assigned to the 24 slots in the Signals Manager. To get the signal name
           and its corresponding index in the list of the 128 available signals in
           the Nanonis Controller, use the <i>Signals.InSlotsGet</i> function
-    vals:
-      kind: ints
     safety:
       min: null
       max: null
@@ -16539,8 +15444,6 @@ parameters:
       ramp_interval_s: null
   spectrumanlzr_cursorpos:
     label: Spectrumanlzr Cursorpos
-    unit: Hz
-    type: float
     get_cmd:
       command: SpectrumAnlzr_CursorPosGet
       payload_index: 0
@@ -16626,8 +15529,6 @@ parameters:
         default: null
         description: Position X Cursor 2 (Hz) (float64) sets the X position of cursor
           2
-    vals:
-      kind: numbers
     safety:
       min: null
       max: null
@@ -16638,8 +15539,6 @@ parameters:
       ramp_interval_s: null
   spectrumanlzr_data:
     label: Spectrumanlzr Data
-    unit: ''
-    type: float
     get_cmd:
       command: SpectrumAnlzr_DataGet
       payload_index: 0
@@ -16682,12 +15581,8 @@ parameters:
         description: Data Y (1D array float64) is the data acquired in the Spectrum
           Analyzer
     set_cmd: false
-    vals:
-      kind: numbers
   spectrumanlzr_dc:
     label: Spectrumanlzr Dc
-    unit: ''
-    type: float
     get_cmd:
       command: SpectrumAnlzr_DCGet
       payload_index: 0
@@ -16711,12 +15606,8 @@ parameters:
         wire_type: d
         description: DC value (float64)
     set_cmd: false
-    vals:
-      kind: numbers
   spectrumanlzr_fftwindow:
     label: Spectrumanlzr Fftwindow
-    unit: ''
-    type: int
     get_cmd:
       command: SpectrumAnlzr_FFTWindowGet
       payload_index: 0
@@ -16764,8 +15655,6 @@ parameters:
         required: false
         default: 1
         description: FFT window  index (unsigned int16)
-    vals:
-      kind: ints
     safety:
       min: null
       max: null
@@ -16776,8 +15665,6 @@ parameters:
       ramp_interval_s: null
   spectrumanlzr_freqrange:
     label: Spectrumanlzr Freqrange
-    unit: ''
-    type: int
     get_cmd:
       command: SpectrumAnlzr_FreqRangeGet
       payload_index: 0
@@ -16838,8 +15725,6 @@ parameters:
         required: false
         default: 1
         description: Range  index (int)
-    vals:
-      kind: ints
     safety:
       min: null
       max: null
@@ -16850,8 +15735,6 @@ parameters:
       ramp_interval_s: null
   spectrumanlzr_freqres:
     label: Spectrumanlzr Freqres
-    unit: ''
-    type: int
     get_cmd:
       command: SpectrumAnlzr_FreqResGet
       payload_index: 0
@@ -16912,8 +15795,6 @@ parameters:
         required: false
         default: 1
         description: Resolution  index (unsigned int16)
-    vals:
-      kind: ints
     safety:
       min: null
       max: null
@@ -16924,8 +15805,6 @@ parameters:
       ramp_interval_s: null
   tcplog_chs:
     label: Tcplog Chs
-    unit: ''
-    type: int
     get_cmd: false
     set_cmd:
       command: TCPLog_ChsSet
@@ -16950,8 +15829,6 @@ parameters:
           the Signals Manager. To get the signal name and its corresponding index
           in the list of the 128 available signals in the Nanonis Controller, use
           the <i>Signals.InSlotsGet</i> function
-    vals:
-      kind: ints
     safety:
       min: null
       max: null
@@ -16962,8 +15839,6 @@ parameters:
       ramp_interval_s: null
   tcplog_oversampl:
     label: Tcplog Oversampl
-    unit: ''
-    type: int
     get_cmd: false
     set_cmd:
       command: TCPLog_OversamplSet
@@ -16977,8 +15852,6 @@ parameters:
         default: null
         description: Oversampling value (int) sets the oversampling index, where index
           could be any value from 0 to 1000
-    vals:
-      kind: ints
     safety:
       min: null
       max: null
@@ -16989,8 +15862,6 @@ parameters:
       ramp_interval_s: null
   tcplog_status:
     label: Tcplog Status
-    unit: ''
-    type: int
     get_cmd:
       command: TCPLog_StatusGet
       payload_index: 0
@@ -17006,12 +15877,8 @@ parameters:
           following status: 0_disconnected, 1_idle, 2_start, 3_stop, 4_running, 5_TCP
           connect, 6_TCP disconnect, 7_buffer overflow'
     set_cmd: false
-    vals:
-      kind: ints
   tiprec_buffersize:
     label: Tiprec Buffersize
-    unit: ''
-    type: int
     get_cmd:
       command: TipRec_BufferSizeGet
       payload_index: 0
@@ -17038,8 +15905,6 @@ parameters:
         default: null
         description: Buffer size (int) is the number of data elements in the Tip Move
           Recorder
-    vals:
-      kind: ints
     safety:
       min: null
       max: null
@@ -17050,8 +15915,6 @@ parameters:
       ramp_interval_s: null
   tiprec_data:
     label: Tiprec Data
-    unit: ''
-    type: int
     get_cmd:
       command: TipRec_DataGet
       payload_index: 0
@@ -17097,12 +15960,8 @@ parameters:
         description: Data (2D array float32) returns the recorded data while moving
           the tip
     set_cmd: false
-    vals:
-      kind: ints
   tipshaper_props:
     label: Tipshaper Props
-    unit: ''
-    type: float
     get_cmd:
       command: TipShaper_PropsGet
       payload_index: 0
@@ -17282,8 +16141,6 @@ parameters:
         description: Restore Feedback (unsigned int32) defines whether the initial
           Z-Controller status is restored (0_no change, 1_True, 2_False) at the end
           of the tip shaper procedure.
-    vals:
-      kind: numbers
     safety:
       min: null
       max: null
@@ -17294,8 +16151,6 @@ parameters:
       ramp_interval_s: null
   userin_calibr:
     label: Userin Calibr
-    unit: ''
-    type: float
     get_cmd: false
     set_cmd:
       command: UserIn_CalibrSet
@@ -17323,8 +16178,6 @@ parameters:
         required: true
         default: null
         description: Offset in physical units (float32)
-    vals:
-      kind: numbers
     safety:
       min: null
       max: null
@@ -17335,8 +16188,6 @@ parameters:
       ramp_interval_s: null
   userout_calcsignalconfig:
     label: Userout Calcsignalconfig
-    unit: ''
-    type: int
     get_cmd:
       command: UserOut_CalcSignalConfigGet
       payload_index: 0
@@ -17412,8 +16263,6 @@ parameters:
         default: 1
         description: Signal 2 (unsigned int16) is the signal index (from 0 to 127)
           used as the second signal of the formula.
-    vals:
-      kind: ints
     safety:
       min: null
       max: null
@@ -17424,8 +16273,6 @@ parameters:
       ramp_interval_s: null
   userout_calcsignalname:
     label: Userout Calcsignalname
-    unit: ''
-    type: int
     get_cmd:
       command: UserOut_CalcSignalNameGet
       payload_index: 0
@@ -17474,8 +16321,6 @@ parameters:
         default: ''
         description: Calculated signal name (string) is the name of the calculated
           signal configured for the selected output
-    vals:
-      kind: ints
     safety:
       min: null
       max: null
@@ -17486,8 +16331,6 @@ parameters:
       ramp_interval_s: null
   userout_calibr:
     label: Userout Calibr
-    unit: ''
-    type: float
     get_cmd: false
     set_cmd:
       command: UserOut_CalibrSet
@@ -17515,8 +16358,6 @@ parameters:
         required: true
         default: null
         description: Offset in physical units (float32)
-    vals:
-      kind: numbers
     safety:
       min: null
       max: null
@@ -17527,8 +16368,6 @@ parameters:
       ramp_interval_s: null
   userout_limits:
     label: Userout Limits
-    unit: '0'
-    type: float
     get_cmd:
       command: UserOut_LimitsGet
       payload_index: 0
@@ -17603,8 +16442,6 @@ parameters:
         default: 0
         description: Raw limits? (unsigned int32) selects whether to set the physical
           limits (0) or the raw limits (1)
-    vals:
-      kind: numbers
     safety:
       min: null
       max: null
@@ -17615,8 +16452,6 @@ parameters:
       ramp_interval_s: null
   userout_mode:
     label: Userout Mode
-    unit: ''
-    type: int
     get_cmd:
       command: UserOut_ModeGet
       payload_index: 0
@@ -17660,8 +16495,6 @@ parameters:
         default: null
         description: Output mode (unsigned int16) sets the output mode of the selected
           output, where 0_User Output, 1_Monitor, 2_Calc.Signal
-    vals:
-      kind: ints
     safety:
       min: null
       max: null
@@ -17672,8 +16505,6 @@ parameters:
       ramp_interval_s: null
   userout_monitorch:
     label: Userout Monitorch
-    unit: ''
-    type: int
     get_cmd:
       command: UserOut_MonitorChGet
       payload_index: 0
@@ -17719,8 +16550,6 @@ parameters:
           monitor. The index is comprised between 0 and 127 for the physical inputs,
           physical outputs, and internal channels. To see which signal has which index,
           see <i>Signals.NamesGet</i> function
-    vals:
-      kind: ints
     safety:
       min: null
       max: null
@@ -17731,8 +16560,6 @@ parameters:
       ramp_interval_s: null
   userout_val:
     label: Userout Val
-    unit: ''
-    type: float
     get_cmd: false
     set_cmd:
       command: UserOut_ValSet
@@ -17754,8 +16581,6 @@ parameters:
         default: null
         description: Output value (float32) is the value applied to the selected user
           output in physical units
-    vals:
-      kind: numbers
     safety:
       min: null
       max: null
@@ -17766,8 +16591,6 @@ parameters:
       ramp_interval_s: null
   util_acqperiod:
     label: Util Acqperiod
-    unit: s
-    type: float
     get_cmd:
       command: Util_AcqPeriodGet
       payload_index: 0
@@ -17791,8 +16614,6 @@ parameters:
         required: true
         default: null
         description: Acquisition Period (s) (float32)
-    vals:
-      kind: numbers
     safety:
       min: null
       max: null
@@ -17803,8 +16624,6 @@ parameters:
       ramp_interval_s: null
   util_rtfreq:
     label: Util Rtfreq
-    unit: ''
-    type: float
     get_cmd:
       command: Util_RTFreqGet
       payload_index: 0
@@ -17828,8 +16647,6 @@ parameters:
         required: true
         default: null
         description: RT frequency (float32) is the Real Time frequency in Hz
-    vals:
-      kind: numbers
     safety:
       min: null
       max: null
@@ -17840,8 +16657,6 @@ parameters:
       ramp_interval_s: null
   util_rtoversampl:
     label: Util Rtoversampl
-    unit: ''
-    type: int
     get_cmd:
       command: Util_RTOversamplGet
       payload_index: 0
@@ -17867,8 +16682,6 @@ parameters:
         required: true
         default: null
         description: RT oversampling (int)
-    vals:
-      kind: ints
     safety:
       min: null
       max: null
@@ -17879,8 +16692,6 @@ parameters:
       ramp_interval_s: null
   util_sessionpath:
     label: Util Sessionpath
-    unit: ''
-    type: int
     get_cmd:
       command: Util_SessionPathGet
       payload_index: 0
@@ -17901,12 +16712,8 @@ parameters:
         wire_type: '*-c'
         description: Session path (string)
     set_cmd: false
-    vals:
-      kind: ints
   util_version:
     label: Util Version
-    unit: ''
-    type: float
     get_cmd:
       command: Util_VersionGet
       payload_index: 0
@@ -17938,12 +16745,8 @@ parameters:
         wire_type: I
         description: ''
     set_cmd: false
-    vals:
-      kind: numbers
   zctrl_activectrl:
     label: Zctrl Activectrl
-    unit: ''
-    type: int
     get_cmd: false
     set_cmd:
       command: ZCtrl_ActiveCtrlSet
@@ -17957,8 +16760,6 @@ parameters:
         default: null
         description: Z-Controller index (int) is the index out of the list of controllers
           which can be retrieved by the function <i>ZCtrl.ControllersListGet</i>.
-    vals:
-      kind: ints
     safety:
       min: null
       max: null
@@ -17969,8 +16770,6 @@ parameters:
       ramp_interval_s: null
   zctrl_ctrllist:
     label: Zctrl Ctrllist
-    unit: ''
-    type: int
     get_cmd:
       command: ZCtrl_CtrlListGet
       payload_index: 0
@@ -18007,12 +16806,8 @@ parameters:
         description: Active Z-Controller index (int) is the index out of the list
           of gains.
     set_cmd: false
-    vals:
-      kind: ints
   zctrl_gain:
     label: Zctrl Gain
-    unit: ''
-    type: float
     get_cmd:
       command: ZCtrl_GainGet
       payload_index: 0
@@ -18065,8 +16860,6 @@ parameters:
         default: null
         description: I-gain (float32) is the integral gain of the regulation loop
           (I_P/T)
-    vals:
-      kind: numbers
     safety:
       min: null
       max: null
@@ -18077,8 +16870,6 @@ parameters:
       ramp_interval_s: null
   zctrl_homeprops:
     label: Zctrl Homeprops
-    unit: m
-    type: int
     get_cmd:
       command: ZCtrl_HomePropsGet
       payload_index: 0
@@ -18124,8 +16915,6 @@ parameters:
         required: true
         default: null
         description: Home position (m) (float32) is the home position value in meters
-    vals:
-      kind: ints
     safety:
       min: null
       max: null
@@ -18136,8 +16925,6 @@ parameters:
       ramp_interval_s: null
   zctrl_i_gain:
     label: Z Controller I Gain
-    unit: ''
-    type: float
     get_cmd:
       command: ZCtrl_GainGet
       payload_index: 2
@@ -18164,12 +16951,8 @@ parameters:
           (I_P/T)
       arg_fields: []
     set_cmd: false
-    vals:
-      kind: numbers
   zctrl_limits:
     label: Zctrl Limits
-    unit: m
-    type: float
     get_cmd:
       command: ZCtrl_LimitsGet
       payload_index: 0
@@ -18208,8 +16991,6 @@ parameters:
         required: true
         default: null
         description: Z low limit (m) (float32)
-    vals:
-      kind: numbers
     safety:
       min: null
       max: null
@@ -18220,8 +17001,6 @@ parameters:
       ramp_interval_s: null
   zctrl_limitsenabled:
     label: Zctrl Limitsenabled
-    unit: _0
-    type: int
     get_cmd:
       command: ZCtrl_LimitsEnabledGet
       payload_index: 0
@@ -18247,8 +17026,6 @@ parameters:
         default: null
         description: Limit Z status (unsigned int32) enables the  Z limits (_1) or
           disables them (_0)
-    vals:
-      kind: ints
     safety:
       min: null
       max: null
@@ -18259,8 +17036,6 @@ parameters:
       ramp_interval_s: null
   zctrl_on:
     label: Z Controller Enabled
-    unit: ''
-    type: bool
     get_cmd:
       command: ZCtrl_OnOffGet
       payload_index: 0
@@ -18280,12 +17055,8 @@ parameters:
           is Off (_0) or On (_1)
       arg_fields: []
     set_cmd: false
-    vals:
-      kind: bool
   zctrl_onoff:
     label: Zctrl Onoff
-    unit: _0
-    type: int
     get_cmd:
       command: ZCtrl_OnOffGet
       payload_index: 0
@@ -18316,8 +17087,6 @@ parameters:
         default: null
         description: Z-Controller status (unsigned int32) switches the controller
           Off (_0) or On (_1)
-    vals:
-      kind: ints
     safety:
       min: null
       max: null
@@ -18328,8 +17097,6 @@ parameters:
       ramp_interval_s: null
   zctrl_setpnt:
     label: Zctrl Setpnt
-    unit: ''
-    type: float
     get_cmd:
       command: ZCtrl_SetpntGet
       payload_index: 0
@@ -18353,8 +17120,6 @@ parameters:
         required: true
         default: null
         description: Z-Controller setpoint (float32)
-    vals:
-      kind: numbers
     safety:
       min: null
       max: null
@@ -18365,8 +17130,6 @@ parameters:
       ramp_interval_s: null
   zctrl_setpoint_a:
     label: Z Setpoint
-    unit: A
-    type: float
     get_cmd:
       command: ZCtrl_SetpntGet
       payload_index: 0
@@ -18390,10 +17153,6 @@ parameters:
         required: true
         default: null
         description: Z-Controller setpoint (float32)
-    vals:
-      kind: numbers
-      min: 0.0
-      max: 1.0e-06
     safety:
       min: 0.0
       max: 1.0e-06
@@ -18404,8 +17163,6 @@ parameters:
       ramp_interval_s: 0.05
   zctrl_status:
     label: Zctrl Status
-    unit: '5'
-    type: int
     get_cmd:
       command: ZCtrl_StatusGet
       payload_index: 0
@@ -18421,12 +17178,8 @@ parameters:
           is Off (1), On (2), on Hold (3), switching Off (4), if a Safe Tip event
           occurred (5), or if the tip is currently withdrawing (6)
     set_cmd: false
-    vals:
-      kind: ints
   zctrl_switchoffdelay:
     label: Zctrl Switchoffdelay
-    unit: s
-    type: float
     get_cmd:
       command: ZCtrl_SwitchOffDelayGet
       payload_index: 0
@@ -18456,8 +17209,6 @@ parameters:
         required: true
         default: null
         description: Z-Controller switch off delay (s) (float32)
-    vals:
-      kind: numbers
     safety:
       min: null
       max: null
@@ -18468,8 +17219,6 @@ parameters:
       ramp_interval_s: null
   zctrl_tiplift:
     label: Zctrl Tiplift
-    unit: m
-    type: float
     get_cmd:
       command: ZCtrl_TipLiftGet
       payload_index: 0
@@ -18495,8 +17244,6 @@ parameters:
         required: true
         default: null
         description: TipLift (m) (float32)
-    vals:
-      kind: numbers
     safety:
       min: null
       max: null
@@ -18507,8 +17254,6 @@ parameters:
       ramp_interval_s: null
   zctrl_withdrawrate:
     label: Zctrl Withdrawrate
-    unit: m/s
-    type: float
     get_cmd:
       command: ZCtrl_WithdrawRateGet
       payload_index: 0
@@ -18532,8 +17277,6 @@ parameters:
         required: true
         default: null
         description: Withdraw slew rate (m/s) (float32)
-    vals:
-      kind: numbers
     safety:
       min: null
       max: null
@@ -18544,8 +17287,6 @@ parameters:
       ramp_interval_s: null
   zctrl_z_m:
     label: Z Position
-    unit: m
-    type: float
     get_cmd:
       command: ZCtrl_ZPosGet
       payload_index: 0
@@ -18559,12 +17300,8 @@ parameters:
         description: Z position (m) (float32)
       arg_fields: []
     set_cmd: false
-    vals:
-      kind: numbers
   zctrl_zpos:
     label: Zctrl Zpos
-    unit: m
-    type: float
     get_cmd:
       command: ZCtrl_ZPosGet
       payload_index: 0
@@ -18589,8 +17326,6 @@ parameters:
         required: true
         default: null
         description: Z position (m) (float32)
-    vals:
-      kind: numbers
     safety:
       min: null
       max: null
@@ -18601,8 +17336,6 @@ parameters:
       ramp_interval_s: null
   zspectr_advprops:
     label: Zspectr Advprops
-    unit: s
-    type: float
     get_cmd:
       command: ZSpectr_AdvPropsGet
       payload_index: 0
@@ -18690,8 +17423,6 @@ parameters:
           at the last value at the end of the sweep. Be aware that if the Z-Controller
           is on and Z is not reset, the Z position will anyway be automatically controlled
           by the Z-Controller. 0 means no change, 1 means On, and 2 means Off
-    vals:
-      kind: numbers
     safety:
       min: null
       max: null
@@ -18702,8 +17433,6 @@ parameters:
       ramp_interval_s: null
   zspectr_chs:
     label: Zspectr Chs
-    unit: ''
-    type: int
     get_cmd:
       command: ZSpectr_ChsGet
       payload_index: 0
@@ -18764,8 +17493,6 @@ parameters:
           the Signals Manager. To get the signal name and its corresponding index
           in the list of the 128 available signals in the Nanonis Controller, use
           the <i>Signals.InSlotsGet</i> function
-    vals:
-      kind: ints
     safety:
       min: null
       max: null
@@ -18776,8 +17503,6 @@ parameters:
       ramp_interval_s: null
   zspectr_digsync:
     label: Zspectr Digsync
-    unit: ''
-    type: int
     get_cmd:
       command: ZSpectr_DigSyncGet
       payload_index: 0
@@ -18812,8 +17537,6 @@ parameters:
         required: true
         default: null
         description: ''
-    vals:
-      kind: ints
     safety:
       min: null
       max: null
@@ -18824,8 +17547,6 @@ parameters:
       ramp_interval_s: null
   zspectr_props:
     label: Zspectr Props
-    unit: ''
-    type: int
     get_cmd:
       command: ZSpectr_PropsGet
       payload_index: 0
@@ -18963,8 +17684,6 @@ parameters:
           the data from the individual sweeps is saved along with the average data
           of all of them, and 2 means that the individual sweeps are not saved in
           the file. This parameter only makes sense when multiple sweeps are configured
-    vals:
-      kind: ints
     safety:
       min: null
       max: null
@@ -18975,8 +17694,6 @@ parameters:
       ramp_interval_s: null
   zspectr_pulseseqsync:
     label: Zspectr Pulseseqsync
-    unit: ''
-    type: int
     get_cmd:
       command: ZSpectr_PulseSeqSyncGet
       payload_index: 0
@@ -19021,8 +17738,6 @@ parameters:
         required: true
         default: null
         description: ''
-    vals:
-      kind: ints
     safety:
       min: null
       max: null
@@ -19033,8 +17748,6 @@ parameters:
       ramp_interval_s: null
   zspectr_range:
     label: Zspectr Range
-    unit: m
-    type: float
     get_cmd:
       command: ZSpectr_RangeGet
       payload_index: 0
@@ -19073,8 +17786,6 @@ parameters:
         required: false
         default: 0.0
         description: Z sweep distance (m) (float32) defines the sweep span
-    vals:
-      kind: numbers
     safety:
       min: null
       max: null
@@ -19085,8 +17796,6 @@ parameters:
       ramp_interval_s: null
   zspectr_retract:
     label: Zspectr Retract
-    unit: ''
-    type: int
     get_cmd:
       command: ZSpectr_RetractGet
       payload_index: 0
@@ -19162,8 +17871,6 @@ parameters:
         description: Comparison (unsigned int16) sets which situation triggers the
           main condition to auto-retract the tip. 0 means >, 1 means <, and 2 means
           no change
-    vals:
-      kind: ints
     safety:
       min: null
       max: null
@@ -19174,8 +17881,6 @@ parameters:
       ramp_interval_s: null
   zspectr_retractdelay:
     label: Zspectr Retractdelay
-    unit: s
-    type: float
     get_cmd:
       command: ZSpectr_RetractDelayGet
       payload_index: 0
@@ -19201,8 +17906,6 @@ parameters:
         default: null
         description: Retract delay (s) (float32) defines the delay in seconds between
           forward sweep and backward sweep
-    vals:
-      kind: numbers
     safety:
       min: null
       max: null
@@ -19213,8 +17916,6 @@ parameters:
       ramp_interval_s: null
   zspectr_retractsecond:
     label: Zspectr Retractsecond
-    unit: ''
-    type: int
     get_cmd:
       command: ZSpectr_RetractSecondGet
       payload_index: 0
@@ -19299,8 +18000,6 @@ parameters:
         description: Comparison (unsigned int16) sets which situation triggers the
           Second condition to auto-retract the tip. 0 means >, 1 means <, and 2 means
           no change
-    vals:
-      kind: ints
     safety:
       min: null
       max: null
@@ -19311,8 +18010,6 @@ parameters:
       ramp_interval_s: null
   zspectr_status:
     label: Zspectr Status
-    unit: ''
-    type: int
     get_cmd:
       command: ZSpectr_StatusGet
       payload_index: 0
@@ -19326,12 +18023,8 @@ parameters:
         wire_type: I
         description: Status (unsigned int32) where 0_not running and 1_running
     set_cmd: false
-    vals:
-      kind: ints
   zspectr_timing:
     label: Zspectr Timing
-    unit: s
-    type: float
     get_cmd:
       command: ZSpectr_TimingGet
       payload_index: 0
@@ -19433,8 +18126,6 @@ parameters:
         required: true
         default: null
         description: Z control time (s) (float32)
-    vals:
-      kind: numbers
     safety:
       min: null
       max: null
@@ -19445,8 +18136,6 @@ parameters:
       ramp_interval_s: null
   zspectr_ttlsync:
     label: Zspectr Ttlsync
-    unit: s
-    type: int
     get_cmd:
       command: ZSpectr_TTLSyncGet
       payload_index: 0
@@ -19525,8 +18214,6 @@ parameters:
         default: 0.0
         description: On duration (s) (float32) defines how long the TTL line should
           be activated before resetting
-    vals:
-      kind: ints
     safety:
       min: null
       max: null

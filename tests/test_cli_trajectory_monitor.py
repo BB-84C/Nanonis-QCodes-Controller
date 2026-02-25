@@ -196,9 +196,8 @@ parameters:
     specs_payload = _payload_from_stdout(capsys)
     assert specs_payload["count"] == 2
     assert specs_payload["specs"][1]["label"] == "Spec Label"
-    assert specs_payload["specs"][1]["vals"]["kind"] == "numbers"
-    assert specs_payload["specs"][1]["vals"]["min_value"] == 0.0
-    assert specs_payload["specs"][1]["vals"]["max_value"] == 10.0
+    assert "vals" not in specs_payload["specs"][1]
+    assert specs_payload["specs"][1]["get_cmd"]["command"] == "Spec_Get"
 
 
 def test_monitor_list_specs_includes_default_extra_i_gain(capsys) -> None:
