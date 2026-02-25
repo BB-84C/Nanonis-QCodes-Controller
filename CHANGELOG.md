@@ -4,6 +4,8 @@ All notable changes to this project are documented in this file.
 
 ## [Unreleased]
 
+## [0.1.7] - 2026-02-25
+
 ### Added
 - Added contract test coverage for private-index release checklist commands in `tests/test_release_checklist_contract.py`.
 
@@ -19,3 +21,4 @@ All notable changes to this project are documented in this file.
 - Enriched all generated `get_cmd`/`set_cmd`/`action_cmd` entries with `docstring_full` plus structured metadata fields (`response_fields` and `arg_fields`) extracted from Nanonis docstrings.
 - Extended YAML loaders and `nqctl capabilities` output to expose the new structured command metadata for agent-side planning and interpretation.
 - Reworked README CLI guidance to remove legacy `parameters discover/validate` workflow emphasis and clarify `act` versus action metadata surfaces.
+- Fixed structured `set` autofill to preserve existing multi-arg field values by name mapping from `get` snapshots (including tuple-like channel index parsing for `scan_buffer`).

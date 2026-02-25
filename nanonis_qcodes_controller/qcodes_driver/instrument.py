@@ -92,7 +92,7 @@ def _coerce_action_value(value: Any, *, value_type: str, field_name: str) -> Any
         element_type = value_type[6:-1].strip() or "str"
         if hasattr(value, "tolist"):
             try:
-                value = value.tolist()  # type: ignore[assignment]
+                value = value.tolist()
             except Exception:
                 pass
         if isinstance(value, str):
