@@ -4,6 +4,12 @@ All notable changes to this project are documented in this file.
 
 ## [Unreleased]
 
+## [0.1.9] - 2026-02-26
+
+### Fixed
+- Fixed CLI argument parsing for negative scientific-notation positional values (for example `-1e-11`) so `nqctl set` and `nqctl ramp` no longer misclassify them as option flags.
+- Updated `nqctl ramp` step handling to accept signed input and use positive step magnitude internally, preserving expected decreasing-ramp behavior.
+
 ## [0.1.8] - 2026-02-25
 
 ### Changed
