@@ -52,6 +52,11 @@ EXIT_INVALID_INPUT = 3
 EXIT_COMMAND_UNAVAILABLE = 4
 EXIT_CONNECTION_FAILED = 5
 
+_NEGATIVE_NUMERIC_TOKEN_RE = re.compile(
+    r"^-((\d+\.?\d*)|(\.\d+))([eE][-+]?\d+)?$|^-inf$|^-nan$",
+    re.IGNORECASE,
+)
+
 
 @dataclass(frozen=True)
 class ActionDescriptor:
@@ -531,7 +536,16 @@ def _build_parser() -> argparse.ArgumentParser:
     parser_doctor.add_argument("--command-probe", action="store_true")
     parser_doctor.set_defaults(handler=_cmd_doctor)
 
+    _configure_negative_number_parsing(parser)
     return parser
+
+
+def _configure_negative_number_parsing(parser: argparse.ArgumentParser) -> None:
+    parser._negative_number_matcher = _NEGATIVE_NUMERIC_TOKEN_RE
+    for action in parser._actions:
+        if isinstance(action, argparse._SubParsersAction):
+            for subparser in action.choices.values():
+                _configure_negative_number_parsing(subparser)
 
 
 def _add_runtime_args(parser: argparse.ArgumentParser, *, include_trajectory: bool) -> None:
@@ -703,7 +717,9 @@ def _cmd_ramp(args: argparse.Namespace) -> int:
 
     start_value = _parse_float_arg(name="start", raw_value=args.start)
     end_value = _parse_float_arg(name="end", raw_value=args.end)
-    step_value = _parse_positive_float_arg(name="step", raw_value=args.step)
+    step_value = abs(_parse_float_arg(name="step", raw_value=args.step))
+    if step_value <= 0:
+        raise ValueError("step magnitude must be positive.")
     interval_s = float(args.interval_s)
     if interval_s < 0:
         raise ValueError("--interval-s must be non-negative.")

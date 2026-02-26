@@ -77,6 +77,33 @@ def test_act_parser_supports_repeatable_arg_flags() -> None:
     assert args.plan_only is True
 
 
+def test_set_parser_accepts_negative_scientific_positional_value() -> None:
+    parser = cli._build_parser()
+    args = parser.parse_args(["set", "zctrl_setpoint_a", "-1e-11"])
+    assert args.command == "set"
+    assert args.parameter == "zctrl_setpoint_a"
+    assert args.value == "-1e-11"
+
+
+def test_ramp_parser_accepts_negative_scientific_tokens() -> None:
+    parser = cli._build_parser()
+    args = parser.parse_args(
+        [
+            "ramp",
+            "zctrl_setpoint_a",
+            "2e-10",
+            "1e-10",
+            "-1e-11",
+            "--interval-s",
+            "0.05",
+        ]
+    )
+    assert args.command == "ramp"
+    assert args.start == "2e-10"
+    assert args.end == "1e-10"
+    assert args.step == "-1e-11"
+
+
 def test_cmd_act_invokes_instrument_execute_action(monkeypatch) -> None:
     class FakeInstrument:
         def execute_action(
@@ -127,6 +154,60 @@ def test_cmd_act_invokes_instrument_execute_action(monkeypatch) -> None:
     result = payload["result"]
     assert isinstance(result, dict)
     assert result["applied"] is True
+
+
+def test_cmd_ramp_normalizes_negative_step_magnitude(monkeypatch) -> None:
+    captured_step_values: list[float] = []
+
+    class FakeInstrument:
+        def plan_parameter_ramp(
+            self,
+            parameter_name: str,
+            *,
+            start_value: float,
+            end_value: float,
+            step_value: float,
+            interval_s: float,
+            reason,
+        ) -> dict[str, object]:
+            del parameter_name, start_value, end_value, interval_s, reason
+            captured_step_values.append(step_value)
+            return {"dry_run": False, "targets": [1.0]}
+
+        def ramp_parameter(
+            self,
+            parameter_name: str,
+            *,
+            start_value: float,
+            end_value: float,
+            step_value: float,
+            interval_s: float,
+            reason,
+        ) -> SimpleNamespace:
+            del parameter_name, start_value, end_value, interval_s, reason
+            captured_step_values.append(step_value)
+            return SimpleNamespace(dry_run=False)
+
+    @contextmanager
+    def fake_instrument_context(*_args, **_kwargs):
+        yield FakeInstrument(), None
+
+    monkeypatch.setattr(cli, "_instrument_context", fake_instrument_context)
+    monkeypatch.setattr(cli, "_print_payload", lambda payload, *, as_json: None)
+
+    args = argparse.Namespace(
+        parameter="zctrl_setpoint_a",
+        start="2e-10",
+        end="1e-10",
+        step="-1e-11",
+        interval_s=0.05,
+        plan_only=False,
+        json=True,
+    )
+    exit_code = cli._cmd_ramp(args)
+
+    assert exit_code == cli.EXIT_OK
+    assert captured_step_values == pytest.approx([1e-11, 1e-11])
 
 
 def test_parse_action_args_rejects_invalid_entries() -> None:
