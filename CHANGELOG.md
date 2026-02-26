@@ -4,6 +4,15 @@ All notable changes to this project are documented in this file.
 
 ## [Unreleased]
 
+## [0.1.10] - 2026-02-26
+
+### Added
+- Added `nqctl policy set` to update runtime policy flags directly from CLI (`--allow-writes`, `--dry-run`) with persisted config updates.
+
+### Changed
+- Switched packaged runtime policy defaults to live mode (`allow_writes=true`, `dry_run=false`) in both runtime YAML defaults and code fallback defaults.
+- Updated README policy guidance with `nqctl policy set` usage examples.
+
 ## [0.1.9] - 2026-02-26
 
 ### Fixed
