@@ -28,8 +28,8 @@ class NanonisConnectionSettings:
 
 @dataclass(frozen=True)
 class SafetySettings:
-    allow_writes: bool = False
-    dry_run: bool = True
+    allow_writes: bool = True
+    dry_run: bool = False
     default_ramp_interval_s: float = DEFAULT_RAMP_INTERVAL_S
 
 

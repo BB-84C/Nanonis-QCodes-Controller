@@ -9,7 +9,7 @@ Simulator-first Python bridge between Nanonis SPM controller interfaces and QCod
 - Strict write semantics:
   - `set` is always a guarded single-step write.
   - `ramp` is always an explicit multi-step trajectory.
-- Safety-first defaults (`allow_writes=false`, `dry_run=true`).
+- Default runtime policy (`allow_writes=true`, `dry_run=false`).
 
 ## v1 API support contract
 
@@ -298,10 +298,11 @@ nqctl observables list
 nqctl actions list
 ```
 
-Inspect active runtime policy:
+Inspect and update runtime policy:
 
 ```powershell
 nqctl policy show
+nqctl policy set --allow-writes true --dry-run false
 ```
 
 ### Execute operations

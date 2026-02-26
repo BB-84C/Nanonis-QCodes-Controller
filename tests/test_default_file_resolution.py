@@ -70,8 +70,14 @@ def test_load_settings_falls_back_to_packaged_runtime_defaults(tmp_path, monkeyp
     settings = load_settings()
 
     assert calls == ["default_runtime.yaml"]
-    assert settings.safety.allow_writes is False
-    assert settings.safety.dry_run is True
+    assert settings.safety.allow_writes is True
+    assert settings.safety.dry_run is False
+
+
+def test_safety_settings_defaults_are_live_write_mode() -> None:
+    defaults = settings_module.SafetySettings()
+    assert defaults.allow_writes is True
+    assert defaults.dry_run is False
 
 
 def test_load_parameter_specs_falls_back_when_default_path_missing(tmp_path, monkeypatch) -> None:

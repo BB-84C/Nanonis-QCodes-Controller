@@ -6,6 +6,7 @@ import importlib.metadata
 import inspect
 import json
 import math
+import os
 import re
 import sqlite3
 import sys
@@ -16,6 +17,8 @@ from dataclasses import asdict, dataclass, is_dataclass, replace
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
+
+import yaml
 
 from nanonis_qcodes_controller.client import create_client, probe_host_ports, report_to_dict
 from nanonis_qcodes_controller.client.errors import (
@@ -56,6 +59,9 @@ _NEGATIVE_NUMERIC_TOKEN_RE = re.compile(
     r"^-((\d+\.?\d*)|(\.\d+))([eE][-+]?\d+)?$|^-inf$|^-nan$",
     re.IGNORECASE,
 )
+
+_TRUE_BOOL_TOKENS = frozenset({"1", "true", "yes", "on"})
+_FALSE_BOOL_TOKENS = frozenset({"0", "false", "no", "off"})
 
 
 @dataclass(frozen=True)
@@ -364,6 +370,23 @@ def _build_parser() -> argparse.ArgumentParser:
     _add_json_arg(parser_policy_show)
     parser_policy_show.add_argument("--config-file")
     parser_policy_show.set_defaults(handler=_cmd_policy_show)
+
+    parser_policy_set = policy_subparsers.add_parser(
+        "set", help="Set runtime policy write/dry-run flags."
+    )
+    _add_json_arg(parser_policy_set)
+    parser_policy_set.add_argument(
+        "--allow-writes",
+        type=_parse_cli_bool_arg,
+        help="Override safety.allow_writes (1/0, true/false, yes/no, on/off).",
+    )
+    parser_policy_set.add_argument(
+        "--dry-run",
+        type=_parse_cli_bool_arg,
+        help="Override safety.dry_run (1/0, true/false, yes/no, on/off).",
+    )
+    parser_policy_set.add_argument("--config-file")
+    parser_policy_set.set_defaults(handler=_cmd_policy_set)
 
     parser_trajectory = subparsers.add_parser("trajectory", help="Trajectory log utilities.")
     trajectory_subparsers = parser_trajectory.add_subparsers(
@@ -821,6 +844,44 @@ def _cmd_policy_show(args: argparse.Namespace) -> int:
             "Set NANONIS_DRY_RUN=0",
             "Or edit safety.allow_writes and safety.dry_run in config/default_runtime.yaml",
         ],
+    }
+    _print_payload(payload, as_json=args.json)
+    return EXIT_OK
+
+
+def _cmd_policy_set(args: argparse.Namespace) -> int:
+    allow_writes = args.allow_writes
+    dry_run = args.dry_run
+    if allow_writes is None and dry_run is None:
+        raise ValueError("Provide at least one policy flag: --allow-writes and/or --dry-run.")
+
+    config_path = _resolve_policy_config_path(args.config_file)
+    config_values = _load_runtime_config_yaml(config_path)
+    safety_section = config_values.get("safety")
+    if safety_section is None:
+        updated_safety: dict[str, Any] = {}
+    elif isinstance(safety_section, Mapping):
+        updated_safety = dict(safety_section)
+    else:
+        raise ValueError("Runtime config section 'safety' must be a mapping.")
+
+    if allow_writes is not None:
+        updated_safety["allow_writes"] = bool(allow_writes)
+    if dry_run is not None:
+        updated_safety["dry_run"] = bool(dry_run)
+    config_values["safety"] = updated_safety
+
+    config_path.parent.mkdir(parents=True, exist_ok=True)
+    with config_path.open("w", encoding="utf-8") as handle:
+        yaml.safe_dump(config_values, handle, sort_keys=False)
+
+    settings = load_settings(config_file=config_path)
+    payload = {
+        "allow_writes": settings.safety.allow_writes,
+        "dry_run": settings.safety.dry_run,
+        "default_ramp_interval_s": settings.safety.default_ramp_interval_s,
+        "config_file": str(config_path),
+        "timestamp_utc": _now_utc_iso(),
     }
     _print_payload(payload, as_json=args.json)
     return EXIT_OK
@@ -1426,6 +1487,42 @@ def _parse_float_arg(*, name: str, raw_value: str) -> float:
         return float(str(raw_value).strip())
     except ValueError as exc:
         raise ValueError(f"{name} must be numeric.") from exc
+
+
+def _parse_cli_bool_arg(raw_value: object) -> bool:
+    if isinstance(raw_value, bool):
+        return raw_value
+
+    normalized = str(raw_value).strip().lower()
+    if normalized in _TRUE_BOOL_TOKENS:
+        return True
+    if normalized in _FALSE_BOOL_TOKENS:
+        return False
+
+    raise argparse.ArgumentTypeError("Expected boolean value: 1/0, true/false, yes/no, on/off.")
+
+
+def _resolve_policy_config_path(config_file: str | None) -> Path:
+    if config_file is not None:
+        return Path(config_file).expanduser()
+    env_override = os.environ.get("NANONIS_CONFIG_FILE")
+    if env_override:
+        return Path(env_override).expanduser()
+    return Path("config/default_runtime.yaml")
+
+
+def _load_runtime_config_yaml(config_path: Path) -> dict[str, Any]:
+    if not config_path.exists():
+        return {}
+
+    with config_path.open("r", encoding="utf-8") as handle:
+        loaded = yaml.safe_load(handle)
+
+    if loaded is None:
+        return {}
+    if not isinstance(loaded, Mapping):
+        raise ValueError("Runtime config file must contain a top-level mapping.")
+    return dict(loaded)
 
 
 def _parse_positive_float_arg(*, name: str, raw_value: str) -> float:

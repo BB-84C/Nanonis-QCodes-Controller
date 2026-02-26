@@ -59,6 +59,21 @@ def test_showall_parser_available() -> None:
     assert args.command == "showall"
 
 
+def test_policy_set_parser_accepts_boolean_overrides() -> None:
+    parser = cli._build_parser()
+    args = parser.parse_args(["policy", "set", "--allow-writes", "true", "--dry-run", "false"])
+    assert args.command == "policy"
+    assert args.policy_command == "set"
+    assert args.allow_writes is True
+    assert args.dry_run is False
+
+
+def test_policy_set_parser_rejects_invalid_boolean_token() -> None:
+    parser = cli._build_parser()
+    with pytest.raises(SystemExit):
+        _ = parser.parse_args(["policy", "set", "--allow-writes", "maybe"])
+
+
 def test_act_parser_supports_repeatable_arg_flags() -> None:
     parser = cli._build_parser()
     args = parser.parse_args(
@@ -208,6 +223,52 @@ def test_cmd_ramp_normalizes_negative_step_magnitude(monkeypatch) -> None:
 
     assert exit_code == cli.EXIT_OK
     assert captured_step_values == pytest.approx([1e-11, 1e-11])
+
+
+def test_cmd_policy_set_updates_config_and_emits_effective_policy(monkeypatch, tmp_path) -> None:
+    captured_payloads: list[dict[str, object]] = []
+
+    def fake_print_payload(payload, *, as_json: bool) -> None:
+        del as_json
+        captured_payloads.append(dict(payload))
+
+    monkeypatch.setattr(cli, "_print_payload", fake_print_payload)
+
+    config_file = tmp_path / "runtime.yaml"
+    config_file.write_text(
+        "\n".join(
+            (
+                "nanonis:",
+                '  host: "127.0.0.1"',
+                "  ports: [3364]",
+                "  timeout_s: 2.0",
+                "  retry_count: 1",
+                '  backend: "adapter"',
+                "safety:",
+                "  allow_writes: false",
+                "  dry_run: true",
+                "  default_ramp_interval_s: 0.05",
+                "trajectory:",
+                "  enabled: false",
+                '  directory: "artifacts/trajectory"',
+                "  queue_size: 2048",
+                "  max_events_per_file: 5000",
+            )
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+
+    args = argparse.Namespace(
+        allow_writes=True, dry_run=False, config_file=str(config_file), json=True
+    )
+    exit_code = getattr(cli, "_cmd_policy_set")(args)
+
+    assert exit_code == cli.EXIT_OK
+    assert captured_payloads
+    payload = captured_payloads[-1]
+    assert payload["allow_writes"] is True
+    assert payload["dry_run"] is False
 
 
 def test_parse_action_args_rejects_invalid_entries() -> None:
