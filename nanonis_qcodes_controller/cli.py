@@ -8,12 +8,11 @@ import json
 import math
 import os
 import re
-import sqlite3
 import sys
 import time
 from collections.abc import Iterator, Mapping, Sequence
 from contextlib import contextmanager
-from dataclasses import asdict, dataclass, is_dataclass, replace
+from dataclasses import asdict, dataclass, is_dataclass
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -34,18 +33,6 @@ from nanonis_qcodes_controller.qcodes_driver.extensions import (
     load_parameter_specs,
 )
 from nanonis_qcodes_controller.safety import PolicyViolation
-from nanonis_qcodes_controller.trajectory import (
-    TrajectoryJournal,
-    clear_staged_run_name,
-    default_monitor_config,
-    default_staged_config_path,
-    follow_events,
-    load_staged_monitor_config,
-    read_events,
-    save_staged_monitor_config,
-)
-from nanonis_qcodes_controller.trajectory.monitor import TrajectoryMonitorRunner
-from nanonis_qcodes_controller.trajectory.sqlite_store import TrajectorySQLiteStore
 from nanonis_qcodes_controller.version import __version__
 
 EXIT_OK = 0
@@ -114,13 +101,6 @@ _ACTION_DESCRIPTORS: tuple[ActionDescriptor, ...] = (
         description="Discover backend commands for parameter authoring.",
         command_template="nqctl parameters discover --match LockIn",
         arguments=("match",),
-    ),
-    ActionDescriptor(
-        name="trajectory_tail",
-        safety="readonly",
-        description="Tail events from non-blocking trajectory logs.",
-        command_template="nqctl trajectory tail --directory artifacts/trajectory --limit 20",
-        arguments=("directory", "limit"),
     ),
 )
 
@@ -194,7 +174,7 @@ def _build_parser() -> argparse.ArgumentParser:
         prog="nqctl",
         description=(
             "Nanonis-QCodes bridge CLI for agent orchestration.\n"
-            "Use atomic commands (capabilities/get/set/ramp/parameters/trajectory)."
+            "Use atomic commands (capabilities/get/set/ramp/act/parameters/policy)."
         ),
         formatter_class=argparse.RawTextHelpFormatter,
         epilog=(
@@ -216,7 +196,7 @@ def _build_parser() -> argparse.ArgumentParser:
         "capabilities",
         help="Show available parameters/actions and policy summary.",
     )
-    _add_runtime_args(parser_capabilities, include_trajectory=False)
+    _add_runtime_args(parser_capabilities)
     parser_capabilities.add_argument(
         "--include-backend-commands",
         action="store_true",
@@ -229,7 +209,7 @@ def _build_parser() -> argparse.ArgumentParser:
         "showall",
         help="Show full legacy capabilities payload.",
     )
-    _add_runtime_args(parser_showall, include_trajectory=False)
+    _add_runtime_args(parser_showall)
     parser_showall.add_argument(
         "--include-backend-commands",
         action="store_true",
@@ -239,7 +219,7 @@ def _build_parser() -> argparse.ArgumentParser:
     parser_showall.set_defaults(handler=_cmd_showall)
 
     parser_get = subparsers.add_parser("get", help="Read a single parameter value.")
-    _add_runtime_args(parser_get, include_trajectory=True)
+    _add_runtime_args(parser_get)
     parser_get.add_argument("parameter", help="Parameter name from parameter files.")
     parser_get.set_defaults(handler=_cmd_get)
 
@@ -258,7 +238,7 @@ def _build_parser() -> argparse.ArgumentParser:
             "  nqctl set zctrl_setpoint_a --arg Z_Controller_setpoint=8e-11 --plan-only"
         ),
     )
-    _add_runtime_args(parser_set, include_trajectory=True)
+    _add_runtime_args(parser_set)
     parser_set.add_argument("parameter", help="Writable parameter name.")
     parser_set.add_argument("value", nargs="?", help="Optional shorthand scalar value.")
     parser_set.add_argument(
@@ -282,7 +262,7 @@ def _build_parser() -> argparse.ArgumentParser:
             "  nqctl ramp zctrl_setpoint_a 5e-11 1e-10 5e-12 --interval-s 0.05 --plan-only"
         ),
     )
-    _add_runtime_args(parser_ramp, include_trajectory=True)
+    _add_runtime_args(parser_ramp)
     parser_ramp.add_argument("parameter", help="Writable parameter name.")
     parser_ramp.add_argument("start", help="Ramp start value.")
     parser_ramp.add_argument("end", help="Ramp end value.")
@@ -307,7 +287,7 @@ def _build_parser() -> argparse.ArgumentParser:
             "  nqctl act Scan_WaitEndOfScan --arg Timeout_ms=5000"
         ),
     )
-    _add_runtime_args(parser_act, include_trajectory=True)
+    _add_runtime_args(parser_act)
     parser_act.add_argument("action_name", help="Action name from actions manifest section.")
     parser_act.add_argument(
         "--arg",
@@ -325,7 +305,7 @@ def _build_parser() -> argparse.ArgumentParser:
     parser_observables_list = observables_subparsers.add_parser(
         "list", help="List observable parameters."
     )
-    _add_runtime_args(parser_observables_list, include_trajectory=False)
+    _add_runtime_args(parser_observables_list)
     parser_observables_list.set_defaults(handler=_cmd_observables_list)
 
     parser_actions = subparsers.add_parser("actions", help="Action metadata commands.")
@@ -388,170 +368,18 @@ def _build_parser() -> argparse.ArgumentParser:
     parser_policy_set.add_argument("--config-file")
     parser_policy_set.set_defaults(handler=_cmd_policy_set)
 
-    parser_trajectory = subparsers.add_parser("trajectory", help="Trajectory log utilities.")
-    trajectory_subparsers = parser_trajectory.add_subparsers(
-        dest="trajectory_command", required=True
-    )
-
-    parser_trajectory_tail = trajectory_subparsers.add_parser(
-        "tail", help="Read latest trajectory events."
-    )
-    _add_json_arg(parser_trajectory_tail)
-    parser_trajectory_tail.add_argument(
-        "--directory",
-        type=Path,
-        default=Path("artifacts/trajectory"),
-        help="Trajectory directory.",
-    )
-    parser_trajectory_tail.add_argument(
-        "--limit", type=int, default=20, help="Number of trailing events."
-    )
-    parser_trajectory_tail.set_defaults(handler=_cmd_trajectory_tail)
-
-    parser_trajectory_follow = trajectory_subparsers.add_parser(
-        "follow", help="Follow appended trajectory events."
-    )
-    _add_json_arg(parser_trajectory_follow)
-    parser_trajectory_follow.add_argument(
-        "--directory",
-        type=Path,
-        default=Path("artifacts/trajectory"),
-        help="Trajectory directory.",
-    )
-    parser_trajectory_follow.add_argument(
-        "--interval-s", type=float, default=0.5, help="Polling interval."
-    )
-    parser_trajectory_follow.add_argument("--start-at-end", action="store_true")
-    parser_trajectory_follow.set_defaults(handler=_cmd_trajectory_follow)
-
-    parser_trajectory_action = trajectory_subparsers.add_parser(
-        "action", help="Query trajectory action events from SQLite store."
-    )
-    trajectory_action_subparsers = parser_trajectory_action.add_subparsers(
-        dest="trajectory_action_command", required=True
-    )
-
-    parser_trajectory_action_list = trajectory_action_subparsers.add_parser(
-        "list", help="List action events."
-    )
-    _add_json_arg(parser_trajectory_action_list)
-    parser_trajectory_action_list.add_argument(
-        "--db-path", type=Path, required=True, help="SQLite store path."
-    )
-    parser_trajectory_action_list.add_argument("--run-name", help="Optional run name filter.")
-    parser_trajectory_action_list.set_defaults(handler=_cmd_trajectory_action_list)
-
-    parser_trajectory_action_show = trajectory_action_subparsers.add_parser(
-        "show", help="Show one action event by index."
-    )
-    _add_json_arg(parser_trajectory_action_show)
-    parser_trajectory_action_show.add_argument(
-        "--db-path", type=Path, required=True, help="SQLite store path."
-    )
-    parser_trajectory_action_show.add_argument(
-        "--action-idx", type=int, required=True, help="Zero-based action index."
-    )
-    parser_trajectory_action_show.add_argument("--run-name", help="Optional run name filter.")
-    parser_trajectory_action_show.add_argument(
-        "--with-signal-window",
-        action="store_true",
-        help="Include signal samples in the action window.",
-    )
-    parser_trajectory_action_show.set_defaults(handler=_cmd_trajectory_action_show)
-
-    parser_trajectory_monitor = trajectory_subparsers.add_parser(
-        "monitor", help="SQLite trajectory monitor commands."
-    )
-    trajectory_monitor_subparsers = parser_trajectory_monitor.add_subparsers(
-        dest="trajectory_monitor_command", required=True
-    )
-
-    parser_trajectory_monitor_config = trajectory_monitor_subparsers.add_parser(
-        "config", help="Manage staged trajectory monitor config."
-    )
-    trajectory_monitor_config_subparsers = parser_trajectory_monitor_config.add_subparsers(
-        dest="trajectory_monitor_config_command", required=True
-    )
-
-    parser_trajectory_monitor_config_show = trajectory_monitor_config_subparsers.add_parser(
-        "show", help="Show staged monitor configuration."
-    )
-    _add_json_arg(parser_trajectory_monitor_config_show)
-    parser_trajectory_monitor_config_show.set_defaults(handler=_cmd_trajectory_monitor_config_show)
-
-    parser_trajectory_monitor_config_set = trajectory_monitor_config_subparsers.add_parser(
-        "set", help="Set staged monitor configuration values."
-    )
-    _add_json_arg(parser_trajectory_monitor_config_set)
-    parser_trajectory_monitor_config_set.add_argument("--run-name", help="Run name.")
-    parser_trajectory_monitor_config_set.add_argument(
-        "--signals", help="Comma-separated signal labels."
-    )
-    parser_trajectory_monitor_config_set.add_argument(
-        "--specs", help="Comma-separated spec labels."
-    )
-    parser_trajectory_monitor_config_set.add_argument(
-        "--interval-s", type=float, help="Sample interval."
-    )
-    parser_trajectory_monitor_config_set.add_argument(
-        "--rotate-entries", type=int, help="Samples per segment."
-    )
-    parser_trajectory_monitor_config_set.add_argument(
-        "--action-window-s",
-        type=float,
-        default=None,
-        help="Action window in seconds (default 2.5).",
-    )
-    parser_trajectory_monitor_config_set.add_argument("--directory", help="Database directory.")
-    parser_trajectory_monitor_config_set.add_argument("--db-name", help="Database file name.")
-    parser_trajectory_monitor_config_set.set_defaults(handler=_cmd_trajectory_monitor_config_set)
-
-    parser_trajectory_monitor_config_clear = trajectory_monitor_config_subparsers.add_parser(
-        "clear", help="Reset staged monitor config to defaults."
-    )
-    _add_json_arg(parser_trajectory_monitor_config_clear)
-    parser_trajectory_monitor_config_clear.set_defaults(
-        handler=_cmd_trajectory_monitor_config_clear
-    )
-
-    parser_trajectory_monitor_list_signals = trajectory_monitor_subparsers.add_parser(
-        "list-signals", help="List available signal labels from parameter files."
-    )
-    _add_runtime_args(parser_trajectory_monitor_list_signals, include_trajectory=False)
-    parser_trajectory_monitor_list_signals.set_defaults(
-        handler=_cmd_trajectory_monitor_list_signals
-    )
-
-    parser_trajectory_monitor_list_specs = trajectory_monitor_subparsers.add_parser(
-        "list-specs", help="List available spec labels from parameter files."
-    )
-    _add_runtime_args(parser_trajectory_monitor_list_specs, include_trajectory=False)
-    parser_trajectory_monitor_list_specs.set_defaults(handler=_cmd_trajectory_monitor_list_specs)
-
-    parser_trajectory_monitor_run = trajectory_monitor_subparsers.add_parser(
-        "run", help="Run trajectory monitor into SQLite store."
-    )
-    _add_runtime_args(parser_trajectory_monitor_run, include_trajectory=False)
-    parser_trajectory_monitor_run.add_argument(
-        "--iterations",
-        type=int,
-        default=None,
-        help="Optional fixed iteration count for tests/dev usage.",
-    )
-    parser_trajectory_monitor_run.set_defaults(handler=_cmd_trajectory_monitor_run)
-
     parser_backend = subparsers.add_parser("backend", help="Backend command utilities.")
     backend_subparsers = parser_backend.add_subparsers(dest="backend_command", required=True)
 
     parser_backend_commands = backend_subparsers.add_parser(
         "commands", help="List backend commands."
     )
-    _add_runtime_args(parser_backend_commands, include_trajectory=False)
+    _add_runtime_args(parser_backend_commands)
     parser_backend_commands.add_argument("--match", help="Optional filter token.")
     parser_backend_commands.set_defaults(handler=_cmd_backend_commands)
 
     parser_doctor = subparsers.add_parser(
-        "doctor", help="Connectivity and trajectory preflight checks."
+        "doctor", help="Connectivity preflight checks."
     )
     _add_json_arg(parser_doctor)
     parser_doctor.add_argument("--config-file")
@@ -571,7 +399,7 @@ def _configure_negative_number_parsing(parser: argparse.ArgumentParser) -> None:
                 _configure_negative_number_parsing(subparser)
 
 
-def _add_runtime_args(parser: argparse.ArgumentParser, *, include_trajectory: bool) -> None:
+def _add_runtime_args(parser: argparse.ArgumentParser) -> None:
     _add_json_arg(parser)
     parser.add_argument("--config-file", help="Runtime config YAML path.")
     parser.add_argument(
@@ -579,11 +407,6 @@ def _add_runtime_args(parser: argparse.ArgumentParser, *, include_trajectory: bo
         default=str(DEFAULT_PARAMETERS_FILE),
         help=f"Built-in parameter YAML (default: {DEFAULT_PARAMETERS_FILE}).",
     )
-    if include_trajectory:
-        parser.add_argument("--trajectory-enable", action="store_true")
-        parser.add_argument("--trajectory-dir", help="Trajectory directory override.")
-        parser.add_argument("--trajectory-queue-size", type=int)
-        parser.add_argument("--trajectory-max-events-per-file", type=int)
 
 
 def _add_json_arg(parser: argparse.ArgumentParser) -> None:
@@ -668,8 +491,6 @@ def _cmd_get(args: argparse.Namespace) -> int:
             "fields": _json_safe(values),
             "timestamp_utc": _now_utc_iso(),
         }
-        if journal is not None:
-            payload["trajectory"] = asdict(journal.stats())
 
     _print_payload(payload, as_json=args.json)
     return EXIT_OK
@@ -726,8 +547,6 @@ def _cmd_set(args: argparse.Namespace) -> int:
             "result": _json_safe(result),
             "timestamp_utc": _now_utc_iso(),
         }
-        if journal is not None:
-            payload["trajectory"] = asdict(journal.stats())
 
     _print_payload(payload, as_json=args.json)
     return EXIT_OK
@@ -781,8 +600,6 @@ def _cmd_ramp(args: argparse.Namespace) -> int:
             "report": None if report is None else _json_safe(report),
             "timestamp_utc": _now_utc_iso(),
         }
-        if journal is not None:
-            payload["trajectory"] = asdict(journal.stats())
 
     _print_payload(payload, as_json=args.json)
     return EXIT_OK
@@ -807,8 +624,6 @@ def _cmd_act(args: argparse.Namespace) -> int:
             "result": _json_safe(result),
             "timestamp_utc": _now_utc_iso(),
         }
-        if journal is not None:
-            payload["trajectory"] = asdict(journal.stats())
 
     _print_payload(payload, as_json=args.json)
     return EXIT_OK
@@ -927,326 +742,6 @@ def _cmd_parameters_validate(args: argparse.Namespace) -> int:
     return EXIT_OK
 
 
-def _cmd_trajectory_tail(args: argparse.Namespace) -> int:
-    events = read_events(args.directory, limit=int(args.limit))
-    payload = {
-        "directory": str(args.directory),
-        "count": len(events),
-        "events": events,
-    }
-    _print_payload(payload, as_json=args.json)
-    return EXIT_OK
-
-
-def _cmd_trajectory_follow(args: argparse.Namespace) -> int:
-    if not args.json:
-        print(f"Following events from {args.directory}...")
-    try:
-        for event in follow_events(
-            args.directory,
-            poll_interval_s=float(args.interval_s),
-            start_at_end=bool(args.start_at_end),
-        ):
-            print(json.dumps(_json_safe(event), ensure_ascii=True, sort_keys=True))
-            sys.stdout.flush()
-    except KeyboardInterrupt:
-        return EXIT_OK
-
-    return EXIT_OK
-
-
-def _cmd_trajectory_action_list(args: argparse.Namespace) -> int:
-    store = _open_trajectory_store_for_query(args.db_path)
-    try:
-        run_name = None if args.run_name is None else str(args.run_name).strip()
-        if run_name:
-            run_id = store.get_run_id_by_name(run_name)
-            if run_id is None:
-                raise ValueError(f"No run found for run_name '{run_name}'.")
-        else:
-            run_id = store.get_latest_run_id()
-            if run_id is None:
-                raise ValueError("No runs found in store.")
-
-        events = store.list_action_events(run_id=run_id)
-        payload_events = [
-            _normalize_action_event(row, action_idx=index) for index, row in enumerate(events)
-        ]
-        payload = {
-            "db_path": str(Path(args.db_path)),
-            "run_name": run_name,
-            "count": len(payload_events),
-            "actions": payload_events,
-        }
-    finally:
-        store.close()
-
-    _print_payload(payload, as_json=args.json)
-    return EXIT_OK
-
-
-def _cmd_trajectory_action_show(args: argparse.Namespace) -> int:
-    action_idx = int(args.action_idx)
-    if action_idx < 0:
-        raise ValueError("--action-idx must be non-negative.")
-
-    store = _open_trajectory_store_for_query(args.db_path)
-    try:
-        run_name = None if args.run_name is None else str(args.run_name).strip()
-        if run_name:
-            run_id = store.get_run_id_by_name(run_name)
-            if run_id is None:
-                raise ValueError(f"No run found for run_name '{run_name}'.")
-        else:
-            run_id = store.get_latest_run_id()
-            if run_id is None:
-                raise ValueError("No runs found in store.")
-
-        event = store.get_action_event_by_idx(run_id=run_id, action_idx=action_idx)
-        if event is None:
-            raise ValueError(
-                f"No action event found for action_idx={action_idx} in run_id={run_id}."
-            )
-
-        payload: dict[str, Any] = {
-            "db_path": str(Path(args.db_path)),
-            "run_name": run_name,
-            "action": _normalize_action_event(event, action_idx=action_idx),
-        }
-
-        if args.with_signal_window:
-            signal_rows = store.list_signal_samples_in_window(
-                run_id=run_id,
-                dt_min_s=float(event["signal_window_start_dt_s"]),
-                dt_max_s=float(event["signal_window_end_dt_s"]),
-            )
-            normalized_rows = [_normalize_signal_sample_row(row) for row in signal_rows]
-            payload["signal_window"] = {
-                "dt_min_s": float(event["signal_window_start_dt_s"]),
-                "dt_max_s": float(event["signal_window_end_dt_s"]),
-                "count": len(normalized_rows),
-                "rows": normalized_rows,
-            }
-    finally:
-        store.close()
-
-    _print_payload(payload, as_json=args.json)
-    return EXIT_OK
-
-
-def _open_trajectory_store_for_query(db_path: str | Path) -> TrajectorySQLiteStore:
-    path = Path(db_path)
-    if not path.is_file():
-        raise ValueError(f"Trajectory DB path does not exist: {path}")
-
-    try:
-        store = TrajectorySQLiteStore(path)
-    except sqlite3.Error as exc:
-        raise ValueError(f"Invalid trajectory DB path '{path}': {exc}") from exc
-
-    try:
-        required_tables = {"runs", "action_events"}
-        missing_tables = sorted(required_tables - store.table_names())
-        if missing_tables:
-            missing_csv = ", ".join(missing_tables)
-            raise ValueError(f"Trajectory DB schema missing required tables: {missing_csv}")
-    except Exception:
-        store.close()
-        raise
-
-    return store
-
-
-def _cmd_trajectory_monitor_config_show(args: argparse.Namespace) -> int:
-    staged_path = default_staged_config_path()
-    config = load_staged_monitor_config(path=staged_path)
-    payload = {"config_path": str(staged_path), "config": asdict(config)}
-    _print_payload(payload, as_json=args.json)
-    return EXIT_OK
-
-
-def _cmd_trajectory_monitor_config_set(args: argparse.Namespace) -> int:
-    staged_path = default_staged_config_path()
-    config = load_staged_monitor_config(path=staged_path)
-    updated = config
-
-    if args.run_name is not None:
-        updated = replace(updated, run_name=str(args.run_name).strip())
-    if args.signals is not None:
-        updated = replace(updated, signal_labels=_parse_label_csv(args.signals))
-    if args.specs is not None:
-        updated = replace(updated, spec_labels=_parse_label_csv(args.specs))
-    if args.interval_s is not None:
-        updated = replace(updated, interval_s=float(args.interval_s))
-    if args.rotate_entries is not None:
-        updated = replace(updated, rotate_entries=int(args.rotate_entries))
-    if args.action_window_s is not None:
-        updated = replace(updated, action_window_s=float(args.action_window_s))
-    if args.directory is not None:
-        updated = replace(updated, db_directory=str(args.directory).strip())
-    if args.db_name is not None:
-        updated = replace(updated, db_name=str(args.db_name).strip())
-
-    updated.validate()
-    save_staged_monitor_config(updated, path=staged_path)
-    payload = {"config_path": str(staged_path), "config": asdict(updated)}
-    _print_payload(payload, as_json=args.json)
-    return EXIT_OK
-
-
-def _cmd_trajectory_monitor_config_clear(args: argparse.Namespace) -> int:
-    staged_path = default_staged_config_path()
-    config = default_monitor_config(run_name="")
-    save_staged_monitor_config(config, path=staged_path)
-    payload = {"config_path": str(staged_path), "config": asdict(config)}
-    _print_payload(payload, as_json=args.json)
-    return EXIT_OK
-
-
-def _cmd_trajectory_monitor_list_signals(args: argparse.Namespace) -> int:
-    specs = _load_monitor_parameter_specs(args)
-    payload_signals = [
-        {
-            "name": spec.name,
-            "label": spec.label,
-            "response_fields": (
-                []
-                if spec.get_cmd is None
-                else [asdict(field) for field in spec.get_cmd.response_fields]
-            ),
-        }
-        for spec in specs
-        if spec.readable
-    ]
-    payload_signals.sort(key=lambda item: (str(item["label"]).lower(), str(item["name"])))
-    payload = {"count": len(payload_signals), "signals": payload_signals}
-    _print_payload(payload, as_json=args.json)
-    return EXIT_OK
-
-
-def _cmd_trajectory_monitor_list_specs(args: argparse.Namespace) -> int:
-    specs = _load_monitor_parameter_specs(args)
-    payload_specs = [
-        {
-            "name": spec.name,
-            "label": spec.label,
-            "get_cmd": (
-                None
-                if spec.get_cmd is None
-                else {
-                    "command": spec.get_cmd.command,
-                    "arg_fields": [asdict(field) for field in spec.get_cmd.arg_fields],
-                    "response_fields": [asdict(field) for field in spec.get_cmd.response_fields],
-                }
-            ),
-            "set_cmd": (
-                None
-                if spec.set_cmd is None
-                else {
-                    "command": spec.set_cmd.command,
-                    "arg_fields": [asdict(field) for field in spec.set_cmd.arg_fields],
-                }
-            ),
-        }
-        for spec in specs
-        if spec.readable
-    ]
-    payload_specs.sort(key=lambda item: (str(item["label"]).lower(), str(item["name"])))
-    payload = {"count": len(payload_specs), "specs": payload_specs}
-    _print_payload(payload, as_json=args.json)
-    return EXIT_OK
-
-
-def _cmd_trajectory_monitor_run(args: argparse.Namespace) -> int:
-    staged_path = default_staged_config_path()
-    config = load_staged_monitor_config(path=staged_path)
-    config.validate()
-    config.require_runnable()
-
-    if args.iterations is not None and int(args.iterations) < 0:
-        raise ValueError("--iterations must be non-negative.")
-
-    db_path = Path(config.db_directory) / config.db_name
-    run_start_utc = _now_utc_iso()
-    store: TrajectorySQLiteStore | None = None
-    run_id = None
-    completed_iterations = 0
-    interrupted = False
-
-    try:
-        store = TrajectorySQLiteStore(db_path)
-        store.initialize_schema()
-
-        with _instrument_context(args, auto_connect=True) as instrument_ctx:
-            instrument, _ = instrument_ctx
-            available_specs = tuple(spec for spec in instrument.parameter_specs() if spec.readable)
-            by_label = {spec.label: spec for spec in available_specs}
-            signal_specs = [
-                _require_monitor_label(by_label, label, field_name="signals")
-                for label in config.signal_labels
-            ]
-            spec_specs = [
-                _require_monitor_label(by_label, label, field_name="specs")
-                for label in config.spec_labels
-            ]
-
-            def poll_signals() -> dict[str, object]:
-                return {
-                    spec.label: instrument.get_parameter_value(spec.name) for spec in signal_specs
-                }
-
-            def poll_specs() -> dict[str, object]:
-                return {
-                    spec.label: instrument.get_parameter_value(spec.name) for spec in spec_specs
-                }
-
-            run_id = store.create_run(run_name=config.run_name, started_at_utc=run_start_utc)
-            runner = TrajectoryMonitorRunner(
-                store=store,
-                run_id=run_id,
-                run_start_utc=run_start_utc,
-                interval_s=config.interval_s,
-                rotate_entries=config.rotate_entries,
-                poll_signals=poll_signals,
-                poll_specs=poll_specs,
-                action_window_s=config.action_window_s,
-            )
-
-            try:
-                if args.iterations is not None:
-                    completed_iterations = runner.run_iterations(int(args.iterations))
-                else:
-                    print(
-                        (
-                            "Trajectory monitor running "
-                            f"(run_name={config.run_name}, db_path={db_path}). "
-                            "Press Ctrl+C to stop."
-                        ),
-                        file=sys.stderr,
-                        flush=True,
-                    )
-                    while True:
-                        completed_iterations += runner.run_iterations(1)
-            except KeyboardInterrupt:
-                interrupted = True
-                completed_iterations = max(completed_iterations, runner.sample_idx)
-    finally:
-        try:
-            clear_staged_run_name(path=staged_path)
-        finally:
-            if store is not None:
-                store.close()
-
-    payload = {
-        "run_id": run_id,
-        "run_name": config.run_name,
-        "db_path": str(db_path),
-        "iterations": completed_iterations,
-        "interrupted": interrupted,
-    }
-    _print_payload(payload, as_json=args.json)
-    return EXIT_OK
-
 
 def _cmd_backend_commands(args: argparse.Namespace) -> int:
     client = create_client(config_file=args.config_file)
@@ -1283,11 +778,8 @@ def _cmd_doctor(args: argparse.Namespace) -> int:
             "backend": settings.nanonis.backend,
             "allow_writes": settings.safety.allow_writes,
             "dry_run": settings.safety.dry_run,
-            "trajectory_enabled": settings.trajectory.enabled,
-            "trajectory_directory": settings.trajectory.directory,
         },
         "probe": report_to_dict(report),
-        "trajectory_directory_check": _trajectory_directory_check(settings.trajectory.directory),
     }
 
     _print_payload(payload, as_json=args.json)
@@ -1300,33 +792,9 @@ def _instrument_context(
     *,
     auto_connect: bool,
     include_parameters: Sequence[str] | None = None,
-) -> Iterator[tuple[Any, TrajectoryJournal | None]]:
+) -> Iterator[tuple[Any, None]]:
     instrument_cls = _load_instrument_class()
-    settings = load_settings(config_file=args.config_file)
-
-    trajectory_journal: TrajectoryJournal | None = None
-    if bool(getattr(args, "trajectory_enable", False)):
-        trajectory_directory = (
-            str(args.trajectory_dir).strip()
-            if getattr(args, "trajectory_dir", None)
-            else settings.trajectory.directory
-        )
-        queue_size = (
-            int(args.trajectory_queue_size)
-            if getattr(args, "trajectory_queue_size", None) is not None
-            else settings.trajectory.queue_size
-        )
-        max_events_per_file = (
-            int(args.trajectory_max_events_per_file)
-            if getattr(args, "trajectory_max_events_per_file", None) is not None
-            else settings.trajectory.max_events_per_file
-        )
-        trajectory_journal = TrajectoryJournal(
-            directory=trajectory_directory,
-            queue_size=queue_size,
-            max_events_per_file=max_events_per_file,
-        )
-        trajectory_journal.start()
+    load_settings(config_file=args.config_file)
 
     instrument = None
     try:
@@ -1335,15 +803,12 @@ def _instrument_context(
             config_file=args.config_file,
             parameters_file=args.parameters_file,
             include_parameters=include_parameters,
-            trajectory_journal=trajectory_journal,
             auto_connect=auto_connect,
         )
-        yield instrument, trajectory_journal
+        yield instrument, None
     finally:
         if instrument is not None:
             instrument.close()
-        if trajectory_journal is not None:
-            trajectory_journal.close()
 
 
 def _load_instrument_class() -> Any:
@@ -1455,24 +920,6 @@ def _collect_action_command_capabilities(instrument: Any) -> list[dict[str, Any]
             }
         )
     return capabilities
-
-
-def _parse_label_csv(raw_labels: str) -> tuple[str, ...]:
-    labels = [token.strip() for token in str(raw_labels).split(",")]
-    return tuple(label for label in labels if label)
-
-
-def _load_monitor_parameter_specs(args: argparse.Namespace) -> tuple[Any, ...]:
-    specs = load_parameter_specs(args.parameters_file)
-    return tuple(spec for spec in sorted(specs, key=lambda item: item.name))
-
-
-def _require_monitor_label(by_label: Mapping[str, Any], label: str, *, field_name: str) -> Any:
-    key = str(label)
-    spec = by_label.get(key)
-    if spec is None:
-        raise ValueError(f"Unknown monitor {field_name} label: {key}")
-    return spec
 
 
 def _normalize_parameter_name(raw_name: str) -> str:
@@ -1616,29 +1063,6 @@ def _installed_package_version(package_name: str) -> str:
         return "unknown"
 
 
-def _trajectory_directory_check(directory: str) -> dict[str, Any]:
-    root = Path(directory)
-    result: dict[str, Any] = {
-        "directory": str(root),
-        "exists": False,
-        "writable": False,
-        "error": None,
-    }
-
-    try:
-        root.mkdir(parents=True, exist_ok=True)
-        result["exists"] = root.exists()
-
-        marker = root / ".doctor_write_test"
-        marker.write_text("ok", encoding="utf-8")
-        marker.unlink(missing_ok=True)
-        result["writable"] = True
-    except Exception as exc:  # pragma: no cover
-        result["error"] = f"{type(exc).__name__}: {exc}"
-
-    return result
-
-
 def _emit_error(
     args: argparse.Namespace,
     *,
@@ -1690,31 +1114,6 @@ def _json_safe(value: Any) -> Any:
             return str(value)
 
     return str(value)
-
-
-def _normalize_action_event(row: Mapping[str, Any], *, action_idx: int) -> dict[str, Any]:
-    payload = dict(row)
-    payload["action_idx"] = int(action_idx)
-    payload["old_value_json"] = _try_parse_json_text(payload.get("old_value_json"))
-    payload["new_value_json"] = _try_parse_json_text(payload.get("new_value_json"))
-    return payload
-
-
-def _normalize_signal_sample_row(row: Mapping[str, Any]) -> dict[str, Any]:
-    payload = dict(row)
-    payload["values_json"] = _try_parse_json_text(payload.get("values_json"))
-    return payload
-
-
-def _try_parse_json_text(value: Any) -> Any:
-    if value is None:
-        return None
-    if not isinstance(value, str):
-        return value
-    try:
-        return json.loads(value)
-    except json.JSONDecodeError:
-        return value
 
 
 def _now_utc_iso() -> str:

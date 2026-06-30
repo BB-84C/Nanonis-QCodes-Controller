@@ -34,18 +34,9 @@ class SafetySettings:
 
 
 @dataclass(frozen=True)
-class TrajectorySettings:
-    enabled: bool = False
-    directory: str = "artifacts/trajectory"
-    queue_size: int = 2048
-    max_events_per_file: int = 5000
-
-
-@dataclass(frozen=True)
 class RuntimeSettings:
     nanonis: NanonisConnectionSettings = field(default_factory=NanonisConnectionSettings)
     safety: SafetySettings = field(default_factory=SafetySettings)
-    trajectory: TrajectorySettings = field(default_factory=TrajectorySettings)
 
 
 def load_settings(
@@ -59,11 +50,9 @@ def load_settings(
 
     defaults_connection = NanonisConnectionSettings()
     defaults_safety = SafetySettings()
-    defaults_trajectory = TrajectorySettings()
 
     nanonis_file = _as_mapping(file_values.get("nanonis"))
     safety_file = _as_mapping(file_values.get("safety"))
-    trajectory_file = _as_mapping(file_values.get("trajectory"))
 
     host_value = _first_set(
         env_values.get("NANONIS_HOST"),
@@ -128,45 +117,6 @@ def load_settings(
         field_name="NANONIS_DEFAULT_RAMP_INTERVAL_S",
     )
 
-    trajectory_enabled_value = _first_set(
-        env_values.get("NANONIS_TRAJECTORY_ENABLED"),
-        trajectory_file.get("enabled"),
-        defaults_trajectory.enabled,
-    )
-    trajectory_enabled = _parse_bool(
-        trajectory_enabled_value,
-        field_name="NANONIS_TRAJECTORY_ENABLED",
-    )
-
-    trajectory_directory_value = _first_set(
-        env_values.get("NANONIS_TRAJECTORY_DIR"),
-        trajectory_file.get("directory"),
-        defaults_trajectory.directory,
-    )
-    trajectory_directory = str(trajectory_directory_value).strip()
-    if not trajectory_directory:
-        raise ValueError("Trajectory directory cannot be empty.")
-
-    trajectory_queue_size_value = _first_set(
-        env_values.get("NANONIS_TRAJECTORY_QUEUE_SIZE"),
-        trajectory_file.get("queue_size"),
-        defaults_trajectory.queue_size,
-    )
-    trajectory_queue_size = _parse_positive_int(
-        trajectory_queue_size_value,
-        field_name="NANONIS_TRAJECTORY_QUEUE_SIZE",
-    )
-
-    trajectory_max_events_value = _first_set(
-        env_values.get("NANONIS_TRAJECTORY_MAX_EVENTS_PER_FILE"),
-        trajectory_file.get("max_events_per_file"),
-        defaults_trajectory.max_events_per_file,
-    )
-    trajectory_max_events_per_file = _parse_positive_int(
-        trajectory_max_events_value,
-        field_name="NANONIS_TRAJECTORY_MAX_EVENTS_PER_FILE",
-    )
-
     return RuntimeSettings(
         nanonis=NanonisConnectionSettings(
             host=host,
@@ -179,12 +129,6 @@ def load_settings(
             allow_writes=allow_writes,
             dry_run=dry_run,
             default_ramp_interval_s=default_ramp_interval_s,
-        ),
-        trajectory=TrajectorySettings(
-            enabled=trajectory_enabled,
-            directory=trajectory_directory,
-            queue_size=trajectory_queue_size,
-            max_events_per_file=trajectory_max_events_per_file,
         ),
     )
 

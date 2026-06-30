@@ -10,7 +10,6 @@ from nanonis_qcodes_controller.qcodes_driver.extensions import (
     DEFAULT_PARAMETERS_FILE,
     load_parameter_specs,
 )
-from nanonis_qcodes_controller.trajectory.monitor_config import load_monitor_defaults
 
 
 def test_resolve_packaged_default_returns_existing_path() -> None:
@@ -88,14 +87,6 @@ def test_load_parameter_specs_falls_back_when_default_path_missing(tmp_path, mon
     assert len(specs) > 0
 
 
-def test_load_monitor_defaults_falls_back_when_repo_defaults_missing(tmp_path, monkeypatch) -> None:
-    monkeypatch.chdir(tmp_path)
-
-    defaults = load_monitor_defaults()
-
-    assert defaults.interval_s > 0
-
-
 def test_explicit_missing_paths_still_raise(tmp_path) -> None:
     missing = tmp_path / "missing.yaml"
 
@@ -104,6 +95,3 @@ def test_explicit_missing_paths_still_raise(tmp_path) -> None:
 
     with pytest.raises(ValueError, match="does not exist"):
         load_parameter_specs(missing)
-
-    with pytest.raises(ValueError, match="does not exist"):
-        load_monitor_defaults(path=missing)

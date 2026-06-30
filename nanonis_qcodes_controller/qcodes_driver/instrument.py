@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import ast
-import hashlib
 import json
 import math
 import time
@@ -24,7 +23,6 @@ from nanonis_qcodes_controller.safety import (
     WritePlan,
     WritePolicy,
 )
-from nanonis_qcodes_controller.trajectory import TrajectoryJournal, TrajectoryStats
 
 from .extensions import (
     DEFAULT_PARAMETERS_FILE,
@@ -167,7 +165,6 @@ class QcodesNanonisSTM(Instrument):  # type: ignore[misc,unused-ignore]
         parameters_file: str | Path | None = None,
         include_parameters: Sequence[str] | None = None,
         write_policy: WritePolicy | None = None,
-        trajectory_journal: TrajectoryJournal | None = None,
         auto_connect: bool = True,
         **kwargs: Any,
     ) -> None:
@@ -175,9 +172,6 @@ class QcodesNanonisSTM(Instrument):  # type: ignore[misc,unused-ignore]
 
         self._owns_client = client is None
         self._client: NanonisClient
-        self._owns_trajectory = False
-        self._trajectory_journal: TrajectoryJournal | None = trajectory_journal
-        self._last_state_values: dict[str, Any] = {}
         self._write_audit_log: list[GuardedWriteAuditEntry] = []
 
         settings = load_settings(config_file=config_file)
@@ -203,15 +197,6 @@ class QcodesNanonisSTM(Instrument):  # type: ignore[misc,unused-ignore]
         else:
             self._write_policy = write_policy
 
-        if self._trajectory_journal is None and settings.trajectory.enabled:
-            self._trajectory_journal = TrajectoryJournal(
-                directory=settings.trajectory.directory,
-                queue_size=settings.trajectory.queue_size,
-                max_events_per_file=settings.trajectory.max_events_per_file,
-            )
-            self._trajectory_journal.start()
-            self._owns_trajectory = True
-
         if auto_connect:
             self._client.connect()
 
@@ -221,8 +206,6 @@ class QcodesNanonisSTM(Instrument):  # type: ignore[misc,unused-ignore]
         try:
             if self._owns_client:
                 self._client.close()
-            if self._owns_trajectory and self._trajectory_journal is not None:
-                self._trajectory_journal.close()
         finally:
             super().close()
 
@@ -371,11 +354,6 @@ class QcodesNanonisSTM(Instrument):  # type: ignore[misc,unused-ignore]
     def guarded_write_audit_log(self) -> tuple[GuardedWriteAuditEntry, ...]:
         return tuple(self._write_audit_log)
 
-    def trajectory_stats(self) -> TrajectoryStats | None:
-        if self._trajectory_journal is None:
-            return None
-        return self._trajectory_journal.stats()
-
     def get_idn(self) -> dict[str, str | None]:
         health = self.client_health()
         return {
@@ -402,7 +380,6 @@ class QcodesNanonisSTM(Instrument):  # type: ignore[misc,unused-ignore]
                 payload_index=spec.get_cmd.payload_index,
             )
             value = raw_value
-        self._record_state_transition(state_key=spec.name, value=_state_value(value))
         return value
 
     def get_parameter_snapshot(self, parameter_name: str) -> Mapping[str, Any]:
@@ -768,33 +745,7 @@ class QcodesNanonisSTM(Instrument):  # type: ignore[misc,unused-ignore]
         return None
 
     def _call(self, command: str, *, args: Mapping[str, Any] | None = None) -> Mapping[str, Any]:
-        call_start = time.perf_counter()
-        args_digest = _args_hash(args)
-        try:
-            response = self._client.call(command, args=args)
-        except Exception as exc:
-            self._emit_trajectory_event(
-                "command_result",
-                {
-                    "command": command,
-                    "status": "error",
-                    "latency_ms": (time.perf_counter() - call_start) * 1000.0,
-                    "args_hash": args_digest,
-                    "error": f"{type(exc).__name__}: {exc}",
-                },
-            )
-            raise
-
-        self._emit_trajectory_event(
-            "command_result",
-            {
-                "command": command,
-                "status": "ok",
-                "latency_ms": (time.perf_counter() - call_start) * 1000.0,
-                "args_hash": args_digest,
-            },
-        )
-        return response
+        return self._client.call(command, args=args)
 
     def _send_parameter_value(self, spec: ParameterSpec, value: float) -> None:
         if spec.set_cmd is None:
@@ -871,35 +822,6 @@ class QcodesNanonisSTM(Instrument):  # type: ignore[misc,unused-ignore]
             metadata={} if metadata is None else dict(metadata),
         )
         self._write_audit_log.append(entry)
-        self._emit_trajectory_event(
-            "write_audit",
-            {
-                "operation": operation,
-                "status": status,
-                "dry_run": dry_run,
-                "detail": detail,
-                "metadata": _json_safe(entry.metadata),
-            },
-        )
-
-    def _emit_trajectory_event(self, event_type: str, payload: Mapping[str, Any]) -> None:
-        if self._trajectory_journal is None:
-            return
-        _ = self._trajectory_journal.emit(event_type, dict(payload))
-
-    def _record_state_transition(self, *, state_key: str, value: Any) -> None:
-        previous = self._last_state_values.get(state_key)
-        if previous == value:
-            return
-        self._last_state_values[state_key] = value
-        self._emit_trajectory_event(
-            "state_transition",
-            {
-                "state_key": state_key,
-                "old": _json_safe(previous),
-                "new": _json_safe(value),
-            },
-        )
 
     @staticmethod
     def _extract_payload_value(
@@ -1034,20 +956,6 @@ def _build_ramp_targets(*, start: float, end: float, step: float) -> tuple[float
         deduped_targets.append(end_value)
 
     return tuple(deduped_targets)
-
-
-def _args_hash(args: Mapping[str, Any] | None) -> str:
-    if args is None:
-        text = "{}"
-    else:
-        text = json.dumps(_json_safe(dict(args)), sort_keys=True, separators=(",", ":"))
-    return hashlib.sha256(text.encode("utf-8")).hexdigest()[:16]
-
-
-def _state_value(value: Any) -> Any:
-    if isinstance(value, float):
-        return round(value, 15)
-    return value
 
 
 def _json_safe(value: Any) -> Any:

@@ -248,11 +248,6 @@ def test_cmd_policy_set_updates_config_and_emits_effective_policy(monkeypatch, t
                 "  allow_writes: false",
                 "  dry_run: true",
                 "  default_ramp_interval_s: 0.05",
-                "trajectory:",
-                "  enabled: false",
-                '  directory: "artifacts/trajectory"',
-                "  queue_size: 2048",
-                "  max_events_per_file: 5000",
             )
         )
         + "\n",

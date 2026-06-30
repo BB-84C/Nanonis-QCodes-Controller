@@ -61,9 +61,7 @@ python -m pip install ".[nanonis]"
    - `parameters`: scalar `get`/`set` mappings.
    - `actions`: non-`Get`/`Set` backend methods with `action_cmd` metadata.
 4. Regenerate from `nanonis_spm.Nanonis` with `scripts/generate_parameters_manifest.py`.
-5. Trajectory monitor defaults are in `config/default_trajectory_monitor.yaml`.
-
-Runtime config controls host, candidate ports, timeout, backend, write policy, and trajectory settings.
+Runtime config controls host, candidate ports, timeout, backend, and write policy.
 
 ## CLI command guide (`nqctl`)
 
@@ -359,37 +357,6 @@ For `act`, required/default behavior is driven by `action_cmd.arg_fields` in the
 - `nqctl capabilities` exposes executable manifest action inventory under
   `action_commands.items[*]` (command schema, `arg_fields`, safety mode).
 
-### Trajectory commands
-
-Legacy JSONL readers:
-
-```powershell
-nqctl trajectory tail --directory artifacts/trajectory --limit 20
-nqctl trajectory follow --directory artifacts/trajectory --interval-s 0.5
-```
-
-SQLite action queries:
-
-```powershell
-nqctl trajectory action list --db-path artifacts/trajectory/trajectory-monitor.sqlite3 --run-name gui-play-001
-nqctl trajectory action show --db-path artifacts/trajectory/trajectory-monitor.sqlite3 --run-name gui-play-001 --action-idx 0 --with-signal-window
-```
-
-Monitor config and run loop:
-
-```powershell
-nqctl trajectory monitor config show
-nqctl trajectory monitor config set --run-name gui-play-001 --interval-s 0.1 --rotate-entries 6000 --action-window-s 2.5
-nqctl trajectory monitor list-signals
-nqctl trajectory monitor list-specs
-nqctl trajectory monitor run
-nqctl trajectory monitor config clear
-```
-
-Notes:
-- `run_name` is cleared after each monitor run attempt; set it again before the next run.
-- Action entries use ISO UTC timestamps and include `delta_value` for numeric spec changes.
-
 ### Output and help
 
 JSON is the default output format. Use `--text` for human-readable key/value output.
@@ -398,7 +365,6 @@ JSON is the default output format. Use `--text` for human-readable key/value out
 nqctl -help
 nqctl -help showall
 nqctl -help set
-nqctl -help trajectory
 nqctl -help act
 ```
 
@@ -425,7 +391,6 @@ nanonis.close()
 - Safety model: `docs/safety_model.md`
 - Architecture overview: `docs/architecture.md`
 - Simulator quickstart: `docs/quickstart_simulator.md`
-- Trajectory model: `docs/trajectory_model.md`
 - Porting to real controller: `docs/porting_to_real_controller.md`
 - Private-index release runbook: `docs/release_private_index.md`
 
