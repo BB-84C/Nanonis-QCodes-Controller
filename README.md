@@ -4,8 +4,8 @@ Simulator-first Python bridge between Nanonis SPM controller interfaces and QCod
 
 ## What this project provides
 
-- `nqctl`: an agent-friendly CLI for atomic read/write/ramp operations.
-- `QcodesNanonisSTM`: a QCodes instrument wrapper with spec-driven parameters.
+- `nspmctl`: an agent-friendly CLI for atomic read/write/ramp operations.
+- `NanonisController`: a QCodes instrument wrapper with spec-driven parameters.
 - Strict write semantics:
   - `set` is always a guarded single-step write.
   - `ramp` is always an explicit multi-step trajectory.
@@ -13,8 +13,8 @@ Simulator-first Python bridge between Nanonis SPM controller interfaces and QCod
 
 ## v1 API support contract
 
-- Stable Python API symbols: `QcodesNanonisSTM`, `create_client`, `load_settings`.
-- Stable CLI contract: documented `nqctl` commands and outputs.
+- Stable Python API symbols: `NanonisController`, `create_client`, `load_settings`.
+- Stable CLI contract: documented `nspmctl` commands and outputs.
 - Other Python symbols are provisional/internal and may change across minor releases.
 
 ## Install
@@ -29,15 +29,15 @@ Install from a GitHub release (recommended for test users):
 python -m venv .venv
 .\.venv\Scripts\Activate.ps1
 python -m pip install --upgrade pip
-python -m pip install .\nanonis_qcodes_controller-<version>-py3-none-any.whl
+python -m pip install .\nspmctl-<version>-py3-none-any.whl
 python -m pip install "qcodes>=0.46.0" "nanonis-spm>=1.0.3"
-nqctl capabilities
+nspmctl capabilities
 ```
 
 You can also install directly from a release URL:
 
 ```powershell
-python -m pip install "https://github.com/BB-84C/Nanonis-QCodes-Controller/releases/download/v<version>/nanonis_qcodes_controller-<version>-py3-none-any.whl"
+python -m pip install "https://github.com/BB-84C/Nanonis-QCodes-Controller/releases/download/v<version>/nspmctl-<version>-py3-none-any.whl"
 ```
 
 Install from source:
@@ -63,23 +63,23 @@ python -m pip install ".[nanonis]"
 4. Regenerate from `nanonis_spm.Nanonis` with `scripts/generate_parameters_manifest.py`.
 Runtime config controls host, candidate ports, timeout, backend, and write policy.
 
-## CLI command guide (`nqctl`)
+## CLI command guide (`nspmctl`)
 
 ### Inspect and introspect
 
 Get the machine-readable execution contract (lean payload):
 
 ```powershell
-nqctl capabilities
+nspmctl capabilities
 ```
 
-Capabilities item schemas (`nqctl capabilities`):
+Capabilities item schemas (`nspmctl capabilities`):
 
 ```json
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://bb-84c.github.io/nqctl/schemas/capabilities-parameter-item.schema.json",
-  "title": "nqctl capabilities parameters.items[*]",
+  "$id": "https://bb-84c.github.io/nspmctl/schemas/capabilities-parameter-item.schema.json",
+  "title": "nspmctl capabilities parameters.items[*]",
   "type": "object",
   "required": [
     "name",
@@ -227,8 +227,8 @@ Capabilities item schemas (`nqctl capabilities`):
 ```json
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://bb-84c.github.io/nqctl/schemas/capabilities-action-command-item.schema.json",
-  "title": "nqctl capabilities action_commands.items[*]",
+  "$id": "https://bb-84c.github.io/nspmctl/schemas/capabilities-action-command-item.schema.json",
+  "title": "nspmctl capabilities action_commands.items[*]",
   "type": "object",
   "required": ["name", "action_cmd", "safety_mode"],
   "properties": {
@@ -279,28 +279,28 @@ Capabilities item schemas (`nqctl capabilities`):
 Show the legacy full payload (old capabilities surface):
 
 ```powershell
-nqctl showall
+nspmctl showall
 ```
 
 Inspect backend command inventory and connectivity preflight:
 
 ```powershell
-nqctl backend commands --match Scan
-nqctl doctor --command-probe
+nspmctl backend commands --match Scan
+nspmctl doctor --command-probe
 ```
 
 List observable metadata and high-level CLI action descriptors:
 
 ```powershell
-nqctl observables list
-nqctl actions list
+nspmctl observables list
+nspmctl actions list
 ```
 
 Inspect and update runtime policy:
 
 ```powershell
-nqctl policy show
-nqctl policy set --allow-writes true --dry-run false
+nspmctl policy show
+nspmctl policy set --allow-writes true --dry-run false
 ```
 
 ### Execute operations
@@ -308,20 +308,20 @@ nqctl policy set --allow-writes true --dry-run false
 Read a parameter:
 
 ```powershell
-nqctl get bias_v
+nspmctl get bias_v
 ```
 
 For multi-field responses, `get` returns structured fields (not only one scalar):
 
 ```powershell
-nqctl get scan_buffer
+nspmctl get scan_buffer
 ```
 
 Apply writes with structured args (canonical form):
 
 ```powershell
-nqctl set bias_v --arg Bias_value_V=0.12 (single arg input)
-nqctl set scan_buffer --arg Pixels=512 --arg Lines=512 (multiple args input)
+nspmctl set bias_v --arg Bias_value_V=0.12 (single arg input)
+nspmctl set scan_buffer --arg Pixels=512 --arg Lines=512 (multiple args input)
 ```
 
 
@@ -336,25 +336,25 @@ Defaulting/autofill mechanism for partial `set`:
 Apply explicit guarded ramp (scalar parameters):
 
 ```powershell
-nqctl ramp bias_v 0.10 0.25 0.01 --interval-s 0.10
+nspmctl ramp bias_v 0.10 0.25 0.01 --interval-s 0.10
 ```
 
 Invoke one manifest action command with structured args:
 
 ```powershell
-nqctl act Scan_Action --arg Scan_action=0 --arg Scan_direction=1
-nqctl act Scan_WaitEndOfScan --arg Timeout_ms=5000
+nspmctl act Scan_Action --arg Scan_action=0 --arg Scan_direction=1
+nspmctl act Scan_WaitEndOfScan --arg Timeout_ms=5000
 ```
 
 For `act`, required/default behavior is driven by `action_cmd.arg_fields` in the manifest.
 
 ### `act` vs metadata surfaces
 
-- `nqctl act <action_name> --arg key=value` executes one backend action command from
+- `nspmctl act <action_name> --arg key=value` executes one backend action command from
   the manifest `actions` section.
-- `nqctl actions list` lists CLI-level action descriptors (what workflows the CLI
+- `nspmctl actions list` lists CLI-level action descriptors (what workflows the CLI
   supports, with safety hints and templates).
-- `nqctl capabilities` exposes executable manifest action inventory under
+- `nspmctl capabilities` exposes executable manifest action inventory under
   `action_commands.items[*]` (command schema, `arg_fields`, safety mode).
 
 ### Output and help
@@ -362,20 +362,20 @@ For `act`, required/default behavior is driven by `action_cmd.arg_fields` in the
 JSON is the default output format. Use `--text` for human-readable key/value output.
 
 ```powershell
-nqctl -help
-nqctl -help showall
-nqctl -help set
-nqctl -help act
+nspmctl -help
+nspmctl -help showall
+nspmctl -help set
+nspmctl -help act
 ```
 
 ## QCodes usage
 
 ```python
 from qcodes.station import Station
-from nanonis_qcodes_controller.qcodes_driver import QcodesNanonisSTM
+from nspmctl.controller import NanonisController
 
 station = Station()
-nanonis = QcodesNanonisSTM("nanonis", auto_connect=True)
+nanonis = NanonisController("nanonis", auto_connect=True)
 station.add_component(nanonis)
 
 print(nanonis.bias_v())

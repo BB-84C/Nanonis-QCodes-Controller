@@ -5,7 +5,7 @@ import time
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass, field
 
-from nanonis_qcodes_controller.config import SafetySettings
+from nspmctl.config import SafetySettings
 
 
 class PolicyViolation(ValueError):

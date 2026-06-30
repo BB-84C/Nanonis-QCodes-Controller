@@ -10,7 +10,7 @@ Use this for normal development iteration.
 python -m pytest -q -m "not simulator"
 python -m ruff check .
 python -m black --check .
-python -m mypy nanonis_qcodes_controller
+python -m mypy nspmctl
 ```
 
 ## Simulator integration suite (read path)
@@ -40,12 +40,12 @@ python -m pytest -q -m simulator_writes
 Use this to validate monitor staging + run + action queries:
 
 ```powershell
-nqctl trajectory monitor config clear
-nqctl trajectory monitor config set --run-name smoke-run-001
-nqctl trajectory monitor run --iterations 25
-nqctl trajectory action list --db-path artifacts/trajectory/trajectory-monitor.sqlite3 --run-name smoke-run-001
+nspmctl trajectory monitor config clear
+nspmctl trajectory monitor config set --run-name smoke-run-001
+nspmctl trajectory monitor run --iterations 25
+nspmctl trajectory action list --db-path artifacts/trajectory/trajectory-monitor.sqlite3 --run-name smoke-run-001
 # Run show only when action list count > 0.
-nqctl trajectory action show --db-path artifacts/trajectory/trajectory-monitor.sqlite3 --run-name smoke-run-001 --action-idx 0 --with-signal-window
+nspmctl trajectory action show --db-path artifacts/trajectory/trajectory-monitor.sqlite3 --run-name smoke-run-001 --action-idx 0 --with-signal-window
 ```
 
 Expected:

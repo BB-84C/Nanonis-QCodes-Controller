@@ -3,7 +3,7 @@ from __future__ import annotations
 from collections.abc import Mapping
 from pathlib import Path
 
-from nanonis_qcodes_controller.config import load_settings
+from nspmctl.config import load_settings
 
 from .transport import NanonisTransportClient, build_client_from_settings
 

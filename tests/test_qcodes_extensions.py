@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from nanonis_qcodes_controller.qcodes_driver.extensions import (
+from nspmctl.controller.extensions import (
     load_action_specs,
     load_parameter_specs,
 )

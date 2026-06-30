@@ -3,14 +3,15 @@ requires = ["setuptools>=69.0", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "nanonis-qcodes-controller"
-version = "0.1.10"
-description = "Simulator-first bridge between Nanonis SPM and QCodes"
+name = "nspmctl"
+version = "0.2.0"
+description = "Fast CLI over nanonis-spm for agent-driven Nanonis SPM controller automation"
 readme = "README.md"
 requires-python = ">=3.10"
 license = { file = "LICENSE" }
 dependencies = [
     "PyYAML>=6.0",
+    "nanonis-spm>=1.0.3",
 ]
 
 [project.optional-dependencies]
@@ -22,18 +23,15 @@ dev = [
     "ruff>=0.6.0",
     "types-PyYAML>=6.0.12.20241230",
 ]
-nanonis = [
-    "nanonis-spm>=1.0.3",
-]
 
 [project.scripts]
-nqctl = "nanonis_qcodes_controller.cli:main"
+nspmctl = "nspmctl.cli:main"
 
 [tool.setuptools.packages.find]
-include = ["nanonis_qcodes_controller*"]
+include = ["nspmctl*"]
 
 [tool.setuptools.package-data]
-"nanonis_qcodes_controller.resources" = ["config/*.yaml"]
+"nspmctl.resources" = ["config/*.yaml"]
 
 [tool.black]
 line-length = 100
@@ -57,7 +55,7 @@ markers = [
 [tool.mypy]
 python_version = "3.10"
 strict = true
-packages = ["nanonis_qcodes_controller"]
+packages = ["nspmctl"]
 warn_unused_configs = true
 
 

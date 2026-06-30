@@ -19,21 +19,21 @@ from typing import Any
 
 import yaml
 
-from nanonis_qcodes_controller.client import create_client, probe_host_ports, report_to_dict
-from nanonis_qcodes_controller.client.errors import (
+from nspmctl.client import create_client, probe_host_ports, report_to_dict
+from nspmctl.client.errors import (
     NanonisCommandUnavailableError,
     NanonisConnectionError,
     NanonisInvalidArgumentError,
     NanonisProtocolError,
     NanonisTimeoutError,
 )
-from nanonis_qcodes_controller.config import load_settings
-from nanonis_qcodes_controller.qcodes_driver.extensions import (
+from nspmctl.config import load_settings
+from nspmctl.controller.extensions import (
     DEFAULT_PARAMETERS_FILE,
     load_parameter_specs,
 )
-from nanonis_qcodes_controller.safety import PolicyViolation
-from nanonis_qcodes_controller.version import __version__
+from nspmctl.safety import PolicyViolation
+from nspmctl.version import __version__
 
 EXIT_OK = 0
 EXIT_FAILED = 1
@@ -71,35 +71,35 @@ _ACTION_DESCRIPTORS: tuple[ActionDescriptor, ...] = (
         name="get",
         safety="readonly",
         description="Read a single parameter value.",
-        command_template="nqctl get <parameter>",
+        command_template="nspmctl get <parameter>",
         arguments=("parameter",),
     ),
     ActionDescriptor(
         name="set",
         safety="guarded",
         description="Apply guarded strict single-step write.",
-        command_template="nqctl set <parameter> <value>",
+        command_template="nspmctl set <parameter> <value>",
         arguments=("parameter", "value"),
     ),
     ActionDescriptor(
         name="ramp",
         safety="guarded",
         description="Apply explicit ramp using start/end/step/interval.",
-        command_template="nqctl ramp <parameter> <start> <end> <step> --interval-s 0.1",
+        command_template="nspmctl ramp <parameter> <start> <end> <step> --interval-s 0.1",
         arguments=("parameter", "start", "end", "step", "interval_s"),
     ),
     ActionDescriptor(
         name="act",
         safety="policy-controlled",
         description="Invoke a manifest-defined backend action command.",
-        command_template="nqctl act <action_name> --arg key=value",
+        command_template="nspmctl act <action_name> --arg key=value",
         arguments=("action_name", "arg"),
     ),
     ActionDescriptor(
         name="parameters_discover",
         safety="readonly",
         description="Discover backend commands for parameter authoring.",
-        command_template="nqctl parameters discover --match LockIn",
+        command_template="nspmctl parameters discover --match LockIn",
         arguments=("match",),
     ),
 )
@@ -171,7 +171,7 @@ def main(argv: Sequence[str] | None = None) -> int:
 
 def _build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
-        prog="nqctl",
+        prog="nspmctl",
         description=(
             "Nanonis SPM controller CLI for agent orchestration.\n"
             "Use atomic commands (capabilities/get/set/ramp/act/parameters/policy)."
@@ -179,15 +179,15 @@ def _build_parser() -> argparse.ArgumentParser:
         formatter_class=argparse.RawTextHelpFormatter,
         epilog=(
             "Quick start:\n"
-            "  nqctl capabilities\n"
-            "  nqctl get bias_v\n"
-            "  nqctl set bias_v 0.12\n"
-            "  nqctl ramp bias_v 0.1 0.3 0.01 --interval-s 0.1\n"
+            "  nspmctl capabilities\n"
+            "  nspmctl get bias_v\n"
+            "  nspmctl set bias_v 0.12\n"
+            "  nspmctl ramp bias_v 0.1 0.3 0.01 --interval-s 0.1\n"
             "\n"
             "Help shortcuts:\n"
-            "  nqctl -help\n"
-            "  nqctl -help parameters\n"
-            "  nqctl -help ramp"
+            "  nspmctl -help\n"
+            "  nspmctl -help parameters\n"
+            "  nspmctl -help ramp"
         ),
     )
     subparsers = parser.add_subparsers(dest="command", required=True)
@@ -233,9 +233,9 @@ def _build_parser() -> argparse.ArgumentParser:
         formatter_class=argparse.RawTextHelpFormatter,
         epilog=(
             "Examples:\n"
-            "  nqctl set bias_v 0.15\n"
-            "  nqctl set scan_buffer --arg Pixels=512\n"
-            "  nqctl set zctrl_setpoint_a --arg Z_Controller_setpoint=8e-11 --plan-only"
+            "  nspmctl set bias_v 0.15\n"
+            "  nspmctl set scan_buffer --arg Pixels=512\n"
+            "  nspmctl set zctrl_setpoint_a --arg Z_Controller_setpoint=8e-11 --plan-only"
         ),
     )
     _add_runtime_args(parser_set)
@@ -258,8 +258,8 @@ def _build_parser() -> argparse.ArgumentParser:
         formatter_class=argparse.RawTextHelpFormatter,
         epilog=(
             "Examples:\n"
-            "  nqctl ramp bias_v 0.1 0.25 0.01 --interval-s 0.1\n"
-            "  nqctl ramp zctrl_setpoint_a 5e-11 1e-10 5e-12 --interval-s 0.05 --plan-only"
+            "  nspmctl ramp bias_v 0.1 0.25 0.01 --interval-s 0.1\n"
+            "  nspmctl ramp zctrl_setpoint_a 5e-11 1e-10 5e-12 --interval-s 0.05 --plan-only"
         ),
     )
     _add_runtime_args(parser_ramp)
@@ -283,8 +283,8 @@ def _build_parser() -> argparse.ArgumentParser:
         formatter_class=argparse.RawTextHelpFormatter,
         epilog=(
             "Examples:\n"
-            "  nqctl act Scan_Action --arg Scan_action=0 --arg Scan_direction=1\n"
-            "  nqctl act Scan_WaitEndOfScan --arg Timeout_ms=5000"
+            "  nspmctl act Scan_Action --arg Scan_action=0 --arg Scan_direction=1\n"
+            "  nspmctl act Scan_WaitEndOfScan --arg Timeout_ms=5000"
         ),
     )
     _add_runtime_args(parser_act)
@@ -449,7 +449,7 @@ def _cmd_showall(args: argparse.Namespace) -> int:
         action_commands = _collect_action_command_capabilities(instrument)
 
     payload: dict[str, Any] = {
-        "cli": {"name": "nqctl", "version": __version__},
+        "cli": {"name": "nspmctl", "version": __version__},
         "observables": observables,
         "parameters": {"count": len(parameters), "items": parameters},
         "action_commands": {"count": len(action_commands), "items": action_commands},
@@ -501,7 +501,7 @@ def _cmd_set(args: argparse.Namespace) -> int:
     if parameter_name in {"allow_writes", "dry_run"}:
         raise ValueError(
             "'set' controls instrument parameters only, not runtime policy flags. "
-            "Use `nqctl policy show` for guidance and update NANONIS_ALLOW_WRITES/NANONIS_DRY_RUN "
+            "Use `nspmctl policy show` for guidance and update NANONIS_ALLOW_WRITES/NANONIS_DRY_RUN "
             "or edit config/default_runtime.yaml."
         )
 
@@ -812,9 +812,9 @@ def _instrument_context(
 
 
 def _load_instrument_class() -> Any:
-    from nanonis_qcodes_controller.qcodes_driver import QcodesNanonisSTM
+    from nspmctl.controller import NanonisController
 
-    return QcodesNanonisSTM
+    return NanonisController
 
 
 def _collect_observables(instrument: Any) -> list[dict[str, Any]]:

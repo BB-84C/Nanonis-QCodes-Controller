@@ -13,7 +13,7 @@ try:  # Prefer libyaml C bindings (~6x faster on a 651KB manifest).
 except ImportError:  # pragma: no cover - pure-Python fallback
     from yaml import SafeLoader as _SafeLoader  # type: ignore[assignment]
 
-from nanonis_qcodes_controller.config.default_files import resolve_packaged_default
+from nspmctl.config.default_files import resolve_packaged_default
 
 DEFAULT_PARAMETERS_FILE = Path("config/parameters.yaml")
 

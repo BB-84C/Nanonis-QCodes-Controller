@@ -55,7 +55,7 @@ def test_ci_workflow_exists_and_includes_required_steps() -> None:
     required_checks = [
         "ruff",
         "black --check",
-        "mypy nanonis_qcodes_controller",
+        "mypy nspmctl",
         "pytest",
         "python -m build",
     ]

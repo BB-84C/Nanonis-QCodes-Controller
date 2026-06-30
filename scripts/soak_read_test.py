@@ -8,7 +8,7 @@ from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Any
 
-from nanonis_qcodes_controller.qcodes_driver import QcodesNanonisSTM
+from nspmctl.controller import NanonisController
 
 
 @dataclass
@@ -31,7 +31,7 @@ class SoakSummary:
 
 def main() -> int:
     parser = argparse.ArgumentParser(
-        description="Run a 30-60 minute read-only soak test using QcodesNanonisSTM."
+        description="Run a 30-60 minute read-only soak test using NanonisController."
     )
     parser.add_argument(
         "--duration-s",
@@ -77,7 +77,7 @@ def main() -> int:
     if args.snapshot_every_s <= 0:
         parser.error("--snapshot-every-s must be > 0")
 
-    instrument = QcodesNanonisSTM("nanonis_soak", config_file=args.config_file, auto_connect=True)
+    instrument = NanonisController("nanonis_soak", config_file=args.config_file, auto_connect=True)
 
     loop_latencies_ms: list[float] = []
     endpoint_history: list[str] = []

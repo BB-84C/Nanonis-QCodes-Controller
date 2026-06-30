@@ -4,7 +4,7 @@ import argparse
 import time
 from collections.abc import Sequence
 
-from nanonis_qcodes_controller.client import create_client
+from nspmctl.client import create_client
 
 DEFAULT_COMMANDS = (
     "Bias_Get",

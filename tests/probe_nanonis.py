@@ -4,12 +4,12 @@ import argparse
 import json
 import sys
 
-from nanonis_qcodes_controller.client import (
+from nspmctl.client import (
     format_report_text,
     probe_host_ports,
     report_to_dict,
 )
-from nanonis_qcodes_controller.config import load_settings
+from nspmctl.config import load_settings
 
 
 def main() -> int:

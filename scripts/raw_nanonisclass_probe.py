@@ -13,7 +13,7 @@ from nanonis_spm.NanonisClass import Nanonis
 
 def _parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        description="Raw NanonisClass command probe (no nqctl wrapper)."
+        description="Raw NanonisClass command probe (no nspmctl wrapper)."
     )
     parser.add_argument("--host", default="127.0.0.1", help="Nanonis host.")
     parser.add_argument("--port", type=int, default=3364, help="Nanonis TCP port.")

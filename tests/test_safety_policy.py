@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import pytest
 
-from nanonis_qcodes_controller.safety import (
+from nspmctl.safety import (
     ChannelLimit,
     PolicyViolation,
     WritePolicy,

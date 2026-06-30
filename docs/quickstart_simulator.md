@@ -41,10 +41,10 @@ python tests/read_client_demo.py --iterations 5 --interval-s 0.2
 
 ```python
 from qcodes.station import Station
-from nanonis_qcodes_controller.qcodes_driver import QcodesNanonisSTM
+from nspmctl.controller import NanonisController
 
 station = Station()
-nanonis = QcodesNanonisSTM("nanonis", auto_connect=True)
+nanonis = NanonisController("nanonis", auto_connect=True)
 station.add_component(nanonis)
 
 print(nanonis.bias_v())
@@ -67,14 +67,14 @@ python tests/guarded_write_demo.py --channel bias_v --target 1.8
 Stage monitor config, inspect available labels, run monitor, then query actions:
 
 ```powershell
-nqctl trajectory monitor config clear
-nqctl trajectory monitor list-signals
-nqctl trajectory monitor list-specs
-nqctl trajectory monitor config set --run-name sim-demo-001
-nqctl trajectory monitor run --iterations 50
-nqctl trajectory action list --db-path artifacts/trajectory/trajectory-monitor.sqlite3 --run-name sim-demo-001
+nspmctl trajectory monitor config clear
+nspmctl trajectory monitor list-signals
+nspmctl trajectory monitor list-specs
+nspmctl trajectory monitor config set --run-name sim-demo-001
+nspmctl trajectory monitor run --iterations 50
+nspmctl trajectory action list --db-path artifacts/trajectory/trajectory-monitor.sqlite3 --run-name sim-demo-001
 # Run show only when action list count > 0.
-nqctl trajectory action show --db-path artifacts/trajectory/trajectory-monitor.sqlite3 --run-name sim-demo-001 --action-idx 0 --with-signal-window
+nspmctl trajectory action show --db-path artifacts/trajectory/trajectory-monitor.sqlite3 --run-name sim-demo-001 --action-idx 0 --with-signal-window
 ```
 
 Notes:

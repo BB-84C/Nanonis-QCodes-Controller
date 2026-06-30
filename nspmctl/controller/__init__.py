@@ -4,10 +4,10 @@ from .extensions import (
     load_action_specs,
     load_parameter_specs,
 )
-from .instrument import QcodesNanonisSTM
+from .instrument import NanonisController
 
 __all__ = [
-    "QcodesNanonisSTM",
+    "NanonisController",
     "ActionSpec",
     "ParameterSpec",
     "load_action_specs",

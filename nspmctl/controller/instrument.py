@@ -10,11 +10,11 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-from nanonis_qcodes_controller.client import NanonisClient, build_client_from_settings
-from nanonis_qcodes_controller.client.base import NanonisHealth
-from nanonis_qcodes_controller.client.errors import NanonisProtocolError
-from nanonis_qcodes_controller.config import load_settings
-from nanonis_qcodes_controller.safety import (
+from nspmctl.client import NanonisClient, build_client_from_settings
+from nspmctl.client.base import NanonisHealth
+from nspmctl.client.errors import NanonisProtocolError
+from nspmctl.config import load_settings
+from nspmctl.safety import (
     ChannelLimit,
     PolicyViolation,
     WriteExecutionReport,
@@ -153,7 +153,7 @@ def _coerce_action_value(value: Any, *, value_type: str, field_name: str) -> Any
     raise ValueError(f"Unsupported action value type: {value_type}")
 
 
-class QcodesNanonisSTM:
+class NanonisController:
     def __init__(
         self,
         name: str,
@@ -169,7 +169,7 @@ class QcodesNanonisSTM:
         if kwargs:
             unexpected = ", ".join(sorted(kwargs))
             raise TypeError(
-                f"Unexpected keyword argument(s) for QcodesNanonisSTM: {unexpected}"
+                f"Unexpected keyword argument(s) for NanonisController: {unexpected}"
             )
         self.name = name
 
@@ -274,7 +274,7 @@ class QcodesNanonisSTM:
             formatted = ", ".join(unknown_args)
             raise ValueError(
                 f"Action '{spec.name}' received unknown arguments: {formatted}. "
-                "Use `nqctl capabilities` to inspect supported arguments."
+                "Use `nspmctl capabilities` to inspect supported arguments."
             )
 
         typed_args: dict[str, Any] = {}

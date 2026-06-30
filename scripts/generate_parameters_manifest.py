@@ -45,7 +45,7 @@ def parse_args() -> argparse.Namespace:
 
 
 def main() -> int:
-    from nanonis_qcodes_controller.qcodes_driver.manifest_generator import (
+    from nspmctl.controller.manifest_generator import (
         build_unified_manifest,
         discover_nanonis_commands,
     )

@@ -7,8 +7,8 @@ from types import SimpleNamespace
 
 import pytest
 
-from nanonis_qcodes_controller import cli
-from nanonis_qcodes_controller.qcodes_driver.extensions import (
+from nspmctl import cli
+from nspmctl.controller.extensions import (
     DEFAULT_PARAMETERS_FILE,
     ActionCommandSpec,
     ActionSpec,

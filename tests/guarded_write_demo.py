@@ -2,8 +2,8 @@ from __future__ import annotations
 
 import argparse
 
-from nanonis_qcodes_controller.qcodes_driver import QcodesNanonisSTM
-from nanonis_qcodes_controller.safety import PolicyViolation
+from nspmctl.controller import NanonisController
+from nspmctl.safety import PolicyViolation
 
 
 def main() -> int:
@@ -28,7 +28,7 @@ def main() -> int:
     )
     args = parser.parse_args()
 
-    instrument = QcodesNanonisSTM(
+    instrument = NanonisController(
         "nanonis_guarded_demo", config_file=args.config_file, auto_connect=True
     )
 

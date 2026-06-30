@@ -2,11 +2,11 @@ from __future__ import annotations
 
 import pytest
 
-from nanonis_qcodes_controller.config import default_files
-from nanonis_qcodes_controller.config import settings as settings_module
-from nanonis_qcodes_controller.config.default_files import resolve_packaged_default
-from nanonis_qcodes_controller.config.settings import load_settings
-from nanonis_qcodes_controller.qcodes_driver.extensions import (
+from nspmctl.config import default_files
+from nspmctl.config import settings as settings_module
+from nspmctl.config.default_files import resolve_packaged_default
+from nspmctl.config.settings import load_settings
+from nspmctl.controller.extensions import (
     DEFAULT_PARAMETERS_FILE,
     load_parameter_specs,
 )

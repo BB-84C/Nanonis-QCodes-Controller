@@ -5,7 +5,7 @@ from collections.abc import Mapping, Sequence
 from threading import RLock
 from typing import Any
 
-from nanonis_qcodes_controller.config import NanonisConnectionSettings
+from nspmctl.config import NanonisConnectionSettings
 
 from .backend import BackendAdapter, BackendSession, build_backend_adapter
 from .base import NanonisHealth

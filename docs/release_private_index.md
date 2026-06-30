@@ -28,12 +28,12 @@ After publish completes, validate install and basic CLI behavior from the privat
 ```powershell
 python -m venv .venv-smoke
 .\.venv-smoke\Scripts\python -m pip install --index-url <private-index-url> nanonis-qcodes-controller==<version>
-.\.venv-smoke\Scripts\nqctl capabilities
+.\.venv-smoke\Scripts\nspmctl capabilities
 ```
 
 Confirm:
 - Package resolves from the private index.
-- `nqctl capabilities` runs successfully.
+- `nspmctl capabilities` runs successfully.
 
 ## Pre-release verification checklist
 Run these commands before promoting or publishing release artifacts:
@@ -41,7 +41,7 @@ Run these commands before promoting or publishing release artifacts:
 ```powershell
 ruff check .
 black --check .
-mypy nanonis_qcodes_controller
+mypy nspmctl
 pytest
 python -m build
 ```

@@ -13,7 +13,7 @@ atexit.register(_RESOURCE_PATHS.close)
 @cache
 def _resolve_packaged_default_cached(name: str) -> Path:
     config_file = (
-        resources.files("nanonis_qcodes_controller.resources").joinpath("config").joinpath(name)
+        resources.files("nspmctl.resources").joinpath("config").joinpath(name)
     )
     resolved = _RESOURCE_PATHS.enter_context(resources.as_file(config_file))
     if not resolved.exists():

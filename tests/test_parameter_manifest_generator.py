@@ -4,7 +4,7 @@ import inspect
 
 import pytest
 
-from nanonis_qcodes_controller.qcodes_driver.manifest_generator import (
+from nspmctl.controller.manifest_generator import (
     CommandInfo,
     InferredSetMapping,
     build_unified_manifest,
@@ -225,7 +225,7 @@ def test_discover_nanonis_commands_ignores_methods_before_bias_set(
         Nanonis = FakeNanonis
 
     monkeypatch.setattr(
-        "nanonis_qcodes_controller.qcodes_driver.manifest_generator.importlib.import_module",
+        "nspmctl.controller.manifest_generator.importlib.import_module",
         lambda _name: FakeModule,
     )
 
@@ -247,7 +247,7 @@ def test_discover_nanonis_commands_requires_bias_set_anchor(
         Nanonis = FakeNanonis
 
     monkeypatch.setattr(
-        "nanonis_qcodes_controller.qcodes_driver.manifest_generator.importlib.import_module",
+        "nspmctl.controller.manifest_generator.importlib.import_module",
         lambda _name: FakeModule,
     )
 

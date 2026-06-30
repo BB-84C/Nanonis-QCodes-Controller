@@ -9,7 +9,7 @@ def test_release_runbook_lists_required_verification_commands() -> None:
     required_commands = [
         "ruff check .",
         "black --check .",
-        "mypy nanonis_qcodes_controller",
+        "mypy nspmctl",
         "pytest",
         "python -m build",
     ]

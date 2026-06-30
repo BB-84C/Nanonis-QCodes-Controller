@@ -13,7 +13,7 @@ The bridge uses one generated manifest at `config/parameters.yaml`.
 ## 1) Discover command names
 
 ```powershell
-nqctl parameters discover --match LockIn
+nspmctl parameters discover --match LockIn
 ```
 
 ## 2) Regenerate unified parameter manifest
@@ -25,15 +25,15 @@ python scripts/generate_parameters_manifest.py --output config/parameters.yaml
 ## 3) Validate parameter file
 
 ```powershell
-nqctl parameters validate --file config/parameters.yaml
+nspmctl parameters validate --file config/parameters.yaml
 ```
 
 ## 4) Load files in QCodes driver
 
 ```python
-from nanonis_qcodes_controller.qcodes_driver import QcodesNanonisSTM
+from nspmctl.controller import NanonisController
 
-nanonis = QcodesNanonisSTM(
+nanonis = NanonisController(
     "nanonis",
     auto_connect=True,
     parameters_file="config/parameters.yaml",
