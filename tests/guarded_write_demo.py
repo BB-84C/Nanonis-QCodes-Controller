@@ -8,7 +8,7 @@ from nspmctl.safety import PolicyViolation
 
 def main() -> int:
     parser = argparse.ArgumentParser(
-        description="Preview or execute a guarded write through QCodes."
+        description="Preview or execute a guarded write via the embedded controller."
     )
     parser.add_argument(
         "--channel",

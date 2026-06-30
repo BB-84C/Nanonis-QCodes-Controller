@@ -8,7 +8,7 @@ The bridge uses one generated manifest at `config/parameters.yaml`.
 1. Discover relevant backend commands.
 2. Regenerate `config/parameters.yaml` from `nanonis_spm.Nanonis`.
 3. Validate the generated manifest.
-4. Use new parameters in CLI/QCodes without changing core code.
+4. Use new parameters in the CLI or the embedded Python API without changing core code.
 
 ## 1) Discover command names
 
@@ -28,7 +28,7 @@ python scripts/generate_parameters_manifest.py --output config/parameters.yaml
 nspmctl parameters validate --file config/parameters.yaml
 ```
 
-## 4) Load files in QCodes driver
+## 4) Load files from the embedded Python API
 
 ```python
 from nspmctl.controller import NanonisController

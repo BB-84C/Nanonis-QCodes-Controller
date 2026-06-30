@@ -20,7 +20,7 @@ flowchart LR
 
 ## Components
 - `nspmctl/client`: transport client, backend registry, probe tools, normalized error mapping.
-- `nspmctl/controller`: `NanonisController` class with spec-driven parameter access, guarded writes, and action dispatch (no qcodes dependency).
+- `nspmctl/controller`: `NanonisController` class with spec-driven parameter access, guarded writes, and action dispatch.
 - `nspmctl/cli.py`: agent-facing CLI contract (`nspmctl`) for capabilities/read/write/ramp/action/parameter-file workflows.
 - `nspmctl/safety`: write policy engine (gate, bounds, ramp/slew, cooldown).
 - `scripts/`: diagnostics and parameter-manifest tooling (`bridge_doctor.py`, `generate_parameters_manifest.py`).

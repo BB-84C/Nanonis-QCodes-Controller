@@ -32,8 +32,9 @@ End-to-end `get bias_v` against the STM Simulator on a developer laptop:
 | `nspmctl get bias_v` (warm daemon)|  105 ms  |
 | raw `nanonis_spm` one-shot floor  |  110 ms  |
 
-The daemon path approaches the raw `nanonis_spm` floor and is ~30x
-faster than the previous `nqctl` baseline.
+The daemon path approaches the raw `nanonis_spm` floor; agents that
+make many tool calls amortize the import + TCP-connect cost almost
+entirely.
 
 ## v0.2 support contract
 
@@ -45,27 +46,40 @@ faster than the previous `nqctl` baseline.
 
 ## Install
 
-```powershell
-python -m pip install nspmctl
+```
+pip install nspmctl
 nspmctl capabilities
 ```
 
-Editable / from source:
-
-```powershell
-python -m pip install -e .
-```
+That's it. `nanonis-spm` and `numpy` come along as transitive
+dependencies, and a parameter manifest is bundled inside the package.
 
 ## Configure
 
-1. Optionally copy `.env.example` to `.env`.
-2. Set runtime values in `config/default_runtime.yaml`.
-3. Unified parameter specs are in `config/parameters.yaml`.
-   - `parameters`: scalar `get`/`set` mappings.
-   - `actions`: non-`Get`/`Set` backend methods with `action_cmd` metadata.
-4. Regenerate from `nanonis_spm.Nanonis` with `scripts/generate_parameters_manifest.py`.
+Defaults work out of the box against the Nanonis STM Simulator on
+`127.0.0.1` (ports `3364, 6501-6504`, `allow_writes=true`,
+`dry_run=false`). To override, use either environment variables or a
+runtime YAML.
 
-Runtime config controls host, candidate ports, timeout, backend, and write policy.
+Common environment variables:
+
+| Variable | Default | Purpose |
+|---|---|---|
+| `NANONIS_HOST` | `127.0.0.1` | Controller host |
+| `NANONIS_PORTS` | `3364,6501,6502,6503,6504` | Candidate TCP ports |
+| `NANONIS_TIMEOUT_S` | `2.0` | Per-command timeout |
+| `NANONIS_ALLOW_WRITES` | `true` | Master gate for `set` / `ramp` / `act` |
+| `NANONIS_DRY_RUN` | `false` | Plan writes but do not apply |
+| `NSPMCTL_NO_DAEMON` | unset | Set to `1` to disable the warm daemon |
+
+For richer config (per-channel slew limits, custom backend selection),
+point `--config-file path/to/runtime.yaml` at any subcommand or set
+`NANONIS_CONFIG_FILE`. See `nspmctl doctor` for the live resolved view.
+
+The parameter manifest (which `get` / `set` / `act` / `ramp` target) is
+shipped inside the package at `nspmctl/resources/config/parameters.yaml`
+and is loaded automatically. To extend or restrict it, pass
+`--parameters-file your-manifest.yaml`.
 
 ## Daemon
 
@@ -396,20 +410,44 @@ nspmctl -help set
 nspmctl -help act
 ```
 
-## QCodes usage
+## Embedded Python usage
+
+The CLI is the primary surface, but `NanonisController` is importable
+for notebooks and embedding scenarios:
 
 ```python
-from qcodes.station import Station
 from nspmctl.controller import NanonisController
 
-station = Station()
-nanonis = NanonisController("nanonis", auto_connect=True)
-station.add_component(nanonis)
+nanonis = NanonisController("nanonis_demo", auto_connect=True)
+try:
+    print(nanonis.get_parameter_value("bias_v"))
+    nanonis.set_parameter_fields("bias_v", args={"Bias_value_V": 0.15})
+    report = nanonis.ramp_parameter(
+        "bias_v",
+        start_value=0.15,
+        end_value=0.25,
+        step_value=0.01,
+        interval_s=0.05,
+    )
+    print(report)
+finally:
+    nanonis.close()
+```
 
-print(nanonis.bias_v())
-print(nanonis.current_a())
+This bypasses the daemon and pays the full import + connect cost on
+construction, so prefer the CLI for hot loops and reach for the Python
+API when you need to compose with custom Python tooling.
 
-nanonis.close()
+## Developing
+
+```
+git clone https://github.com/BB-84C/Nanonis-QCodes-Controller.git
+cd Nanonis-QCodes-Controller
+pip install -e ".[dev]"
+pytest
+ruff check .
+black --check .
+mypy nspmctl
 ```
 
 ## Documentation index
@@ -420,6 +458,3 @@ nanonis.close()
 - Architecture overview: `docs/architecture.md`
 - Simulator quickstart: `docs/quickstart_simulator.md`
 - Porting to real controller: `docs/porting_to_real_controller.md`
-- Private-index release runbook: `docs/release_private_index.md`
-
-Project planning and internal development workflow details: `PLAN.md`

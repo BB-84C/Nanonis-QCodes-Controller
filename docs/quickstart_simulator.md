@@ -10,80 +10,83 @@ Get a clean machine from zero to a working simulator demo in under one hour.
 
 ## 1) Install
 
+End users (run the CLI against your simulator):
+
 ```powershell
 python -m venv .venv
 .\.venv\Scripts\Activate.ps1
-python -m pip install --upgrade pip
-python -m pip install -e .[dev,qcodes,nanonis]
+pip install --upgrade pip
+pip install nspmctl
+```
+
+Contributors (run the test suite):
+
+```powershell
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
+pip install --upgrade pip
+pip install -e ".[dev]"
 ```
 
 ## 2) Configure
-- Copy `.env.example` to `.env`.
-- Keep defaults for simulator-first testing unless your host/ports differ.
-- Optional: tune runtime policy in `config/default_runtime.yaml` and parameter safety in `config/parameters.yaml`.
+- Defaults work out of the box against the simulator on `127.0.0.1`
+  (ports `3364, 6501-6504`, `allow_writes=true`, `dry_run=false`).
+- Optional: copy `.env.example` to `.env` to override host/ports/policy
+  via environment variables.
+- Optional: tune `config/default_runtime.yaml` (repo checkout) or pass
+  `--config-file path/to/runtime.yaml` (installed wheel) for a custom
+  policy / per-channel limits.
+- The parameter manifest is shipped inside the package at
+  `nspmctl/resources/config/parameters.yaml`; override with
+  `--parameters-file your-manifest.yaml`.
 
 ## 3) Connectivity checks
 
 ```powershell
-python scripts/bridge_doctor.py --json
-python tests/probe_nanonis.py --backend nanonis_spm --command-probe
+nspmctl doctor --command-probe
 ```
 
 Expected: one or more candidate ports and at least one recommended port.
 
-## 4) Read-path smoke
+## 4) CLI smoke
 
 ```powershell
-python tests/read_client_demo.py --iterations 5 --interval-s 0.2
+nspmctl capabilities
+nspmctl get bias_v
+nspmctl get current_a
 ```
 
-## 5) QCodes smoke
+The first `nspmctl` call against the simulator auto-spawns a warm
+daemon in the background; subsequent calls converge to ~100 ms p50.
+
+## 5) Embedded Python API smoke
 
 ```python
-from qcodes.station import Station
 from nspmctl.controller import NanonisController
 
-station = Station()
-nanonis = NanonisController("nanonis", auto_connect=True)
-station.add_component(nanonis)
-
-print(nanonis.bias_v())
-print(nanonis.current_a())
-print(nanonis.zctrl_setpoint_a())
-print(nanonis.snapshot(update=True))
-
-nanonis.close()
+nanonis = NanonisController("nanonis_demo", auto_connect=True)
+try:
+    print(nanonis.get_parameter_value("bias_v"))
+    print(nanonis.get_parameter_value("current_a"))
+    print(nanonis.get_parameter_value("zctrl_setpoint_a"))
+finally:
+    nanonis.close()
 ```
 
+Note: the embedded API bypasses the daemon and pays the full import +
+connect cost on construction. Prefer the CLI for hot loops; reach for
+the Python API when composing with custom Python tooling.
+
 ## 6) Guarded-write smoke
-- Runtime policy is controlled in `config/default_runtime.yaml`.
-- Use the demo script to verify single-step guarded writes.
+- Default runtime policy is live (`allow_writes=true`, `dry_run=false`)
+  but every `set` / `ramp` / `act` is gated by per-channel safety limits.
+- Use the demo script to verify single-step guarded writes:
 
 ```powershell
 python tests/guarded_write_demo.py --channel bias_v --target 1.8
 ```
 
-## 7) Trajectory monitor quick workflow
-Stage monitor config, inspect available labels, run monitor, then query actions:
-
-```powershell
-nspmctl trajectory monitor config clear
-nspmctl trajectory monitor list-signals
-nspmctl trajectory monitor list-specs
-nspmctl trajectory monitor config set --run-name sim-demo-001
-nspmctl trajectory monitor run --iterations 50
-nspmctl trajectory action list --db-path artifacts/trajectory/trajectory-monitor.sqlite3 --run-name sim-demo-001
-# Run show only when action list count > 0.
-nspmctl trajectory action show --db-path artifacts/trajectory/trajectory-monitor.sqlite3 --run-name sim-demo-001 --action-idx 0 --with-signal-window
-```
-
-Notes:
-- `run_name` is required before `trajectory monitor run`.
-- `run_name` is automatically cleared from staged config when the run exits.
-- Action timestamps are ISO UTC, and action signal window default is `2.5` seconds.
-- Dense signal/spec rotation default is `6000` entries per segment.
-
-## 8) Test matrix
+## 7) Test matrix
 
 ```powershell
 python -m pytest -q -m "not simulator"
@@ -96,6 +99,5 @@ python -m pytest -q -m simulator_writes
 ## References
 - Architecture: `docs/architecture.md`
 - Safety model: `docs/safety_model.md`
-- Trajectory model: `docs/trajectory_model.md`
 - Test runbook: `docs/test_runbook.md`
-- Example notebook: `docs/notebooks/simulator_demo.ipynb`
+- CLI contract: `docs/cli_contract.md`

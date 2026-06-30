@@ -6,26 +6,26 @@ All notable changes to this project are documented in this file.
 
 ## [0.2.0] - 2026-06-30
 
-This release renames the project and is intentionally **breaking**. The
-package is now `nspmctl` (was `nanonis-qcodes-controller`) and the CLI
-command is now `nspmctl` (was `nqctl`). All command names, argument shapes,
-and JSON response schemas of the surviving subcommands are preserved.
+This release rebuilds the project around a single thesis: a thin, fast
+CLI over `nanonis-spm` for agent-driven Nanonis SPM controller
+automation. It is intentionally **breaking**. The package, CLI command,
+and internal API surface are all renamed; everything not on that
+critical path was cut. Command names, argument shapes, and JSON
+response schemas of the surviving subcommands are preserved.
 
 ### Breaking changes
-- Renamed PyPI package `nanonis-qcodes-controller` -> `nspmctl`.
-- Renamed CLI command `nqctl` -> `nspmctl`.
-- Renamed Python package `nanonis_qcodes_controller` -> `nspmctl`.
-- Renamed internal subpackage `nanonis_qcodes_controller.qcodes_driver` ->
-  `nspmctl.controller`.
-- Removed Python class `QcodesNanonisSTM`. The replacement
-  `nspmctl.controller.NanonisController` has the same constructor /
-  method surface but no qcodes Instrument base.
-- Removed the qcodes runtime dependency entirely; the `[qcodes]` extra is
-  gone. `nanonis-spm` is now a hard runtime dependency (it used to live in
-  the `[nanonis]` extra).
-- Removed the trajectory subsystem entirely. The following `nqctl`
-  subcommands no longer exist (the agent contract on get/set/ramp/act
-  payloads also no longer contains the `"trajectory"` block):
+- Renamed PyPI package, Python package, CLI command, and instrument
+  class. See the migration map at the bottom of this entry.
+- The previous embedded instrument wrapper no longer derives from an
+  external framework base class; it is now a plain class with the same
+  constructor and method surface.
+- The heavy optional framework integration that used to back the
+  embedded driver is gone; `nanonis-spm` is now a hard runtime
+  dependency (previously gated behind an extra).
+- Removed the trajectory subsystem entirely. The following CLI
+  subcommands no longer exist (the agent contract on
+  `get`/`set`/`ramp`/`act` payloads also no longer contains the
+  `"trajectory"` block):
   - `trajectory tail`, `trajectory follow`
   - `trajectory action list`, `trajectory action show`
   - `trajectory monitor config show|set|clear`
@@ -73,6 +73,20 @@ Raw `nanonis_spm` end-to-end floor on this machine: ~110 ms (import +
 TCP connect + one Bias_Get + close). After the daemon eats the import
 and connect once, warm CLI calls converge toward the loopback IPC +
 Python startup floor (~80-100 ms).
+
+### Migration from v0.1.x
+
+| Old (v0.1.x)                                                            | New (v0.2.0)                                                  |
+|-------------------------------------------------------------------------|---------------------------------------------------------------|
+| `pip install nanonis-qcodes-controller`                                 | `pip install nspmctl`                                         |
+| `nqctl <subcommand>`                                                    | `nspmctl <subcommand>`                                        |
+| `import nanonis_qcodes_controller`                                      | `import nspmctl`                                              |
+| `from nanonis_qcodes_controller.qcodes_driver import QcodesNanonisSTM`  | `from nspmctl.controller import NanonisController`            |
+| `nanonis_qcodes_controller.config.load_settings`                        | `nspmctl.config.load_settings`                                |
+| `nanonis_qcodes_controller.client.create_client`                        | `nspmctl.client.create_client`                                |
+
+The new `NanonisController` keeps the same constructor signature and
+method names; the only required edit is the import line.
 
 ## [0.1.10] - 2026-02-26
 
