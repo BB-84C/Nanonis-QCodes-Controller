@@ -26,4 +26,5 @@ tests/**
 !tests/test_release_checklist_contract.py
 !tests/test_ci_workflow_contract.py
 !tests/test_publish_workflow_contract.py
+!tests/test_daemon.py
 artifacts/

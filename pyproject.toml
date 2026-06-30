@@ -25,7 +25,7 @@ dev = [
 ]
 
 [project.scripts]
-nspmctl = "nspmctl.cli:main"
+nspmctl = "nspmctl.__main__:main"
 
 [tool.setuptools.packages.find]
 include = ["nspmctl*"]

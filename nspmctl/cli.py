@@ -118,8 +118,93 @@ def _normalize_help_args(argv: Sequence[str]) -> list[str]:
     return tokens
 
 
+_NO_DAEMON_ENV = "NSPMCTL_NO_DAEMON"
+
+
+def _is_daemon_routable(raw_argv: Sequence[str]) -> bool:
+    """Return True if the given argv should be forwarded to a warm daemon.
+
+    The ``daemon`` meta-command group and help flags always run inline.
+    Everything else benefits from a warm controller.
+    """
+    if not raw_argv:
+        return False
+    if raw_argv[0] in {"-h", "--help", "-help"}:
+        return False
+    if raw_argv[0] == "daemon":
+        return False
+    return True
+
+
+def _strip_no_daemon(raw_argv: list[str]) -> tuple[list[str], bool]:
+    """Strip a ``--no-daemon`` flag from argv. Returns (cleaned, flag_was_present)."""
+    if "--no-daemon" not in raw_argv:
+        return raw_argv, False
+    return [a for a in raw_argv if a != "--no-daemon"], True
+
+
+def _try_route_through_daemon(raw_argv: list[str]) -> int | None:
+    """Send the argv to a running daemon. Return its exit code, or None on miss."""
+    try:
+        from nspmctl import daemon as _daemon  # local import keeps cold path light
+    except ImportError:
+        return None
+
+    status = _daemon.daemon_status()
+    if not status.get("running") or not status.get("reachable"):
+        return None
+
+    try:
+        response = _daemon.send_request_to_daemon(list(raw_argv))
+    except (ConnectionRefusedError, ConnectionResetError, OSError, ValueError):
+        return None
+
+    stdout_text = str(response.get("stdout", ""))
+    stderr_text = str(response.get("stderr", ""))
+    if stdout_text:
+        sys.stdout.write(stdout_text)
+    if stderr_text:
+        sys.stderr.write(stderr_text)
+    rc = response.get("rc", 0)
+    try:
+        return int(rc)
+    except (TypeError, ValueError):
+        return 1
+
+
+def _trigger_background_daemon_spawn(parameters_file: str | None = None) -> None:
+    """Best-effort: spawn a daemon so the NEXT call hits a warm one."""
+    try:
+        from nspmctl import daemon as _daemon  # noqa: PLC0415
+
+        _daemon.spawn_daemon_background(parameters_file=parameters_file)
+    except Exception:  # noqa: BLE001 - best-effort, never block the user's call
+        pass
+
+
 def main(argv: Sequence[str] | None = None) -> int:
-    normalized_argv = _normalize_help_args(sys.argv[1:] if argv is None else argv)
+    raw_argv = list(sys.argv[1:] if argv is None else argv)
+
+    # Daemon routing: inside the daemon process, _DAEMON_SHARED_INSTRUMENT is set
+    # so we skip the forward-to-daemon shortcut to avoid infinite loops.
+    use_daemon = _DAEMON_SHARED_INSTRUMENT is None
+    raw_argv, no_daemon_flag = _strip_no_daemon(raw_argv)
+    if no_daemon_flag or os.environ.get(_NO_DAEMON_ENV):
+        use_daemon = False
+
+    if use_daemon and _is_daemon_routable(raw_argv):
+        result = _try_route_through_daemon(raw_argv)
+        if result is not None:
+            return result
+        # Daemon was unreachable. Run inline this time AND spawn a daemon in the
+        # background so the next agent tool call benefits from a warm controller.
+        _trigger_background_daemon_spawn()
+
+    return _run_inline(raw_argv)
+
+
+def _run_inline(raw_argv: list[str]) -> int:
+    normalized_argv = _normalize_help_args(raw_argv)
     parser = _build_parser()
     args = parser.parse_args(normalized_argv)
 
@@ -386,6 +471,69 @@ def _build_parser() -> argparse.ArgumentParser:
     parser_doctor.add_argument("--attempts", type=int, default=2)
     parser_doctor.add_argument("--command-probe", action="store_true")
     parser_doctor.set_defaults(handler=_cmd_doctor)
+
+    parser_daemon = subparsers.add_parser(
+        "daemon",
+        help="Manage the persistent nspmctl daemon (warm controller, fast tool calls).",
+    )
+    daemon_subparsers = parser_daemon.add_subparsers(dest="daemon_command", required=True)
+
+    parser_daemon_status = daemon_subparsers.add_parser(
+        "status", help="Show daemon liveness, port, pid, version."
+    )
+    _add_json_arg(parser_daemon_status)
+    parser_daemon_status.set_defaults(handler=_cmd_daemon_status)
+
+    parser_daemon_start = daemon_subparsers.add_parser(
+        "start", help="Spawn the daemon in the background; wait until ready."
+    )
+    _add_json_arg(parser_daemon_start)
+    parser_daemon_start.add_argument(
+        "--parameters-file",
+        default=None,
+        help="Optional parameter manifest override for the warm controller.",
+    )
+    parser_daemon_start.add_argument(
+        "--wait-timeout-s",
+        type=float,
+        default=8.0,
+        help="How long to wait for the daemon to become reachable (default 8s).",
+    )
+    parser_daemon_start.set_defaults(handler=_cmd_daemon_start)
+
+    parser_daemon_stop = daemon_subparsers.add_parser(
+        "stop", help="Terminate the running daemon (if any)."
+    )
+    _add_json_arg(parser_daemon_stop)
+    parser_daemon_stop.set_defaults(handler=_cmd_daemon_stop)
+
+    parser_daemon_restart = daemon_subparsers.add_parser(
+        "restart", help="Stop the daemon if running, then start a fresh one."
+    )
+    _add_json_arg(parser_daemon_restart)
+    parser_daemon_restart.add_argument(
+        "--parameters-file",
+        default=None,
+        help="Optional parameter manifest override for the warm controller.",
+    )
+    parser_daemon_restart.add_argument(
+        "--wait-timeout-s",
+        type=float,
+        default=8.0,
+        help="How long to wait for the new daemon to become reachable (default 8s).",
+    )
+    parser_daemon_restart.set_defaults(handler=_cmd_daemon_restart)
+
+    parser_daemon_logs = daemon_subparsers.add_parser(
+        "logs", help="Print the tail of the daemon log file."
+    )
+    parser_daemon_logs.add_argument(
+        "--tail",
+        type=int,
+        default=80,
+        help="Number of trailing log lines to print (default 80).",
+    )
+    parser_daemon_logs.set_defaults(handler=_cmd_daemon_logs)
 
     _configure_negative_number_parsing(parser)
     return parser
@@ -786,6 +934,104 @@ def _cmd_doctor(args: argparse.Namespace) -> int:
     return EXIT_OK if report.candidate_ports else EXIT_FAILED
 
 
+# Module-level slot set by the nspmctl daemon process before each request,
+# so handlers reuse the warm controller instead of opening a fresh one.
+_DAEMON_SHARED_INSTRUMENT: Any = None
+
+
+def _cmd_daemon_status(args: argparse.Namespace) -> int:
+    from nspmctl import daemon as _daemon
+
+    payload = _daemon.daemon_status()
+    _print_payload(payload, as_json=args.json)
+    return EXIT_OK if payload.get("running") and payload.get("reachable") else EXIT_FAILED
+
+
+def _cmd_daemon_start(args: argparse.Namespace) -> int:
+    from nspmctl import daemon as _daemon
+
+    existing = _daemon.daemon_status()
+    if existing.get("running") and existing.get("reachable"):
+        payload = {"started": False, "reason": "already_running", "status": existing}
+        _print_payload(payload, as_json=args.json)
+        return EXIT_OK
+
+    pid = _daemon.spawn_daemon_background(parameters_file=args.parameters_file)
+    ready = _daemon.wait_for_daemon_ready(timeout_s=float(args.wait_timeout_s))
+    status = _daemon.daemon_status()
+    payload = {
+        "started": ready and bool(status.get("running")),
+        "spawned_pid": pid,
+        "status": status,
+    }
+    _print_payload(payload, as_json=args.json)
+    return EXIT_OK if payload["started"] else EXIT_FAILED
+
+
+def _cmd_daemon_stop(args: argparse.Namespace) -> int:
+    from nspmctl import daemon as _daemon
+
+    info = _daemon._read_pid_file()  # noqa: SLF001 - intra-package access
+    if info is None:
+        payload = {"stopped": False, "reason": "no_pid_file"}
+        _print_payload(payload, as_json=args.json)
+        return EXIT_OK
+
+    pid = int(info.get("pid", 0))
+    if pid > 0 and _daemon._is_pid_alive(pid):  # noqa: SLF001
+        _daemon._terminate_pid(pid)  # noqa: SLF001
+    _daemon._remove_pid_file()  # noqa: SLF001
+
+    payload = {"stopped": True, "pid": pid}
+    _print_payload(payload, as_json=args.json)
+    return EXIT_OK
+
+
+def _cmd_daemon_restart(args: argparse.Namespace) -> int:
+    from nspmctl import daemon as _daemon
+
+    info = _daemon._read_pid_file()  # noqa: SLF001
+    if info is not None:
+        pid = int(info.get("pid", 0))
+        if pid > 0 and _daemon._is_pid_alive(pid):  # noqa: SLF001
+            _daemon._terminate_pid(pid)  # noqa: SLF001
+        _daemon._remove_pid_file()  # noqa: SLF001
+
+    pid_new = _daemon.spawn_daemon_background(parameters_file=args.parameters_file)
+    ready = _daemon.wait_for_daemon_ready(timeout_s=float(args.wait_timeout_s))
+    status = _daemon.daemon_status()
+    payload = {
+        "restarted": ready and bool(status.get("running")),
+        "spawned_pid": pid_new,
+        "status": status,
+    }
+    _print_payload(payload, as_json=args.json)
+    return EXIT_OK if payload["restarted"] else EXIT_FAILED
+
+
+def _cmd_daemon_logs(args: argparse.Namespace) -> int:
+    from nspmctl import daemon as _daemon
+
+    log_path = _daemon.log_file_path()
+    if not log_path.is_file():
+        print(f"(no daemon log at {log_path})", file=sys.stderr)
+        return EXIT_FAILED
+
+    tail = max(1, int(args.tail))
+    with log_path.open("rb") as handle:
+        handle.seek(0, 2)
+        size = handle.tell()
+        # Read at most ~256 KiB from the end to find `tail` lines.
+        chunk_size = min(size, 256 * 1024)
+        handle.seek(size - chunk_size, 0)
+        data = handle.read(chunk_size)
+    text = data.decode("utf-8", errors="replace")
+    lines = text.splitlines()[-tail:]
+    for line in lines:
+        print(line)
+    return EXIT_OK
+
+
 @contextmanager
 def _instrument_context(
     args: argparse.Namespace,
@@ -793,13 +1039,18 @@ def _instrument_context(
     auto_connect: bool,
     include_parameters: Sequence[str] | None = None,
 ) -> Iterator[tuple[Any, None]]:
+    if _DAEMON_SHARED_INSTRUMENT is not None:
+        # Daemon owns the lifecycle; never tear it down between requests.
+        yield _DAEMON_SHARED_INSTRUMENT, None
+        return
+
     instrument_cls = _load_instrument_class()
     load_settings(config_file=args.config_file)
 
     instrument = None
     try:
         instrument = instrument_cls(
-            name=f"nqctl_{int(time.time() * 1000)}",
+            name=f"nspmctl_{int(time.time() * 1000)}",
             config_file=args.config_file,
             parameters_file=args.parameters_file,
             include_parameters=include_parameters,
