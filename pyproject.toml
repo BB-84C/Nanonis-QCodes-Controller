@@ -22,9 +22,6 @@ dev = [
     "ruff>=0.6.0",
     "types-PyYAML>=6.0.12.20241230",
 ]
-qcodes = [
-    "qcodes>=0.46.0",
-]
 nanonis = [
     "nanonis-spm>=1.0.3",
 ]
@@ -63,6 +60,4 @@ strict = true
 packages = ["nanonis_qcodes_controller"]
 warn_unused_configs = true
 
-[[tool.mypy.overrides]]
-module = ["qcodes", "qcodes.*"]
-ignore_missing_imports = true
+

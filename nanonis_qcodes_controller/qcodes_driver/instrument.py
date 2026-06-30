@@ -10,8 +10,6 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-from qcodes.instrument import Instrument
-
 from nanonis_qcodes_controller.client import NanonisClient, build_client_from_settings
 from nanonis_qcodes_controller.client.base import NanonisHealth
 from nanonis_qcodes_controller.client.errors import NanonisProtocolError
@@ -155,7 +153,7 @@ def _coerce_action_value(value: Any, *, value_type: str, field_name: str) -> Any
     raise ValueError(f"Unsupported action value type: {value_type}")
 
 
-class QcodesNanonisSTM(Instrument):  # type: ignore[misc,unused-ignore]
+class QcodesNanonisSTM:
     def __init__(
         self,
         name: str,
@@ -168,7 +166,12 @@ class QcodesNanonisSTM(Instrument):  # type: ignore[misc,unused-ignore]
         auto_connect: bool = True,
         **kwargs: Any,
     ) -> None:
-        super().__init__(name=name, **kwargs)
+        if kwargs:
+            unexpected = ", ".join(sorted(kwargs))
+            raise TypeError(
+                f"Unexpected keyword argument(s) for QcodesNanonisSTM: {unexpected}"
+            )
+        self.name = name
 
         self._owns_client = client is None
         self._client: NanonisClient
@@ -200,14 +203,9 @@ class QcodesNanonisSTM(Instrument):  # type: ignore[misc,unused-ignore]
         if auto_connect:
             self._client.connect()
 
-        self._register_parameters()
-
     def close(self) -> None:
-        try:
-            if self._owns_client:
-                self._client.close()
-        finally:
-            super().close()
+        if self._owns_client:
+            self._client.close()
 
     def client_health(self) -> NanonisHealth:
         return self._client.health()
@@ -738,11 +736,6 @@ class QcodesNanonisSTM(Instrument):  # type: ignore[misc,unused-ignore]
         path_value = payload[2]
         file_path = "" if path_value is None else str(path_value)
         return timed_out, file_path
-
-    def _register_parameters(self) -> None:
-        # Methods-only interface: command access is exposed via
-        # get_parameter_snapshot / set_parameter_fields / execute_action.
-        return None
 
     def _call(self, command: str, *, args: Mapping[str, Any] | None = None) -> Mapping[str, Any]:
         return self._client.call(command, args=args)

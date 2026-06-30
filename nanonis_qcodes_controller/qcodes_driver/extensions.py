@@ -2,10 +2,16 @@ from __future__ import annotations
 
 from collections.abc import Mapping
 from dataclasses import dataclass
+from functools import lru_cache
 from pathlib import Path
 from typing import Any, Literal, cast
 
 import yaml
+
+try:  # Prefer libyaml C bindings (~6x faster on a 651KB manifest).
+    from yaml import CSafeLoader as _SafeLoader  # type: ignore[attr-defined]
+except ImportError:  # pragma: no cover - pure-Python fallback
+    from yaml import SafeLoader as _SafeLoader  # type: ignore[assignment]
 
 from nanonis_qcodes_controller.config.default_files import resolve_packaged_default
 
@@ -108,6 +114,16 @@ def _resolve_manifest_path(parameter_file: str | Path) -> Path:
     return manifest_path
 
 
+@lru_cache(maxsize=8)
+def _load_manifest_root_cached(manifest_path: Path) -> Mapping[str, Any]:
+    """Parse a parameter manifest YAML once per (resolved-path, process)."""
+    with manifest_path.open("r", encoding="utf-8") as handle:
+        loaded = yaml.load(handle, Loader=_SafeLoader)
+    if loaded is None:
+        return {}
+    return _as_mapping(loaded, context="root")
+
+
 def _parse_scalar_value_type(value: Any, *, field_name: str) -> ScalarValueType:
     normalized = str(value).strip().lower()
     if normalized not in _ALLOWED_VALUE_TYPES:
@@ -128,14 +144,10 @@ def _infer_scalar_value_type(value: Any) -> ScalarValueType:
 
 def load_parameter_specs(parameter_file: str | Path) -> tuple[ParameterSpec, ...]:
     manifest_path = _resolve_manifest_path(parameter_file)
-
-    with manifest_path.open("r", encoding="utf-8") as handle:
-        loaded = yaml.safe_load(handle)
-
-    if loaded is None:
+    root = _load_manifest_root_cached(manifest_path)
+    if not root:
         return ()
 
-    root = _as_mapping(loaded, context="root")
     defaults = _as_mapping(root.get("defaults"), context="defaults")
     parameters_raw = root.get("parameters", {})
     if not isinstance(parameters_raw, dict):
@@ -151,14 +163,10 @@ def load_parameter_specs(parameter_file: str | Path) -> tuple[ParameterSpec, ...
 
 def load_action_specs(parameter_file: str | Path) -> tuple[ActionSpec, ...]:
     manifest_path = _resolve_manifest_path(parameter_file)
-
-    with manifest_path.open("r", encoding="utf-8") as handle:
-        loaded = yaml.safe_load(handle)
-
-    if loaded is None:
+    root = _load_manifest_root_cached(manifest_path)
+    if not root:
         return ()
 
-    root = _as_mapping(loaded, context="root")
     actions_raw = root.get("actions", {})
     if actions_raw in (None, False):
         return ()

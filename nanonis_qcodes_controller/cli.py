@@ -173,7 +173,7 @@ def _build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="nqctl",
         description=(
-            "Nanonis-QCodes bridge CLI for agent orchestration.\n"
+            "Nanonis SPM controller CLI for agent orchestration.\n"
             "Use atomic commands (capabilities/get/set/ramp/act/parameters/policy)."
         ),
         formatter_class=argparse.RawTextHelpFormatter,
@@ -812,15 +812,7 @@ def _instrument_context(
 
 
 def _load_instrument_class() -> Any:
-    try:
-        from nanonis_qcodes_controller.qcodes_driver import QcodesNanonisSTM
-    except ModuleNotFoundError as exc:
-        if exc.name is not None and exc.name.startswith("qcodes"):
-            raise ValueError(
-                "qcodes is not installed. Install optional extra with: "
-                "python -m pip install -e .[qcodes]"
-            ) from exc
-        raise
+    from nanonis_qcodes_controller.qcodes_driver import QcodesNanonisSTM
 
     return QcodesNanonisSTM
 
