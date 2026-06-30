@@ -9,9 +9,7 @@ from nspmctl.config import load_settings
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(
-        description="Bridge doctor: config and connectivity checks."
-    )
+    parser = argparse.ArgumentParser(description="Bridge doctor: config and connectivity checks.")
     parser.add_argument("--config-file")
     parser.add_argument("--json", action="store_true", help="Print JSON report.")
     parser.add_argument(

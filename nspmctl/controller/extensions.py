@@ -9,7 +9,7 @@ from typing import Any, Literal, cast
 import yaml
 
 try:  # Prefer libyaml C bindings (~6x faster on a 651KB manifest).
-    from yaml import CSafeLoader as _SafeLoader  # type: ignore[attr-defined]
+    from yaml import CSafeLoader as _SafeLoader
 except ImportError:  # pragma: no cover - pure-Python fallback
     from yaml import SafeLoader as _SafeLoader  # type: ignore[assignment]
 

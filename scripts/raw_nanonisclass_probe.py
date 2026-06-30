@@ -3,9 +3,7 @@ from __future__ import annotations
 import argparse
 import json
 import socket
-import sys
 import time
-from collections.abc import Callable
 from typing import Any
 
 from nanonis_spm.NanonisClass import Nanonis

@@ -28,6 +28,7 @@ PID file layout::
       "parameters_file": "config/parameters.yaml"
     }
 """
+
 from __future__ import annotations
 
 import argparse
@@ -101,9 +102,10 @@ def _read_pid_file() -> dict[str, Any] | None:
     if not p.is_file():
         return None
     try:
-        return json.loads(p.read_text(encoding="utf-8"))
+        data = json.loads(p.read_text(encoding="utf-8"))
     except (json.JSONDecodeError, OSError):
         return None
+    return data if isinstance(data, dict) else None
 
 
 def _remove_pid_file() -> None:
@@ -119,7 +121,7 @@ def _is_pid_alive(pid: int) -> bool:
         import ctypes  # noqa: PLC0415
 
         PROCESS_QUERY_LIMITED_INFORMATION = 0x1000
-        kernel32 = ctypes.windll.kernel32  # type: ignore[attr-defined]
+        kernel32 = ctypes.windll.kernel32
         handle = kernel32.OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, False, pid)
         if not handle:
             return False
@@ -330,7 +332,7 @@ class _DaemonServer:
         sock.listen(DAEMON_ACCEPT_BACKLOG)
         sock.settimeout(1.0)
         self._sock = sock
-        return sock.getsockname()[1]
+        return int(sock.getsockname()[1])
 
     def _publish_pid_file(self, port: int) -> None:
         info = {
@@ -421,7 +423,7 @@ class _DaemonServer:
                 assert self._sock is not None
                 try:
                     conn, _ = self._sock.accept()
-                except socket.timeout:
+                except TimeoutError:
                     if time.monotonic() - self._last_activity >= DAEMON_IDLE_TIMEOUT_S:
                         self._log("idle timeout reached; exiting")
                         break
@@ -534,7 +536,7 @@ def _terminate_pid(pid: int) -> None:
         import ctypes  # noqa: PLC0415
 
         PROCESS_TERMINATE = 0x0001
-        kernel32 = ctypes.windll.kernel32  # type: ignore[attr-defined]
+        kernel32 = ctypes.windll.kernel32
         handle = kernel32.OpenProcess(PROCESS_TERMINATE, False, pid)
         if handle:
             try:

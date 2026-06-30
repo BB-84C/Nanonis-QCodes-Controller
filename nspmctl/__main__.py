@@ -10,6 +10,7 @@ in PyYAML + a 651KB manifest parse + the nanonis-spm-aware client surface).
 If the daemon is unreachable, we fall through to ``nspmctl.cli.main`` (the
 slow inline path), so behavior is identical to ``--no-daemon`` mode.
 """
+
 from __future__ import annotations
 
 import os

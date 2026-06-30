@@ -257,7 +257,7 @@ def test_cmd_policy_set_updates_config_and_emits_effective_policy(monkeypatch, t
     args = argparse.Namespace(
         allow_writes=True, dry_run=False, config_file=str(config_file), json=True
     )
-    exit_code = getattr(cli, "_cmd_policy_set")(args)
+    exit_code = cli._cmd_policy_set(args)
 
     assert exit_code == cli.EXIT_OK
     assert captured_payloads

@@ -463,9 +463,7 @@ def _build_parser() -> argparse.ArgumentParser:
     parser_backend_commands.add_argument("--match", help="Optional filter token.")
     parser_backend_commands.set_defaults(handler=_cmd_backend_commands)
 
-    parser_doctor = subparsers.add_parser(
-        "doctor", help="Connectivity preflight checks."
-    )
+    parser_doctor = subparsers.add_parser("doctor", help="Connectivity preflight checks.")
     _add_json_arg(parser_doctor)
     parser_doctor.add_argument("--config-file")
     parser_doctor.add_argument("--attempts", type=int, default=2)
@@ -888,7 +886,6 @@ def _cmd_parameters_validate(args: argparse.Namespace) -> int:
     }
     _print_payload(payload, as_json=args.json)
     return EXIT_OK
-
 
 
 def _cmd_backend_commands(args: argparse.Namespace) -> int:

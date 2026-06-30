@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import ast
-import json
 import math
 import time
 from collections.abc import Callable, Iterable, Mapping, Sequence
@@ -168,9 +167,7 @@ class NanonisController:
     ) -> None:
         if kwargs:
             unexpected = ", ".join(sorted(kwargs))
-            raise TypeError(
-                f"Unexpected keyword argument(s) for NanonisController: {unexpected}"
-            )
+            raise TypeError(f"Unexpected keyword argument(s) for NanonisController: {unexpected}")
         self.name = name
 
         self._owns_client = client is None
