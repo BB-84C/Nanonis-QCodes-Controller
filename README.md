@@ -441,8 +441,8 @@ API when you need to compose with custom Python tooling.
 ## Developing
 
 ```
-git clone https://github.com/BB-84C/Nanonis-QCodes-Controller.git
-cd Nanonis-QCodes-Controller
+git clone https://github.com/BB-84C/NanonisSPMController-CLI.git
+cd NanonisSPMController-CLI
 pip install -e ".[dev]"
 pytest
 ruff check .
