@@ -398,6 +398,18 @@ class _DaemonServer:
 
     def serve(self) -> int:
         port = self._bind()
+        # Eagerly warm the controller BEFORE we advertise as reachable, so the
+        # first client request lands on a fully-warm instrument rather than
+        # paying the import + connect cost (~600 ms) inline.
+        try:
+            self._ensure_instrument()
+        except Exception as exc:  # noqa: BLE001 - daemon must surface the error and exit
+            self._log(f"failed to instantiate controller: {type(exc).__name__}: {exc}")
+            if self._sock is not None:
+                with contextlib.suppress(OSError):
+                    self._sock.close()
+                self._sock = None
+            return 1
         self._publish_pid_file(port)
         self._log(
             f"nspmctld listening on {DAEMON_LOOPBACK_HOST}:{port} (pid={os.getpid()},"

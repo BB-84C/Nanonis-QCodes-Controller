@@ -12,6 +12,10 @@ license = { file = "LICENSE" }
 dependencies = [
     "PyYAML>=6.0",
     "nanonis-spm>=1.0.3",
+    # nanonis-spm's wheels do not declare numpy in their metadata, but the
+    # NanonisClass module imports numpy unconditionally. Pin it here so a
+    # bare `pip install nspmctl` produces a working install.
+    "numpy>=1.23",
 ]
 
 [project.optional-dependencies]

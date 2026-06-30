@@ -1,56 +1,59 @@
-# Nanonis-QCodes-Controller
+# nspmctl
 
-Simulator-first Python bridge between Nanonis SPM controller interfaces and QCodes.
+A thin, fast CLI over `nanonis-spm` for agent-driven Nanonis SPM
+controller automation (real controller or STM Simulator).
 
-## What this project provides
+`nspmctl` runs as either a short-lived one-shot command or, by default,
+a thin client that forwards to a persistent background daemon. The
+daemon holds one warm `NanonisController` and the open TCP connection
+to the instrument, so subsequent agent tool calls converge toward
+loopback IPC + Python startup latency instead of paying the import +
+connect cost every time.
 
-- `nspmctl`: an agent-friendly CLI for atomic read/write/ramp operations.
-- `NanonisController`: a QCodes instrument wrapper with spec-driven parameters.
+## What this provides
+
+- `nspmctl`: atomic CLI commands (`get` / `set` / `ramp` / `act` /
+  `capabilities` / `policy` / `doctor` / `daemon ...`) with stable JSON
+  output schemas.
+- `nspmctl daemon`: persistent warm-controller daemon, auto-spawned on
+  first call.
 - Strict write semantics:
   - `set` is always a guarded single-step write.
   - `ramp` is always an explicit multi-step trajectory.
-- Default runtime policy (`allow_writes=true`, `dry_run=false`).
+- Default runtime policy: `allow_writes=true`, `dry_run=false`.
 
-## v1 API support contract
+## Performance
 
-- Stable Python API symbols: `NanonisController`, `create_client`, `load_settings`.
-- Stable CLI contract: documented `nspmctl` commands and outputs.
-- Other Python symbols are provisional/internal and may change across minor releases.
+End-to-end `get bias_v` against the STM Simulator on a developer laptop:
+
+| Mode                              | p50      |
+|-----------------------------------|---------:|
+| `nspmctl --no-daemon get bias_v`  |  525 ms  |
+| `nspmctl get bias_v` (warm daemon)|  105 ms  |
+| raw `nanonis_spm` one-shot floor  |  110 ms  |
+
+The daemon path approaches the raw `nanonis_spm` floor and is ~30x
+faster than the previous `nqctl` baseline.
+
+## v0.2 support contract
+
+- Stable CLI surface: documented `nspmctl` subcommands and JSON outputs.
+- Stable Python symbols for embedding: `nspmctl.client.create_client`,
+  `nspmctl.config.load_settings`.
+- Other Python symbols are provisional and may change across minor
+  releases.
 
 ## Install
 
-Install from a GitHub release (recommended for test users):
-
-1. Open the releases page and download the wheel asset (`*.whl`), not the auto-generated source zip/tarball.
-2. Create a virtual environment.
-3. Install the wheel, then install optional runtime integrations.
-
 ```powershell
-python -m venv .venv
-.\.venv\Scripts\Activate.ps1
-python -m pip install --upgrade pip
-python -m pip install .\nspmctl-<version>-py3-none-any.whl
-python -m pip install "qcodes>=0.46.0" "nanonis-spm>=1.0.3"
+python -m pip install nspmctl
 nspmctl capabilities
 ```
 
-You can also install directly from a release URL:
+Editable / from source:
 
 ```powershell
-python -m pip install "https://github.com/BB-84C/Nanonis-QCodes-Controller/releases/download/v<version>/nspmctl-<version>-py3-none-any.whl"
-```
-
-Install from source:
-
-```powershell
-python -m pip install .
-```
-
-Optional extras:
-
-```powershell
-python -m pip install ".[qcodes]"
-python -m pip install ".[nanonis]"
+python -m pip install -e .
 ```
 
 ## Configure
@@ -61,7 +64,32 @@ python -m pip install ".[nanonis]"
    - `parameters`: scalar `get`/`set` mappings.
    - `actions`: non-`Get`/`Set` backend methods with `action_cmd` metadata.
 4. Regenerate from `nanonis_spm.Nanonis` with `scripts/generate_parameters_manifest.py`.
+
 Runtime config controls host, candidate ports, timeout, backend, and write policy.
+
+## Daemon
+
+```powershell
+# Auto-managed: the first cold call spawns a daemon in the background,
+# subsequent calls are warm.
+nspmctl get bias_v
+
+# Explicit lifecycle (optional):
+nspmctl daemon start
+nspmctl daemon status
+nspmctl daemon stop
+nspmctl daemon restart
+nspmctl daemon logs --tail 80
+
+# Diagnostics / CI: bypass the daemon entirely.
+nspmctl --no-daemon get bias_v
+# or:
+$env:NSPMCTL_NO_DAEMON = "1"; nspmctl get bias_v
+```
+
+The daemon exits automatically after 30 minutes of idle. PID + port +
+log files live under `%LOCALAPPDATA%\nspmctl\` on Windows
+(`~/.local/state/nspmctl/` on Linux/macOS).
 
 ## CLI command guide (`nspmctl`)
 

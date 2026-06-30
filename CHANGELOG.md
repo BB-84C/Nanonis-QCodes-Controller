@@ -4,6 +4,76 @@ All notable changes to this project are documented in this file.
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-06-30
+
+This release renames the project and is intentionally **breaking**. The
+package is now `nspmctl` (was `nanonis-qcodes-controller`) and the CLI
+command is now `nspmctl` (was `nqctl`). All command names, argument shapes,
+and JSON response schemas of the surviving subcommands are preserved.
+
+### Breaking changes
+- Renamed PyPI package `nanonis-qcodes-controller` -> `nspmctl`.
+- Renamed CLI command `nqctl` -> `nspmctl`.
+- Renamed Python package `nanonis_qcodes_controller` -> `nspmctl`.
+- Renamed internal subpackage `nanonis_qcodes_controller.qcodes_driver` ->
+  `nspmctl.controller`.
+- Removed Python class `QcodesNanonisSTM`. The replacement
+  `nspmctl.controller.NanonisController` has the same constructor /
+  method surface but no qcodes Instrument base.
+- Removed the qcodes runtime dependency entirely; the `[qcodes]` extra is
+  gone. `nanonis-spm` is now a hard runtime dependency (it used to live in
+  the `[nanonis]` extra).
+- Removed the trajectory subsystem entirely. The following `nqctl`
+  subcommands no longer exist (the agent contract on get/set/ramp/act
+  payloads also no longer contains the `"trajectory"` block):
+  - `trajectory tail`, `trajectory follow`
+  - `trajectory action list`, `trajectory action show`
+  - `trajectory monitor config show|set|clear`
+  - `trajectory monitor list-signals`, `trajectory monitor list-specs`
+  - `trajectory monitor run`
+- Removed the `NANONIS_TRAJECTORY_*` environment variables and the
+  `trajectory:` section in `config/default_runtime.yaml`.
+
+### Added
+- `nspmctl daemon start|stop|status|restart|logs` subcommand group.
+- Persistent background daemon (`nspmctl/daemon.py`) that holds one warm
+  `NanonisController` + open TCP socket so subsequent calls only pay
+  loopback IPC + Python CLI startup, not the full nanonis-spm import +
+  parameter-manifest parse + TCP connect every time.
+- Automatic, lazy daemon spawn: on a cold first call, the request runs
+  inline AND a background daemon is started so the next agent tool call
+  is warm. No manual `daemon start` required for the common case.
+- `--no-daemon` CLI flag and `NSPMCTL_NO_DAEMON=1` environment variable
+  for diagnostics, CI, and emergencies.
+- Ultra-thin `nspmctl/__main__.py` entry that performs daemon routing
+  using only stdlib + `nspmctl.daemon` and refuses to import the heavy
+  CLI / client / controller surface on the warm path. New unit tests
+  enforce this invariant (`tests/test_daemon.py`).
+
+### Changed
+- Manifest yaml loading now uses libyaml's `CSafeLoader` when available
+  (~6x faster on the 651KB `parameters.yaml`) with a pure-Python
+  `SafeLoader` fallback.
+- `nspmctl.controller.extensions` caches parsed manifest roots via
+  `functools.lru_cache`, so a single CLI invocation parses the manifest
+  at most once instead of twice (once for parameter specs, once for
+  action specs).
+- Daemon idle timeout: 30 minutes.
+
+### Performance
+End-to-end `nspmctl get bias_v` on the simulator:
+
+| Mode                                  | p50      | speedup vs 0.1.10 |
+|---------------------------------------|---------:|-------------------|
+| `nqctl get bias_v` (0.1.10 baseline)  | 3070 ms  | -                 |
+| `nspmctl --no-daemon get bias_v`      |  525 ms  | 5.8 x             |
+| `nspmctl get bias_v` (warm daemon)    |  105 ms  | 29 x              |
+
+Raw `nanonis_spm` end-to-end floor on this machine: ~110 ms (import +
+TCP connect + one Bias_Get + close). After the daemon eats the import
+and connect once, warm CLI calls converge toward the loopback IPC +
+Python startup floor (~80-100 ms).
+
 ## [0.1.10] - 2026-02-26
 
 ### Added
