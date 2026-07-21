@@ -442,6 +442,45 @@ def test_new_coordinate_structured_set_enforces_bounds() -> None:
         instrument.close()
 
 
+def test_capabilities_advertise_scalar_coordinate_for_strategy_params() -> None:
+    from nspmctl.cli import _collect_parameter_capabilities
+
+    client = ZCtrlFakeClient()
+    instrument = _make_controller(client)
+    try:
+        caps = {c["name"]: c for c in _collect_parameter_capabilities(instrument)}
+
+        # zctrl_gain stays a raw multi-field parameter: no ramp, no strategy, and
+        # all three fields advertised (agents must provide them explicitly).
+        raw = caps["zctrl_gain"]
+        assert raw["has_ramp"] is False
+        assert "scalar_strategy" not in raw
+        assert "scalar_coordinate" not in raw
+        assert [f["name"] for f in raw["set_cmd"]["arg_fields"]] == [
+            "P_gain",
+            "Time_constant_s",
+            "I_gain",
+        ]
+
+        # Strategy coordinates advertise a single trimmed argument plus the
+        # strategy/coordinate metadata and an agent-actionable description.
+        expected_coordinate = {
+            "zctrl_i_gain": "I_gain",
+            "zctrl_t_const": "Time_constant_s",
+            "zctrl_p_gain_hold_t": "P_gain",
+            "zctrl_p_gain_hold_i": "P_gain",
+        }
+        for name, coordinate in expected_coordinate.items():
+            cap = caps[name]
+            assert cap["has_ramp"] is True
+            assert cap["scalar_strategy"] == name
+            assert cap["scalar_coordinate"] == coordinate
+            assert [f["name"] for f in cap["set_cmd"]["arg_fields"]] == [coordinate]
+            assert "Provide only" in cap["set_cmd"]["description"]
+    finally:
+        instrument.close()
+
+
 def test_cli_positional_set_shorthand_blocked_for_multi_field(monkeypatch) -> None:
     import argparse
     from contextlib import contextmanager

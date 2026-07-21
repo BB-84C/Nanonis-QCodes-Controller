@@ -16928,7 +16928,9 @@ parameters:
     get_cmd:
       command: ZCtrl_GainGet
       payload_index: 2
-      description: Returns the Z-Controller gains (P, I) and time settings.
+      description: Returns the Z-Controller integral gain I (derived as I = P / T),
+        the scalar ramp coordinate. The full payload also carries the proportional
+        gain P and the time constant T.
       response_fields:
       - index: 0
         name: P-gain
@@ -16952,10 +16954,10 @@ parameters:
       arg_fields: []
     set_cmd:
       command: ZCtrl_GainSet
-      description: 'Sets the Z-Controller integral gain with a self-consistent (P,
-        T, I) tuple. The controller derives I = P / T and ignores the wire-level I-gain
-        argument, so this parameter preserves the current P-gain and sends T = P /
-        I to reach the requested integral gain.'
+      description: 'Ramp or set the Z-Controller integral gain I. Provide only the
+        target I via --arg I_gain=<value> (or the positional value); the proportional
+        gain P is held and the time constant is set to T = P / I. The hardware derives
+        I = P / T, so the integral gain is driven through the time constant.'
       arg_fields:
       - name: P_gain
         type: float
@@ -16993,7 +16995,9 @@ parameters:
     get_cmd:
       command: ZCtrl_GainGet
       payload_index: 0
-      description: Returns the Z-Controller P-gain (ramp coordinate; holds I constant).
+      description: Returns the Z-Controller proportional gain P, the scalar ramp
+        coordinate for the "hold I" mode. The full payload also carries the time
+        constant T and the integral gain I.
       response_fields:
       - index: 0
         name: P-gain
@@ -17017,9 +17021,10 @@ parameters:
       arg_fields: []
     set_cmd:
       command: ZCtrl_GainSet
-      description: 'Ramps the Z-Controller proportional gain while holding the integral
-        gain I constant. The controller derives I = P / T, so the time constant is
-        recomputed each step as T = P / I to keep I fixed.'
+      description: 'Ramp or set the Z-Controller proportional gain P while holding the
+        integral gain I fixed. Provide only the target P via --arg P_gain=<value> (or
+        the positional value); the time constant is recomputed as T = P / I so that I
+        stays constant as P changes.'
       arg_fields:
       - name: P_gain
         type: float
@@ -17057,7 +17062,9 @@ parameters:
     get_cmd:
       command: ZCtrl_GainGet
       payload_index: 0
-      description: Returns the Z-Controller P-gain (ramp coordinate; holds T constant).
+      description: Returns the Z-Controller proportional gain P, the scalar ramp
+        coordinate for the "hold T" mode. The full payload also carries the time
+        constant T and the integral gain I.
       response_fields:
       - index: 0
         name: P-gain
@@ -17081,8 +17088,10 @@ parameters:
       arg_fields: []
     set_cmd:
       command: ZCtrl_GainSet
-      description: 'Ramps the Z-Controller proportional gain while holding the time
-        constant T constant. The integral gain follows as I = P / T.'
+      description: 'Ramp or set the Z-Controller proportional gain P while holding the
+        time constant T fixed. Provide only the target P via --arg P_gain=<value> (or
+        the positional value); the integral gain follows as I = P / T, so raising P
+        also raises I.'
       arg_fields:
       - name: P_gain
         type: float
@@ -17120,8 +17129,9 @@ parameters:
     get_cmd:
       command: ZCtrl_GainGet
       payload_index: 1
-      description: Returns the Z-Controller time constant (ramp coordinate; holds P
-        constant).
+      description: Returns the Z-Controller integral time constant T in seconds, the
+        scalar ramp coordinate. The full payload also carries the proportional gain P
+        and the integral gain I (= P / T).
       response_fields:
       - index: 0
         name: P-gain
@@ -17145,8 +17155,10 @@ parameters:
       arg_fields: []
     set_cmd:
       command: ZCtrl_GainSet
-      description: 'Ramps the Z-Controller time constant T while holding the P-gain
-        constant. The integral gain follows as I = P / T.'
+      description: 'Ramp or set the Z-Controller integral time constant T in seconds.
+        Provide only the target T via --arg Time_constant_s=<value> (or the positional
+        value); the proportional gain P is held and the integral gain follows as
+        I = P / T.'
       arg_fields:
       - name: P_gain
         type: float

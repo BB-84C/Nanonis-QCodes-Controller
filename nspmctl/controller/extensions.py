@@ -23,6 +23,17 @@ ActionSafetyMode = Literal["alwaysAllowed", "guarded", "blocked"]
 _ALLOWED_VALUE_TYPES: frozenset[str] = frozenset({"float", "int", "bool", "str"})
 _ALLOWED_ACTION_SAFETY_MODES: frozenset[str] = frozenset({"alwaysAllowed", "guarded", "blocked"})
 
+# Maps a parameter's ``scalar_strategy`` to the index, within its set command's
+# ``arg_fields``, of the single field an agent should provide (its scalar
+# coordinate). The controller derives the remaining Z-controller gain fields from
+# this coordinate so the (P, T, I) tuple stays self-consistent (I = P / T).
+SCALAR_STRATEGY_COORDINATE_INDEX: dict[str, int] = {
+    "zctrl_i_gain": 2,  # coordinate = I_gain
+    "zctrl_t_const": 1,  # coordinate = Time_constant_s
+    "zctrl_p_gain_hold_t": 0,  # coordinate = P_gain
+    "zctrl_p_gain_hold_i": 0,  # coordinate = P_gain
+}
+
 
 @dataclass(frozen=True)
 class ResponseFieldSpec:
@@ -116,6 +127,22 @@ class ParameterSpec:
         dedicated ``scalar_strategy`` is required instead.
         """
         return self.get_cmd is not None and len(self.get_cmd.response_fields) > 1
+
+    @property
+    def scalar_coordinate_field(self) -> str | None:
+        """The single set-command field an agent should provide for this strategy.
+
+        For a strategy-backed multi-field parameter (e.g. the Z-controller gain
+        coordinates) only one field is user-facing; the controller manages the
+        rest to keep the tuple consistent. Returns ``None`` for ordinary
+        parameters.
+        """
+        if self.scalar_strategy is None or self.set_cmd is None:
+            return None
+        index = SCALAR_STRATEGY_COORDINATE_INDEX.get(self.scalar_strategy)
+        if index is None or index >= len(self.set_cmd.arg_fields):
+            return None
+        return self.set_cmd.arg_fields[index].name
 
 
 def _resolve_manifest_path(parameter_file: str | Path) -> Path:

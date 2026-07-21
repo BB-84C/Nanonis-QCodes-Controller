@@ -1126,12 +1126,21 @@ def _collect_parameter_capabilities(instrument: Any) -> list[dict[str, Any]]:
             if get_description is not None:
                 get_cmd["description"] = get_description
 
+        coordinate = spec.scalar_coordinate_field
+
         set_cmd = None
         if spec.set_cmd is not None:
             set_description = _optional_text(spec.set_cmd.description)
+            arg_fields = spec.set_cmd.arg_fields
+            if coordinate is not None:
+                # Strategy-backed coordinate: advertise only the single field an
+                # agent should pass. The other coupled Z-controller gain fields are
+                # managed automatically to keep the (P, T, I) tuple consistent, so
+                # exposing them would invite rejected multi-field writes.
+                arg_fields = tuple(f for f in arg_fields if f.name == coordinate)
             set_cmd = {
                 "command": spec.set_cmd.command,
-                "arg_fields": [asdict(field) for field in spec.set_cmd.arg_fields],
+                "arg_fields": [asdict(f) for f in arg_fields],
             }
             if set_description is not None:
                 set_cmd["description"] = set_description
@@ -1158,6 +1167,11 @@ def _collect_parameter_capabilities(instrument: Any) -> list[dict[str, Any]]:
             "set_cmd": set_cmd,
             "safety": safety,
         }
+        if coordinate is not None:
+            # Signal to agents that this is a single-coordinate, tuple-aware
+            # parameter: set/ramp it by passing only `scalar_coordinate`.
+            capability["scalar_strategy"] = spec.scalar_strategy
+            capability["scalar_coordinate"] = coordinate
 
         capabilities.append(capability)
     return capabilities

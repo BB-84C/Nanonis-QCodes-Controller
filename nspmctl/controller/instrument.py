@@ -23,6 +23,7 @@ from nspmctl.safety import (
 
 from .extensions import (
     DEFAULT_PARAMETERS_FILE,
+    SCALAR_STRATEGY_COORDINATE_INDEX,
     ActionSpec,
     ParameterSpec,
     SafetySpec,
@@ -85,15 +86,15 @@ _FALSE_STRINGS = {"0", "false", "no", "off"}
 # strategy below ramps one coordinate while holding a chosen partner constant and
 # always sends a fully self-consistent (P, T, I) tuple.
 #
-# Mapping: strategy key -> coordinate set-field index (0=P_gain, 1=Time_constant_s,
-# 2=I_gain).
-_ZCTRL_GAIN_STRATEGIES: dict[str, int] = {
-    "zctrl_i_gain": 2,  # ramp I, hold P, send T = P / I
-    "zctrl_t_const": 1,  # ramp T, hold P, send I = P / T
-    "zctrl_p_gain_hold_t": 0,  # ramp P, hold T, I follows = P / T
-    "zctrl_p_gain_hold_i": 0,  # ramp P, hold I, send T = P / I
-}
-_SUPPORTED_SCALAR_STRATEGIES = frozenset(_ZCTRL_GAIN_STRATEGIES)
+# Hold semantics per strategy:
+#   zctrl_i_gain        ramp I, hold P, send T = P / I
+#   zctrl_t_const       ramp T, hold P, send I = P / T
+#   zctrl_p_gain_hold_t ramp P, hold T, I follows = P / T
+#   zctrl_p_gain_hold_i ramp P, hold I, send T = P / I
+# The coordinate set-field index for each lives in
+# extensions.SCALAR_STRATEGY_COORDINATE_INDEX so the CLI can advertise the single
+# accepted argument without importing controller internals.
+_SUPPORTED_SCALAR_STRATEGIES = frozenset(SCALAR_STRATEGY_COORDINATE_INDEX)
 
 
 def _normalize_field_name(name: str) -> str:
@@ -979,7 +980,7 @@ class NanonisController:
         self, spec: ParameterSpec, target_value: float, *, plan_only: bool
     ) -> Mapping[str, Any]:
         strategy = self._scalar_strategy_name(spec)
-        if strategy in _ZCTRL_GAIN_STRATEGIES:
+        if strategy in _SUPPORTED_SCALAR_STRATEGIES:
             return self._write_zctrl_gain_coordinate(
                 spec, float(target_value), strategy=strategy, plan_only=plan_only
             )
@@ -990,10 +991,9 @@ class NanonisController:
     ) -> float:
         if spec.set_cmd is None:
             raise ValueError(f"Parameter '{spec.name}' is not writable.")
-        strategy = self._scalar_strategy_name(spec)
-        assert strategy is not None
-        coord_index = _ZCTRL_GAIN_STRATEGIES[strategy]
-        coord_name = self._zctrl_gain_arg_names(spec)[coord_index]
+        coord_name = spec.scalar_coordinate_field
+        if coord_name is None:
+            raise ValueError(f"Parameter '{spec.name}' has no scalar coordinate field.")
         coordinate_normalized = _normalize_field_name(coord_name)
         fields_by_normalized = {
             _normalize_field_name(field.name): field.name for field in spec.set_cmd.arg_fields
