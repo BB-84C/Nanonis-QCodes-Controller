@@ -16950,7 +16950,235 @@ parameters:
         description: I-gain (float32) is the integral gain of the regulation loop
           (I_P/T)
       arg_fields: []
-    set_cmd: false
+    set_cmd:
+      command: ZCtrl_GainSet
+      description: 'Sets the Z-Controller integral gain with a self-consistent (P,
+        T, I) tuple. The controller derives I = P / T and ignores the wire-level I-gain
+        argument, so this parameter preserves the current P-gain and sends T = P /
+        I to reach the requested integral gain.'
+      arg_fields:
+      - name: P_gain
+        type: float
+        unit: ''
+        wire_type: f
+        required: false
+        default: 0.0
+        description: P-gain (float32) is the proportional gain of the regulation loop
+      - name: Time_constant_s
+        type: float
+        unit: s
+        wire_type: f
+        required: false
+        default: 0.0
+        description: Time constant (s) (float32) is the time constant T
+      - name: I_gain
+        type: float
+        unit: ''
+        wire_type: f
+        required: true
+        default: null
+        description: I-gain (float32) is the integral gain of the regulation loop
+          (I_P/T)
+    scalar_strategy: zctrl_i_gain
+    safety:
+      min: 1.0e-12
+      max: 1.0e-03
+      max_step: 1.0e-06
+      max_slew_per_s: null
+      cooldown_s: 0.0
+      ramp_enabled: true
+      ramp_interval_s: 0.05
+  zctrl_p_gain_hold_i:
+    label: Z Controller P Gain (hold I)
+    get_cmd:
+      command: ZCtrl_GainGet
+      payload_index: 0
+      description: Returns the Z-Controller P-gain (ramp coordinate; holds I constant).
+      response_fields:
+      - index: 0
+        name: P-gain
+        type: float
+        unit: ''
+        wire_type: f
+        description: P-gain (float32) is the proportional gain of the regulation loop
+      - index: 1
+        name: Time constant
+        type: float
+        unit: s
+        wire_type: f
+        description: Time constant (s) (float32) is the time constant T
+      - index: 2
+        name: I-gain
+        type: float
+        unit: ''
+        wire_type: f
+        description: I-gain (float32) is the integral gain of the regulation loop
+          (I_P/T)
+      arg_fields: []
+    set_cmd:
+      command: ZCtrl_GainSet
+      description: 'Ramps the Z-Controller proportional gain while holding the integral
+        gain I constant. The controller derives I = P / T, so the time constant is
+        recomputed each step as T = P / I to keep I fixed.'
+      arg_fields:
+      - name: P_gain
+        type: float
+        unit: ''
+        wire_type: f
+        required: true
+        default: null
+        description: P-gain (float32) is the proportional gain of the regulation loop
+      - name: Time_constant_s
+        type: float
+        unit: s
+        wire_type: f
+        required: false
+        default: 0.0
+        description: Time constant (s) (float32) is the time constant T
+      - name: I_gain
+        type: float
+        unit: ''
+        wire_type: f
+        required: false
+        default: 0.0
+        description: I-gain (float32) is the integral gain of the regulation loop
+          (I_P/T)
+    scalar_strategy: zctrl_p_gain_hold_i
+    safety:
+      min: 1.0e-13
+      max: 1.0e-06
+      max_step: 1.0e-08
+      max_slew_per_s: null
+      cooldown_s: 0.0
+      ramp_enabled: true
+      ramp_interval_s: 0.05
+  zctrl_p_gain_hold_t:
+    label: Z Controller P Gain (hold T)
+    get_cmd:
+      command: ZCtrl_GainGet
+      payload_index: 0
+      description: Returns the Z-Controller P-gain (ramp coordinate; holds T constant).
+      response_fields:
+      - index: 0
+        name: P-gain
+        type: float
+        unit: ''
+        wire_type: f
+        description: P-gain (float32) is the proportional gain of the regulation loop
+      - index: 1
+        name: Time constant
+        type: float
+        unit: s
+        wire_type: f
+        description: Time constant (s) (float32) is the time constant T
+      - index: 2
+        name: I-gain
+        type: float
+        unit: ''
+        wire_type: f
+        description: I-gain (float32) is the integral gain of the regulation loop
+          (I_P/T)
+      arg_fields: []
+    set_cmd:
+      command: ZCtrl_GainSet
+      description: 'Ramps the Z-Controller proportional gain while holding the time
+        constant T constant. The integral gain follows as I = P / T.'
+      arg_fields:
+      - name: P_gain
+        type: float
+        unit: ''
+        wire_type: f
+        required: true
+        default: null
+        description: P-gain (float32) is the proportional gain of the regulation loop
+      - name: Time_constant_s
+        type: float
+        unit: s
+        wire_type: f
+        required: false
+        default: 0.0
+        description: Time constant (s) (float32) is the time constant T
+      - name: I_gain
+        type: float
+        unit: ''
+        wire_type: f
+        required: false
+        default: 0.0
+        description: I-gain (float32) is the integral gain of the regulation loop
+          (I_P/T)
+    scalar_strategy: zctrl_p_gain_hold_t
+    safety:
+      min: 1.0e-13
+      max: 1.0e-06
+      max_step: 1.0e-08
+      max_slew_per_s: null
+      cooldown_s: 0.0
+      ramp_enabled: true
+      ramp_interval_s: 0.05
+  zctrl_t_const:
+    label: Z Controller Time Constant
+    get_cmd:
+      command: ZCtrl_GainGet
+      payload_index: 1
+      description: Returns the Z-Controller time constant (ramp coordinate; holds P
+        constant).
+      response_fields:
+      - index: 0
+        name: P-gain
+        type: float
+        unit: ''
+        wire_type: f
+        description: P-gain (float32) is the proportional gain of the regulation loop
+      - index: 1
+        name: Time constant
+        type: float
+        unit: s
+        wire_type: f
+        description: Time constant (s) (float32) is the time constant T
+      - index: 2
+        name: I-gain
+        type: float
+        unit: ''
+        wire_type: f
+        description: I-gain (float32) is the integral gain of the regulation loop
+          (I_P/T)
+      arg_fields: []
+    set_cmd:
+      command: ZCtrl_GainSet
+      description: 'Ramps the Z-Controller time constant T while holding the P-gain
+        constant. The integral gain follows as I = P / T.'
+      arg_fields:
+      - name: P_gain
+        type: float
+        unit: ''
+        wire_type: f
+        required: false
+        default: 0.0
+        description: P-gain (float32) is the proportional gain of the regulation loop
+      - name: Time_constant_s
+        type: float
+        unit: s
+        wire_type: f
+        required: true
+        default: null
+        description: Time constant (s) (float32) is the time constant T
+      - name: I_gain
+        type: float
+        unit: ''
+        wire_type: f
+        required: false
+        default: 0.0
+        description: I-gain (float32) is the integral gain of the regulation loop
+          (I_P/T)
+    scalar_strategy: zctrl_t_const
+    safety:
+      min: 1.0e-09
+      max: 1.0
+      max_step: 1.0e-03
+      max_slew_per_s: null
+      cooldown_s: 0.0
+      ramp_enabled: true
+      ramp_interval_s: 0.05
   zctrl_limits:
     label: Zctrl Limits
     get_cmd:

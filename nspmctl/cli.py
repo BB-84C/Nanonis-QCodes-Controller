@@ -667,6 +667,12 @@ def _cmd_set(args: argparse.Namespace) -> int:
                 raise ValueError("Use either positional <value> or --arg entries, not both.")
             if spec.set_cmd is None:
                 raise ValueError(f"Parameter '{parameter_name}' is not writable.")
+            if not instrument.is_scalar_rampable(parameter_name):
+                raise ValueError(
+                    f"Positional set shorthand is not supported for multi-field parameter "
+                    f"'{parameter_name}' because its scalar field cannot be inferred safely. "
+                    f"Provide every required field explicitly with --arg key=value."
+                )
             writable_targets = [field.name for field in spec.set_cmd.arg_fields if field.required]
             if len(writable_targets) != 1:
                 raise ValueError(
@@ -1065,6 +1071,22 @@ def _load_instrument_class() -> Any:
     return NanonisController
 
 
+def _spec_has_ramp(spec: Any) -> bool:
+    """Whether this parameter can actually be scalar-ramped at runtime.
+
+    A parameter advertises ramp support only when ramping is enabled AND the
+    scalar coordinate can be applied safely: single-field parameters, or
+    multi-field parameters that declare a dedicated scalar_strategy. Multi-field
+    parameters without a strategy are blocked by the runtime guard, so they must
+    not advertise has_ramp=true to agents.
+    """
+    if spec.safety is None or not spec.safety.ramp_enabled:
+        return False
+    if getattr(spec, "scalar_strategy", None) is not None:
+        return True
+    return not getattr(spec, "is_multi_field", False)
+
+
 def _collect_observables(instrument: Any) -> list[dict[str, Any]]:
     observables: list[dict[str, Any]] = []
     for spec in instrument.parameter_specs():
@@ -1074,7 +1096,7 @@ def _collect_observables(instrument: Any) -> list[dict[str, Any]]:
                 "label": spec.label,
                 "readable": spec.readable,
                 "writable": spec.writable,
-                "has_ramp": bool(spec.safety is not None and spec.safety.ramp_enabled),
+                "has_ramp": _spec_has_ramp(spec),
             }
         )
     return observables
@@ -1131,7 +1153,7 @@ def _collect_parameter_capabilities(instrument: Any) -> list[dict[str, Any]]:
             "name": spec.name,
             "readable": bool(spec.readable),
             "writable": bool(spec.writable),
-            "has_ramp": bool(spec.safety is not None and spec.safety.ramp_enabled),
+            "has_ramp": _spec_has_ramp(spec),
             "get_cmd": get_cmd,
             "set_cmd": set_cmd,
             "safety": safety,

@@ -75,6 +75,26 @@ class RampExecutionReport:
 _TRUE_STRINGS = {"1", "true", "yes", "on"}
 _FALSE_STRINGS = {"0", "false", "no", "off"}
 
+# Scalar-write strategies for multi-field parameters whose scalar coordinate
+# cannot be inferred from response order + sole-required-arg heuristics.
+#
+# The Nanonis Z-controller gain has only two degrees of freedom: the proportional
+# gain P and the integral action, expressed either as the integral gain I or the
+# time constant T, locked by I = P / T. The controller is PT-authoritative (it
+# stores P and T and derives I; the wire-level I argument is ignored). Each
+# strategy below ramps one coordinate while holding a chosen partner constant and
+# always sends a fully self-consistent (P, T, I) tuple.
+#
+# Mapping: strategy key -> coordinate set-field index (0=P_gain, 1=Time_constant_s,
+# 2=I_gain).
+_ZCTRL_GAIN_STRATEGIES: dict[str, int] = {
+    "zctrl_i_gain": 2,  # ramp I, hold P, send T = P / I
+    "zctrl_t_const": 1,  # ramp T, hold P, send I = P / T
+    "zctrl_p_gain_hold_t": 0,  # ramp P, hold T, I follows = P / T
+    "zctrl_p_gain_hold_i": 0,  # ramp P, hold I, send T = P / I
+}
+_SUPPORTED_SCALAR_STRATEGIES = frozenset(_ZCTRL_GAIN_STRATEGIES)
+
 
 def _normalize_field_name(name: str) -> str:
     return "".join(ch.lower() for ch in str(name) if ch.isalnum())
@@ -275,6 +295,10 @@ class NanonisController:
             )
 
         typed_args: dict[str, Any] = {}
+        # NOTE: this default-backfill is not tuple-aware. It is safe for the actions
+        # registered today, but a coupled multi-field command (like ZCtrl_GainSet)
+        # must not be promoted into the `actions:` section without its own guard, or
+        # an omitted field could be silently defaulted into an inconsistent tuple.
         for arg_field in spec.action_cmd.arg_fields:
             if arg_field.name in incoming_args:
                 raw_value = incoming_args[arg_field.name]
@@ -365,8 +389,19 @@ class NanonisController:
         snapshot = self.get_parameter_snapshot(parameter_name)
         values = snapshot["values"]
         if values:
-            first_key = next(iter(values))
-            value = values[first_key]
+            # Honor the manifest's declared scalar payload_index instead of blindly
+            # taking the first response field. For a multi-field parameter such as
+            # zctrl_i_gain (payload_index 2), "first field" would return P-gain, not
+            # the intended integral gain.
+            payload_index = spec.get_cmd.payload_index
+            selected_name: str | None = None
+            for response_field in spec.get_cmd.response_fields:
+                if response_field.index == payload_index and response_field.name in values:
+                    selected_name = response_field.name
+                    break
+            if selected_name is None:
+                selected_name = next(iter(values))
+            value = values[selected_name]
         else:
             response = self._call(spec.get_cmd.command, args={})
             raw_value = self._extract_payload_value(
@@ -439,6 +474,10 @@ class NanonisController:
         if spec.set_cmd is None:
             raise ValueError(f"Parameter '{spec.name}' is not writable.")
 
+        if self._scalar_strategy_name(spec) is not None:
+            target = self._extract_scalar_strategy_target(spec, args)
+            return self._apply_scalar_strategy(spec, target, plan_only=plan_only)
+
         normalized_overrides: dict[str, Any] = {}
         fields_by_normalized: dict[str, Any] = {
             _normalize_field_name(field.name): field for field in spec.set_cmd.arg_fields
@@ -469,22 +508,45 @@ class NanonisController:
                     command_args[field.name] = value
                     autofilled[field.name] = value
 
-        for field in spec.set_cmd.arg_fields:
-            if field.name not in command_args and field.default is not None:
-                command_args[field.name] = field.default
+        if spec.is_multi_field:
+            # For coupled multi-field parameters (e.g. ZCtrl gain P/T/I) a silent
+            # manifest-default backfill can corrupt the fields the caller did not
+            # touch: the classic failure is Time_constant_s dropping to 0.0 because
+            # its snapshot name ("Time constant") does not normalize to the set-field
+            # name ("Time_constant_s"), which then drives I = P/T to infinity. Refuse
+            # unless every field is either provided explicitly or preserved from the
+            # live snapshot.
+            unresolved = [
+                arg_field.name
+                for arg_field in spec.set_cmd.arg_fields
+                if arg_field.name not in command_args
+            ]
+            if unresolved:
+                formatted = ", ".join(unresolved)
+                raise ValueError(
+                    f"Parameter '{spec.name}' is a multi-field parameter whose fields form "
+                    f"one consistent tuple; every field must be provided or preserved from "
+                    f"the current state. Could not resolve: {formatted}. Provide them "
+                    f"explicitly with --arg key=value (silently defaulting one coupled field "
+                    f"can corrupt the others)."
+                )
+        else:
+            for arg_field in spec.set_cmd.arg_fields:
+                if arg_field.name not in command_args and arg_field.default is not None:
+                    command_args[arg_field.name] = arg_field.default
 
-        missing_required = [
-            field.name
-            for field in spec.set_cmd.arg_fields
-            if field.required and field.name not in command_args
-        ]
+            missing_required = [
+                arg_field.name
+                for arg_field in spec.set_cmd.arg_fields
+                if arg_field.required and arg_field.name not in command_args
+            ]
 
-        if missing_required:
-            formatted = ", ".join(missing_required)
-            raise ValueError(
-                f"Parameter '{spec.name}' is missing required set args: {formatted}. "
-                "Provide them with --arg key=value."
-            )
+            if missing_required:
+                formatted = ", ".join(missing_required)
+                raise ValueError(
+                    f"Parameter '{spec.name}' is missing required set args: {formatted}. "
+                    "Provide them with --arg key=value."
+                )
 
         typed_args: dict[str, Any] = {}
         for field in spec.set_cmd.arg_fields:
@@ -533,6 +595,7 @@ class NanonisController:
         interval_s: float | None = None,
     ) -> WritePlan:
         spec = self._require_writable_spec(parameter_name)
+        self._ensure_scalar_rampable(spec)
         current_value = self._require_current_numeric_value(spec)
 
         return self._write_policy.plan_scalar_write_single_step(
@@ -578,6 +641,7 @@ class NanonisController:
         spec = self._require_writable_spec(parameter_name)
         if spec.safety is not None and not spec.safety.ramp_enabled:
             raise ValueError(f"Ramp is disabled for parameter '{spec.name}'.")
+        self._ensure_scalar_rampable(spec)
 
         if interval_s < 0:
             raise ValueError("interval_s must be non-negative.")
@@ -740,6 +804,10 @@ class NanonisController:
     def _send_parameter_value(self, spec: ParameterSpec, value: float) -> None:
         if spec.set_cmd is None:
             raise ValueError(f"Parameter '{spec.name}' is not writable.")
+        if self._scalar_strategy_name(spec) is not None:
+            self._apply_scalar_strategy(spec, value, plan_only=False)
+            return
+        self._ensure_scalar_rampable(spec)
         required_fields = [field.name for field in spec.set_cmd.arg_fields if field.required]
         if len(required_fields) != 1:
             raise ValueError(
@@ -865,6 +933,234 @@ class NanonisController:
                 f"Writable parameter '{spec.name}' must include get_cmd for guarded planning."
             )
         return float(self.get_parameter_value(spec.name))
+
+    # ------------------------------------------------------------------
+    # Scalar-safety guard + multi-field write strategies
+    # ------------------------------------------------------------------
+    def is_scalar_rampable(self, parameter_name: str) -> bool:
+        """Whether a parameter's scalar value can be inferred safely.
+
+        True when the parameter exposes at most one response field (unambiguous
+        scalar read) or declares an explicit ``scalar_strategy``. Multi-field
+        parameters without a strategy return False and are refused by scalar
+        ``set``/``ramp`` operations.
+        """
+        return self._is_scalar_rampable_spec(self.parameter_spec(parameter_name))
+
+    def _is_scalar_rampable_spec(self, spec: ParameterSpec) -> bool:
+        if self._scalar_strategy_name(spec) is not None:
+            return True
+        return not spec.is_multi_field
+
+    def _ensure_scalar_rampable(self, spec: ParameterSpec) -> None:
+        if self._is_scalar_rampable_spec(spec):
+            return
+        raise PolicyViolation(
+            f"Scalar set/ramp is blocked for multi-field parameter '{spec.name}': its "
+            f"read field and write field are different physical quantities, so a single "
+            f"scalar value cannot be applied safely. Use `nspmctl set {spec.name} --arg "
+            f"<field>=<value> ...` providing every coupled field explicitly, or use a "
+            f"dedicated scalar-coordinate parameter with validated tuple semantics "
+            f"(e.g. 'zctrl_i_gain' for the Z-controller integral gain)."
+        )
+
+    def _scalar_strategy_name(self, spec: ParameterSpec) -> str | None:
+        strategy = spec.scalar_strategy
+        if strategy is None:
+            return None
+        if strategy not in _SUPPORTED_SCALAR_STRATEGIES:
+            raise ValueError(
+                f"Parameter '{spec.name}' declares unknown scalar_strategy '{strategy}'. "
+                f"Supported: {', '.join(sorted(_SUPPORTED_SCALAR_STRATEGIES))}."
+            )
+        return strategy
+
+    def _apply_scalar_strategy(
+        self, spec: ParameterSpec, target_value: float, *, plan_only: bool
+    ) -> Mapping[str, Any]:
+        strategy = self._scalar_strategy_name(spec)
+        if strategy in _ZCTRL_GAIN_STRATEGIES:
+            return self._write_zctrl_gain_coordinate(
+                spec, float(target_value), strategy=strategy, plan_only=plan_only
+            )
+        raise ValueError(f"Unsupported scalar strategy for parameter '{spec.name}'.")
+
+    def _extract_scalar_strategy_target(
+        self, spec: ParameterSpec, args: Mapping[str, Any]
+    ) -> float:
+        if spec.set_cmd is None:
+            raise ValueError(f"Parameter '{spec.name}' is not writable.")
+        strategy = self._scalar_strategy_name(spec)
+        assert strategy is not None
+        coord_index = _ZCTRL_GAIN_STRATEGIES[strategy]
+        coord_name = self._zctrl_gain_arg_names(spec)[coord_index]
+        coordinate_normalized = _normalize_field_name(coord_name)
+        fields_by_normalized = {
+            _normalize_field_name(field.name): field.name for field in spec.set_cmd.arg_fields
+        }
+        provided: dict[str, Any] = {}
+        for key, value in args.items():
+            normalized = _normalize_field_name(str(key))
+            field_name = fields_by_normalized.get(normalized)
+            if field_name is None:
+                raise ValueError(f"Unknown argument for parameter '{spec.name}': {key}")
+            provided[field_name] = value
+
+        extra = [name for name in provided if _normalize_field_name(name) != coordinate_normalized]
+        if extra:
+            formatted = ", ".join(sorted(extra))
+            raise ValueError(
+                f"Parameter '{spec.name}' only accepts its scalar coordinate "
+                f"'{coord_name}'; the other Z-controller gain fields are managed "
+                f"automatically (I = P / T). Unsupported field(s): {formatted}. "
+                f"For explicit (P, T, I) tuple control use `set zctrl_gain`."
+            )
+        if coord_name not in provided:
+            raise ValueError(
+                f"Parameter '{spec.name}' requires its coordinate target via "
+                f"--arg {coord_name}=<value>."
+            )
+        return float(provided[coord_name])
+
+    def _zctrl_gain_arg_names(self, spec: ParameterSpec) -> tuple[str, str, str]:
+        fields = spec.set_cmd.arg_fields if spec.set_cmd is not None else ()
+        if len(fields) != 3:
+            raise ValueError(
+                f"A ZCtrl gain scalar_strategy requires a 3-field ZCtrl gain set command "
+                f"(P, T, I); parameter '{spec.name}' defines {len(fields)} set field(s)."
+            )
+        return fields[0].name, fields[1].name, fields[2].name
+
+    @staticmethod
+    def _require_positive_finite(spec: ParameterSpec, label: str, value: float) -> None:
+        if not math.isfinite(value) or value <= 0.0:
+            raise PolicyViolation(
+                f"Cannot apply gain coordinate on '{spec.name}': {label} is non-positive "
+                f"or non-finite ({value}). The controller couples the gains via I = P / T, "
+                f"so the held/derived values must be positive."
+            )
+
+    def _compute_zctrl_gain_tuple(
+        self,
+        spec: ParameterSpec,
+        strategy: str,
+        current: tuple[float, float, float],
+        target: float,
+    ) -> tuple[float, float, float]:
+        """Return the self-consistent (P, T, I) tuple for a coordinate ramp step.
+
+        ``current`` is the freshly-read (P, T, I). ``target`` is the new value of
+        the strategy's coordinate. The partner variable named in the strategy is
+        held; the third is derived so that I = P / T holds exactly.
+        """
+        p0, t0, i0 = current
+        if strategy == "zctrl_i_gain":  # ramp I, hold P -> T = P / I
+            self._require_positive_finite(spec, "current P-gain", p0)
+            return p0, p0 / target, target
+        if strategy == "zctrl_t_const":  # ramp T, hold P -> I = P / T
+            self._require_positive_finite(spec, "current P-gain", p0)
+            return p0, target, p0 / target
+        if strategy == "zctrl_p_gain_hold_t":  # ramp P, hold T -> I = P / T
+            self._require_positive_finite(spec, "current time constant", t0)
+            return target, t0, target / t0
+        if strategy == "zctrl_p_gain_hold_i":  # ramp P, hold I -> T = P / I
+            self._require_positive_finite(spec, "current I-gain", i0)
+            return target, target / i0, i0
+        raise ValueError(f"Unsupported ZCtrl gain strategy '{strategy}' for '{spec.name}'.")
+
+    def _read_zctrl_gain_tuple(self, spec: ParameterSpec) -> tuple[float, float, float]:
+        if spec.get_cmd is None:
+            raise ValueError(f"Parameter '{spec.name}' is not readable.")
+        response = self._call(spec.get_cmd.command, args={})
+        payload = response.get("payload")
+        if not isinstance(payload, list) or len(payload) < 3:
+            raise NanonisProtocolError(
+                f"Command '{spec.get_cmd.command}' must return [P, T, I]; got {payload!r}."
+            )
+        return float(payload[0]), float(payload[1]), float(payload[2])
+
+    def _write_zctrl_gain_coordinate(
+        self, spec: ParameterSpec, target: float, *, strategy: str, plan_only: bool
+    ) -> Mapping[str, Any]:
+        """Ramp one Z-controller gain coordinate with a self-consistent tuple.
+
+        The controller has two degrees of freedom (P, and the integral action as
+        I or T, coupled by I = P / T) and is PT-authoritative. Each strategy sets
+        one coordinate while holding a partner and derives the third, then sends a
+        complete (P, T, I) tuple so no coupled field is ever silently zeroed.
+        """
+        if spec.get_cmd is None or spec.set_cmd is None:
+            raise ValueError(f"Parameter '{spec.name}' must be readable and writable.")
+        if not math.isfinite(target) or target <= 0.0:
+            raise PolicyViolation(
+                f"Coordinate target for '{spec.name}' must be a positive, finite value; "
+                f"got {target}."
+            )
+
+        # Enforce the configured channel bounds on structured/single writes too, not
+        # only on the ramp planning path (which goes through plan_scalar_write_single_step).
+        limit = self._write_policy.limits.get(spec.name)
+        if limit is not None:
+            if limit.min_value is not None and target < limit.min_value:
+                raise PolicyViolation(
+                    f"Coordinate target {target} for '{spec.name}' is below the "
+                    f"configured minimum {limit.min_value}."
+                )
+            if limit.max_value is not None and target > limit.max_value:
+                raise PolicyViolation(
+                    f"Coordinate target {target} for '{spec.name}' exceeds the "
+                    f"configured maximum {limit.max_value}."
+                )
+
+        p_name, t_name, i_name = self._zctrl_gain_arg_names(spec)
+        current = self._read_zctrl_gain_tuple(spec)
+        p_new, t_new, i_new = self._compute_zctrl_gain_tuple(spec, strategy, current, target)
+
+        command_args: dict[str, Any] = {p_name: p_new, t_name: t_new, i_name: i_new}
+        typed_args: dict[str, Any] = {}
+        for arg_field in spec.set_cmd.arg_fields:
+            if arg_field.name not in command_args:
+                continue
+            typed_args[arg_field.name] = _coerce_action_value(
+                command_args[arg_field.name],
+                value_type=arg_field.type,
+                field_name=f"{spec.name}.{arg_field.name}",
+            )
+
+        self._write_policy.ensure_writes_enabled()
+        dry_run = bool(plan_only or self._write_policy.dry_run)
+        response: Mapping[str, Any] | None = None
+        if not dry_run:
+            response = self._call(spec.set_cmd.command, args=typed_args)
+
+        p0, t0, i0 = current
+        self._append_write_audit(
+            operation=f"scalar_strategy:{spec.name}",
+            status="dry_run" if dry_run else "applied",
+            dry_run=dry_run,
+            detail=f"Tuple-aware Z-controller gain write ({strategy}); sends complete (P, T, I).",
+            metadata={
+                "command": spec.set_cmd.command,
+                "strategy": strategy,
+                "args": _json_safe(typed_args),
+                "previous_tuple": {"P": p0, "T": t0, "I": i0},
+                "new_tuple": {"P": p_new, "T": t_new, "I": i_new},
+                "coordinate_target": target,
+            },
+        )
+
+        return {
+            "name": spec.name,
+            "command": spec.set_cmd.command,
+            "args": typed_args,
+            "dry_run": dry_run,
+            "applied": not dry_run,
+            "response": response,
+            "strategy": strategy,
+            "previous_tuple": {"P": p0, "T": t0, "I": i0},
+            "new_tuple": {"P": p_new, "T": t_new, "I": i_new},
+            "coordinate_target": target,
+        }
 
 
 def _build_channel_limits(

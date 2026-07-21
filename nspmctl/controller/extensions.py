@@ -95,6 +95,7 @@ class ParameterSpec:
     set_cmd: WriteCommandSpec | None
     safety: SafetySpec | None
     description: str = ""
+    scalar_strategy: str | None = None
 
     @property
     def readable(self) -> bool:
@@ -103,6 +104,18 @@ class ParameterSpec:
     @property
     def writable(self) -> bool:
         return self.set_cmd is not None
+
+    @property
+    def is_multi_field(self) -> bool:
+        """A parameter whose scalar read/write field cannot be safely inferred.
+
+        Reads take the field at ``get_cmd.payload_index``; the legacy generic
+        scalar write picks the sole required set field. When ``get_cmd`` exposes
+        more than one response field those two can refer to different physical
+        quantities (e.g. ZCtrl gain P vs I), so scalar inference is unsafe and a
+        dedicated ``scalar_strategy`` is required instead.
+        """
+        return self.get_cmd is not None and len(self.get_cmd.response_fields) > 1
 
 
 def _resolve_manifest_path(parameter_file: str | Path) -> Path:
@@ -206,6 +219,13 @@ def _parse_parameter_spec(
     if set_cmd is not None and safety is None:
         raise ValueError(f"Writable parameter '{name}' must include safety settings.")
 
+    scalar_strategy_raw = mapping.get("scalar_strategy")
+    scalar_strategy = None
+    if scalar_strategy_raw not in (None, "", False):
+        scalar_strategy = _parse_required_string(
+            scalar_strategy_raw, field_name=f"parameters.{name}.scalar_strategy"
+        )
+
     return ParameterSpec(
         name=name,
         label=label,
@@ -213,6 +233,7 @@ def _parse_parameter_spec(
         get_cmd=get_cmd,
         set_cmd=set_cmd,
         safety=safety,
+        scalar_strategy=scalar_strategy,
     )
 
 
