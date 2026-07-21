@@ -26,4 +26,5 @@ tests/**
 !tests/test_ci_workflow_contract.py
 !tests/test_smoke.py
 !tests/test_daemon.py
+!tests/test_zctrl_gain_scalar_safety.py
 artifacts/
