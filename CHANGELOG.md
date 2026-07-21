@@ -4,6 +4,48 @@ All notable changes to this project are documented in this file.
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-07-21
+
+Adds tuple-aware Z-controller gain ramp coordinates and closes a safety
+hole where the generic scalar ramp/set could drive the Z-controller
+integral gain to infinity (issue #2).
+
+### Added
+- Tuple-aware Z-controller gain ramp coordinates, each holding a partner
+  gain constant and writing a self-consistent `(P, T, I)` tuple (the
+  controller derives `I = P / T`):
+  - `zctrl_i_gain` — ramp/set the integral gain I, holding P (`T = P / I`).
+  - `zctrl_t_const` — ramp/set the time constant T, holding P (`I = P / T`).
+  - `zctrl_p_gain_hold_t` — ramp/set the proportional gain P, holding T
+    (`I = P / T`).
+  - `zctrl_p_gain_hold_i` — ramp/set the proportional gain P, holding I
+    (`T = P / I`).
+- `nspmctl capabilities` now advertises `scalar_strategy` and
+  `scalar_coordinate` for these coordinates and trims their `set_cmd`
+  arguments to the single field an agent should pass.
+
+### Changed
+- Scalar `set`/`ramp` are refused for multi-field parameters (a get
+  command with more than one response field) unless the parameter
+  declares a scalar strategy. `nspmctl ramp zctrl_gain` and the scalar
+  `set zctrl_gain <value>` shorthand are blocked; use the coordinates
+  above, or `set zctrl_gain --arg P_gain=.. --arg Time_constant_s=..
+  --arg I_gain=..` with every field. `capabilities.has_ramp` for
+  `zctrl_gain` is now `false`.
+- Structured `set` on a multi-field parameter no longer silently
+  backfills omitted coupled fields from manifest defaults; each field
+  must be provided or preserved from the current state.
+- `get_parameter_value` (and `nspmctl get`) honor the manifest
+  `payload_index`, so `get zctrl_i_gain` returns the integral gain
+  instead of the first response field.
+
+### Fixed
+- `nspmctl ramp zctrl_gain` previously read the P-gain, wrote the
+  I-gain, and let the time constant fall to `0.0`, driving the integral
+  gain to infinity (`I = P / 0`). This unsafe path is closed and the
+  Z-controller gain is now driven through validated, self-consistent
+  tuple writes. (#2)
+
 ## [0.2.0] - 2026-06-30
 
 This release rebuilds the project around a single thesis: a thin, fast

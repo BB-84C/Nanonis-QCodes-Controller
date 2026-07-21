@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "nspmctl"
-version = "0.2.0"
+version = "0.3.0"
 description = "Fast CLI over nanonis-spm for agent-driven Nanonis SPM controller automation"
 readme = "README.md"
 requires-python = ">=3.10"
