@@ -1,7 +1,8 @@
-# nspmctl
+# NanonisSPMController-CLI (`nspmctl`)
 
-A thin, fast CLI over `nanonis-spm` for agent-driven Nanonis SPM
-controller automation (real controller or STM Simulator).
+A thin, fast CLI driver over `nanonis-spm` for agent-driven Nanonis SPM
+controller automation (real controller or STM Simulator). The public
+command and driver name is `nspmctl`.
 
 `nspmctl` runs as either a short-lived one-shot command or, by default,
 a thin client that forwards to a persistent background daemon. The
@@ -22,6 +23,43 @@ connect cost every time.
   - `ramp` is always an explicit multi-step trajectory.
 - Default runtime policy: `allow_writes=true`, `dry_run=false`.
 
+### Write enforcement in version 0.3.0
+
+| Path | Checks applied |
+|---|---|
+| Explicit `ramp` | Write policy plus configured `min_value`, `max_value`, `max_step`, `max_slew_per_s`, and `cooldown_s` checks. |
+| Four strategy-backed Z-control coordinates | Write policy plus `min_value` and `max_value` checks on the requested coordinate. The driver computes the partner values needed for a consistent tuple, but does not currently recheck each derived partner against its own configured limits. |
+| Ordinary structured `set` | Write policy and the field-resolution rules documented below. This path does not uniformly apply the configured parameter limits used by explicit `ramp`. |
+| `act` | The manifest `safety_mode` applies. `blocked` actions are rejected, `guarded` actions use the write policy, and `alwaysAllowed` actions do not use the `allow_writes` gate. This path does not uniformly apply parameter limits. |
+
+The present-day `min_value`, `max_value`, `max_step`, `max_slew_per_s`,
+and `cooldown_s` controls and their enforcement paths were added after the
+STM experiments described by the Quailbot paper. They did not protect the
+original runs.
+
+## Role in the Quailbot stack
+
+`nspmctl` is the concrete Nanonis driver used by Quailbot. Its command
+surface is the source and reference for the shared five-command model:
+`get`, `set`, `ramp`, `act`, and `capabilities`.
+[`quail-cli-core`](https://github.com/BB-84C/quail-cli-core) is a separate,
+instrument-agnostic toolkit that provides contract and conformance tooling
+and scaffolding for other controller and instrument drivers.
+
+`nspmctl` 0.3 extends its capability payload for four strategy-backed
+parameters with optional `scalar_strategy` and `scalar_coordinate` fields.
+The strict `quail-cli-core` 0.1.x checker does not yet accept these extra
+keys. It also requires `get_cmd`, `set_cmd`, and `safety` descriptors to be
+objects, while the `nspmctl` schema and code allow them to be `null`. The
+project therefore does not claim that `nspmctl` 0.3 is byte-for-byte
+conformant with that checker.
+
+[`Quailbot`](https://github.com/BB-84C/quailbot-pi) is the upper-layer
+harness. Quailbot owns the workspace controlled by the human operator,
+declared capabilities, required post-action readback, an append-only
+experiment log, and default-deny checks for state-changing operations. Those
+harness functions are not provided by `nspmctl`.
+
 ## Performance
 
 End-to-end `get bias_v` against the STM Simulator on a developer laptop:
@@ -30,13 +68,13 @@ End-to-end `get bias_v` against the STM Simulator on a developer laptop:
 |-----------------------------------|---------:|
 | `nspmctl --no-daemon get bias_v`  |  525 ms  |
 | `nspmctl get bias_v` (warm daemon)|  105 ms  |
-| raw `nanonis_spm` one-shot floor  |  110 ms  |
+| raw `nanonis_spm` one-shot reference |  110 ms  |
 
-The daemon path approaches the raw `nanonis_spm` floor; agents that
+The daemon path approaches the raw `nanonis_spm` baseline; agents that
 make many tool calls amortize the import + TCP-connect cost almost
 entirely.
 
-## v0.2 support contract
+## v0.3 support contract
 
 - Stable CLI surface: documented `nspmctl` subcommands and JSON outputs.
 - Stable Python symbols for embedding: `nspmctl.client.create_client`,
@@ -68,11 +106,11 @@ Common environment variables:
 | `NANONIS_HOST` | `127.0.0.1` | Controller host |
 | `NANONIS_PORTS` | `3364,6501,6502,6503,6504` | Candidate TCP ports |
 | `NANONIS_TIMEOUT_S` | `2.0` | Per-command timeout |
-| `NANONIS_ALLOW_WRITES` | `true` | Master gate for `set` / `ramp` / `act` |
+| `NANONIS_ALLOW_WRITES` | `true` | Write-policy gate for `set`, `ramp`, and guarded `act` actions. `alwaysAllowed` actions are unaffected. |
 | `NANONIS_DRY_RUN` | `false` | Plan writes but do not apply |
 | `NSPMCTL_NO_DAEMON` | unset | Set to `1` to disable the warm daemon |
 
-For richer config (per-channel slew limits, custom backend selection),
+For richer config (per-parameter bounds, write-step constraints, and custom backend selection),
 point `--config-file path/to/runtime.yaml` at any subcommand or set
 `NANONIS_CONFIG_FILE`. See `nspmctl doctor` for the live resolved view.
 
@@ -139,6 +177,8 @@ Capabilities item schemas (`nspmctl capabilities`):
     "readable": { "type": "boolean" },
     "writable": { "type": "boolean" },
     "has_ramp": { "type": "boolean" },
+    "scalar_strategy": { "type": "string", "minLength": 1 },
+    "scalar_coordinate": { "type": "string", "minLength": 1 },
     "get_cmd": {
       "oneOf": [
         { "type": "null" },
@@ -331,6 +371,14 @@ nspmctl backend commands --match Scan
 nspmctl doctor --command-probe
 ```
 
+Discover `nanonis-spm` commands for manifest authoring and validate a
+parameter manifest before use:
+
+```powershell
+nspmctl parameters discover --match LockIn
+nspmctl parameters validate --file path\to\parameters.yaml
+```
+
 List observable metadata and high-level CLI action descriptors:
 
 ```powershell
@@ -362,18 +410,29 @@ nspmctl get scan_buffer
 Apply writes with structured args (canonical form):
 
 ```powershell
-nspmctl set bias_v --arg Bias_value_V=0.12 (single arg input)
-nspmctl set scan_buffer --arg Pixels=512 --arg Lines=512 (multiple args input)
+# Single argument
+nspmctl set bias_v --arg Bias_value_V=0.12
+# Multiple arguments
+nspmctl set scan_buffer --arg Pixels=512 --arg Lines=512
 ```
 
+Scalar parameters also accept a positional value:
+
+```powershell
+nspmctl set bias_v 0.12
+```
 
 Defaulting/autofill mechanism for partial `set`:
 
 - Explicit `--arg` values always win.
-- Missing required set fields trigger one read (`get_cmd`) and are filled by normalized field name.
+- Missing set fields trigger one read (`get_cmd`) and are preserved from the
+  current state by normalized field name when possible.
 - Matching is by field name, not response index position.
 - Get-only fields with no set counterpart are ignored.
-- Remaining unresolved optional fields can fall back to manifest defaults.
+- Manifest defaults apply only to the single-field path.
+- A multi-field write is rejected if any field cannot be provided explicitly
+  or preserved from the current state. Manifest defaults never silently
+  backfill unresolved fields in this path.
 
 Apply explicit guarded ramp (scalar parameters):
 
@@ -413,7 +472,9 @@ nspmctl -help act
 ## Embedded Python usage
 
 The CLI is the primary surface, but `NanonisController` is importable
-for notebooks and embedding scenarios:
+for notebooks and embedding scenarios. `NanonisController` is a provisional
+Python symbol and is not among the stable embedding symbols listed in the
+v0.3 support contract.
 
 ```python
 from nspmctl.controller import NanonisController

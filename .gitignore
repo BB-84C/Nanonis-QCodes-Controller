@@ -28,3 +28,4 @@ tests/**
 !tests/test_daemon.py
 !tests/test_zctrl_gain_scalar_safety.py
 artifacts/
+AGENTS.md
