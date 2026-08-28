@@ -48,11 +48,10 @@ and scaffolding for other controller and instrument drivers.
 
 `nspmctl` 0.3 extends its capability payload for four strategy-backed
 parameters with optional `scalar_strategy` and `scalar_coordinate` fields.
-The strict `quail-cli-core` 0.1.x checker does not yet accept these extra
-keys. It also requires `get_cmd`, `set_cmd`, and `safety` descriptors to be
-objects, while the `nspmctl` schema and code allow them to be `null`. The
-project therefore does not claim that `nspmctl` 0.3 is byte-for-byte
-conformant with that checker.
+`quail-cli-core` 0.2.0 accepts these paired extension fields and the nullable
+`get_cmd`, `set_cmd`, and `safety` descriptors used by the `nspmctl`
+capability payload. The checker validates the declared structure; `nspmctl`
+remains responsible for controller integration and policy execution.
 
 [`Quailbot`](https://github.com/BB-84C/quailbot-pi) is the upper-layer
 harness. Quailbot owns the workspace controlled by the human operator,
